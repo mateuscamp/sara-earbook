@@ -24,12 +24,18 @@ ADRs em `docs/adr/`. O Claude Code traduz; o Python nunca chama o LLM (ADR-0001)
 - Ao fim de toda implementação de código, nesta ordem: a skill `code-review` e, depois dela, a skill `code-audit` (pedido do Mateus, 2026-11-01).
 - O asset se julga **ouvindo no ElevenReader**, não lendo lado a lado.
 
-## Livros de medição (em `livros/`, fora do git; o original fica em `~/Documentos/livros/ingles/`)
+## Livros de medição (o original fica em `~/Documentos/livros/ingles/`)
+
+`livros/` fica fora do git e tem duas pastas (pedido do Mateus, 2026-11-01):
+- `livros/trabalho/`: o que ainda está na esteira, de livro de medição ou não (pasta `.earbook`, EPUB do `importar-pdf`).
+- `livros/prontos/`: só o EPUB final, que sai do `montar`.
+
+Saída de medição vai para `livros/trabalho/`, nunca para `/tmp` nem para o scratchpad: o Mateus ouve dali.
 
 - Huxley, *The Doors of Perception*: notas de rodapé e sumário. Serve de régua de tradução, porque existe edição brasileira (*As Portas da Percepção*).
 - Rosenberg, *Tides of Darkness*: convertido de PDF, com cabeçalho de página, parágrafo partido e capitular perdida. Muito nome próprio de lugar e personagem a preservar (glossário).
 - Mudou a limpeza ou a segmentação? Rode `earbook preparar` nos dois e compare as contagens com as do ADR-0003.
-- PDF: *Competente o Suficiente* (`~/Documentos/Akita/`, pt-BR) e *Software Architecture: The Hard Parts* (`~/Documentos/livros/arquitetura-ai-first/`, en). Mudou o `importar-pdf`? Rode `importar-pdf --epub <fora do repo>` e depois `preparar` nos dois e compare com a tabela de ponta a ponta do ADR-0004.
+- PDF: *Competente o Suficiente* (`~/Documentos/Akita/`, pt-BR) e *Software Architecture: The Hard Parts* (`~/Documentos/livros/arquitetura-ai-first/`, en). Mudou o `importar-pdf`? Rode `importar-pdf --epub livros/trabalho/<nome>.epub` e depois `preparar` nos dois e compare com a tabela de ponta a ponta do ADR-0004.
 
 ## Comandos
 

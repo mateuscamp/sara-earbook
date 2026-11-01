@@ -8,6 +8,7 @@ from collections import defaultdict
 from collections.abc import Sequence
 from dataclasses import dataclass, replace
 
+from earbook.dominio.direitos import nas_pontas, pagina_de_direitos
 from earbook.dominio.segmento import Papel, Segmento
 
 # "Tides of Darkness 4" ou "12 Aaron Rosenberg": frase e número de página, sozinhos na linha.
@@ -112,11 +113,33 @@ def limpar_para_o_ouvido(
     A ordem importa: o cabeçalho, solto ou colado, fica exatamente onde o parágrafo se
     partiu, e só some do meio depois que as duas metades ficam lado a lado.
     """
-    sem_cabecalho = tirar_cabecalhos_de_pagina(capitulos, titulo, autor)
+    sem_direitos, direitos = tirar_paginas_de_direitos(capitulos)
+    sem_cabecalho = tirar_cabecalhos_de_pagina(sem_direitos, titulo, autor)
+    sem_cabecalho = replace(sem_cabecalho, remocoes=(*direitos, *sem_cabecalho.remocoes))
     repetidas = _frases_de_cabecalho([s for _, segmentos in capitulos for s in segmentos])
     frases = _frases_do_livro(repetidas, titulo, autor)
     juntado = _juntar_paragrafos_partidos(_aparar_cabecalhos_colados(sem_cabecalho, frases))
     return _marcar_capitulares_perdidas(juntado)
+
+
+def tirar_paginas_de_direitos(
+    capitulos: Sequence[tuple[str, Sequence[Segmento]]],
+) -> tuple[list[tuple[str, list[Segmento]]], list[Remocao]]:
+    """Tira a página de direitos autorais: o segmento com marca forte (©, direitos
+    reservados, ISBN) e as linhas vizinhas com marca fraca, que formam a página com ele.
+
+    Cada remoção fica registrada, como toda remoção da limpeza (ADR-0003).
+    """
+    restantes: list[tuple[str, list[Segmento]]] = []
+    remocoes: list[Remocao] = []
+    na_ponta = nas_pontas(sum(len(segmentos) for _, segmentos in capitulos))
+    inicio = 0
+    for capitulo, segmentos in capitulos:
+        saem = pagina_de_direitos(segmentos, lambda i, base=inicio: na_ponta(base + i))
+        inicio += len(segmentos)
+        remocoes += [Remocao(segmentos[i].id, saem[i], segmentos[i].texto) for i in sorted(saem)]
+        restantes.append((capitulo, [s for i, s in enumerate(segmentos) if i not in saem]))
+    return restantes, remocoes
 
 
 def _aparar_cabecalhos_colados(livro: LivroLimpo, frases: set[str]) -> LivroLimpo:

@@ -42,7 +42,7 @@ Saída de medição vai para `livros/trabalho/`, nunca para `/tmp` nem para o sc
 - Setup: `uv sync`.
 - Portão: `make check` (`scripts/portao.sh`: lock, formato, lint, supressão, tipos, fronteiras, testes, `uv audit`). O hook Stop roda o mesmo. Rodar antes de declarar qualquer tarefa concluída e mostrar a saída.
 - Uso: `uv run earbook preparar livro.epub` → `livro.earbook/`.
-- PDF: `uv run earbook importar-pdf livro.pdf --idioma pt-BR` → `livro.epub`, que segue para o `preparar`.
+- PDF: `uv run earbook importar-pdf livro.pdf --idioma pt-BR [--titulo T] [--autor A]` → `livro.epub`, que segue para o `preparar`. Título e autor vêm do metadado do PDF quando não são dados.
 - Fim da esteira: `uv run earbook conferir livro.earbook` e `uv run earbook montar livro.earbook` → `livro.pronto.epub`.
 
 ## Fronteiras (ADR-0001)
@@ -102,7 +102,8 @@ src/earbook/
   dominio/      segmento.py (Segmento, IDs), trabalho.py (LivroPreparado), limpeza.py (regras do ouvido),
                 pagina.py (Pagina, Linha e letra espaçada do PDF), paginacao.py (cabeçalho do PDF
                 pela posição), blocos.py (parágrafo, título, código, nota e capítulo do PDF),
-                conferencia.py (o conferir)
+                conferencia.py (o conferir), direitos.py (página de direitos autorais),
+                metadados.py (título e autor do PDF)
   adaptadores/  xml_seguro.py (parser), pacote_epub.py (zip + OPF), xhtml.py, pasta_de_trabalho.py,
                 pdf.py (pdfminer), epub_simples.py (grava o EPUB do PDF)
   comandos/     preparar.py, importar_pdf.py, montar.py (conferir e montar), cli.py

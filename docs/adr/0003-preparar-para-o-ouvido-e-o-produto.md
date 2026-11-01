@@ -55,6 +55,41 @@ quando o idioma do livro é diferente do idioma de saída.
 
 Limite conhecido (A6 da auditoria): o cabeçalho solto é comparado em `casefold`, que desfaz ligaduras (`ﬁ` → `fi`), mas o colado é procurado no texto cru. Cabeçalho colado com ligadura tipográfica fica no texto. Nenhum dos dois livros medidos tem esse caso.
 
+### Página de direitos autorais (2026-11-01)
+
+A escuta do Competente no ElevenReader leu o aviso "© 2026 Fabio Akita. Todos os direitos reservados. Nenhuma parte deste livro…". O `limpar` agora tira a página de direitos (`dominio/direitos.py`), como primeira etapa:
+- sai o segmento com **marca forte**: `©`, `(c) 2020`, "direitos reservados", "all rights reserved", ISBN. Nos quatro livros medidos, a marca forte só apareceu em página de direitos e em boilerplate de editora, nunca no corpo;
+- saem também as linhas vizinhas com **marca fraca** (copyright, marca registrada, trademark, editora, publisher, published by, impresso, printed in, catalogação, Library of Congress, edição, edition, `http`, `www.`), seguidas, nos dois sentidos. A corrente atravessa uma linha sem marca quando a seguinte tem ("Visit us on the World Wide Web:" antes da URL), mas nunca um título: o capítulo que começa logo depois fica inteiro. Sozinha, a marca fraca é texto comum ("a segunda edição") e não tira nada;
+- cada remoção fica no `limpeza.json`, com o motivo "página de direitos autorais" ou "página de direitos autorais: linha vizinha".
+
+Medido nos quatro livros:
+
+| Livro | Saíram | O quê |
+|---|---|---|
+| *Competente o Suficiente* | 1 | o segmento com título, subtítulo e aviso de direitos |
+| *The Doors of Perception* | 3 | "Copyright © 2020 epubBooks", "All Rights Reserved." e o aviso longo de uso |
+| *Tides of Darkness* | 7 | do © até a URL da editora; a dedicatória logo depois ficou |
+| *Software Architecture: The Hard Parts* | 7 | o copyright, os créditos da equipe e o histórico de revisões da página de rosto; o parágrafo de atribuição do prefácio ("…title, author, publisher, and ISBN"), que é boilerplate da O'Reilly; e o texto invertido da contracapa |
+
+Correções da code-review (2026-11-01), cada uma com o teste visto falhar antes:
+- a marca forte só abre página de direitos nas **pontas do livro**: nos primeiros ou nos últimos 10% dos segmentos, e nunca menos de 20 de cada lado. No meio do livro, "© Oracle" ou um ISBN citado é texto, e antes puxava os vizinhos com link. A posição conta no livro inteiro, não no capítulo;
+- a travessia **não leva a dedicatória** ("Para…", "To…", "In memory…"), que pode vir entre o aviso e a linha da edição.
+
+Correções da code-audit (2026-11-01), cada uma com o teste visto falhar antes:
+- **A1:** a âncora ficava na ponta, mas a corrente de vizinhas andava pelo livro adentro enquanto houvesse marca fraca. Num teste com o Competente modificado, um ISBN numa referência levou 60 entradas da bibliografia. Agora a corrente só anda dentro das pontas e leva no máximo 5 linhas sem marca forte de cada lado (a página real mais longa, a do Tides, tem 3). Limite que fica: um colofão logo depois de uma lista de links, na ponta, ainda leva até 5 dessas linhas.
+- **A2:** a dedicatória ao lado do aviso, com palavra de editora ("Para minha editora, Beltrana…"), saía; a proteção valia só para a linha atravessada. Agora a corrente nunca leva dedicatória.
+- Testes para o que estava sem proteção: cada marca forte isolada, a fronteira exata das pontas e a corrente para trás.
+
+Correções da pós-auditoria (2026-11-01), cada uma com o teste visto falhar antes:
+- **N3:** o limite de 5 era conferido antes do passo, e a travessia, que leva duas linhas de uma vez, chegava a 6. Agora o limite conta o passo inteiro.
+- **N5:** a dedicatória só era reconhecida se começava com "Para", "To", "For" e afins; "This book is dedicated to…", "Dedico este livro…", "In loving memory…" e "Dedicatória:" saíam. A lista de aberturas cresceu. Continua sendo pelo começo da linha: a dedicatória que não começa com uma abertura conhecida ainda pode sair, registrada.
+- **N6:** a linha cuja única marca forte é o ISBN sai sozinha, sem abrir corrente. O ISBN aparece também em referência bibliográfica, cercada de outras referências com link, e levava até 10 delas. Os quatro livros continuam tirando os mesmos 18 segmentos.
+- Teste da ponta de 10% num livro de 300 segmentos, além do mínimo de 20.
+
+Limite conservador registrado (N4): uma linha de editora que começa como dedicatória ("For more information about our books, visit www…", "Para mais informações, acesse…", "To order additional copies…") para a corrente, e o resto da página de direitos depois dela fica no texto e é lido. Nenhum dos quatro livros tem esse caso.
+
+Ficaram de fora, sem marca: o endereço da editora no Tides ("A Division of Simon & Schuster, Inc. 1230 Avenue of the Americas" e "10020") e o título repetido nas páginas de rosto.
+
 ## Consequências
 
 **Ganha:**

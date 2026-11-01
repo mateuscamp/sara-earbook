@@ -3,12 +3,13 @@
 
 from __future__ import annotations
 
+import threading
 from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
 
-from earbook.adaptadores.pdf import PdfInvalidoError, ler_paginas
+from earbook.adaptadores.pdf import MetadadosDoPdf, PdfInvalidoError, ler_metadados, ler_paginas
 from earbook.dominio.pagina import Linha, Pagina
 from tests.pdf_de_teste import (
     LinhaDeTeste,
@@ -16,6 +17,7 @@ from tests.pdf_de_teste import (
     montar_pdf_com_arvore_funda,
     montar_pdf_com_nome_de_fonte,
     montar_pdf_com_senha,
+    montar_pdf_com_titulo_circular,
     montar_pdf_com_xref_negativo,
 )
 
@@ -228,3 +230,75 @@ def test_xref_com_deslocamento_negativo_e_recusado_com_o_nome(tmp_path: Path) ->
     pdf = montar_pdf_com_xref_negativo(tmp_path / "xref.pdf")
     with pytest.raises(PdfInvalidoError, match=r"xref\.pdf"):
         _ = ler_paginas(pdf)
+
+
+def test_metadado_de_titulo_e_autor_vem_do_pdf(tmp_path: Path) -> None:
+    # "Ação" em UTF-16 com BOM, como o PDF guarda texto fora do Latin-1.
+    info = {"Title": b"<FEFF004100E700E3006F>", "Author": b"(Fulana de Tal)"}
+    pdf = montar_pdf(tmp_path / "livro.pdf", [[LinhaDeTeste("Texto.", 72, 700)]], info)
+    assert ler_metadados(pdf) == MetadadosDoPdf("Ação", "Fulana de Tal")
+
+
+def test_pdf_sem_metadado_devolve_vazio(tmp_path: Path) -> None:
+    pdf = montar_pdf(tmp_path / "livro.pdf", [[LinhaDeTeste("Texto.", 72, 700)]])
+    assert ler_metadados(pdf) == MetadadosDoPdf("", "")
+
+
+def test_metadado_de_arquivo_que_nao_e_pdf_e_recusado_com_o_nome(tmp_path: Path) -> None:
+    falso = tmp_path / "falso.pdf"
+    _ = falso.write_bytes(b"isto nao e um pdf")
+    with pytest.raises(PdfInvalidoError, match=r"falso\.pdf"):
+        _ = ler_metadados(falso)
+
+
+def test_metadado_em_utf8_com_bom_vem_certo(tmp_path: Path) -> None:
+    # Revisão: o PDF 2.0 aceita UTF-8 com BOM, e o decode_text do pdfminer só conhece o
+    # UTF-16; saía "ï»¿AÃ§Ã£o".
+    info = {"Title": b"<EFBBBF41C3A7C3A36F>"}
+    pdf = montar_pdf(tmp_path / "livro.pdf", [[LinhaDeTeste("Texto.", 72, 700)]], info)
+    assert ler_metadados(pdf).titulo == "Ação"
+
+
+def test_metadado_em_utf16_little_endian_com_bom_vem_certo(tmp_path: Path) -> None:
+    # A3 da auditoria: fora da especificação, mas visto; saía "ÿþAção".
+    info = {"Title": b"<FFFE4100E700E3006F00>"}
+    pdf = montar_pdf(tmp_path / "livro.pdf", [[LinhaDeTeste("Texto.", 72, 700)]], info)
+    assert ler_metadados(pdf).titulo == "Ação"
+
+
+def test_metadado_que_nao_e_texto_vira_vazio(tmp_path: Path) -> None:
+    info = {"Title": b"42", "Author": b"/Fulana"}
+    pdf = montar_pdf(tmp_path / "livro.pdf", [[LinhaDeTeste("Texto.", 72, 700)]], info)
+    assert ler_metadados(pdf) == MetadadosDoPdf("", "")
+
+
+def test_titulo_que_aponta_para_si_mesmo_vira_vazio_sem_travar(tmp_path: Path) -> None:
+    # N1 da pós-auditoria: o `resolve1` do pdfminer seguia a referência sem limite, e o
+    # importar-pdf girava para sempre depois de ler todas as páginas.
+    pdf = montar_pdf_com_titulo_circular(tmp_path / "circular.pdf")
+    resultado: list[MetadadosDoPdf] = []
+    leitura = threading.Thread(target=lambda: resultado.append(ler_metadados(pdf)), daemon=True)
+    leitura.start()
+    leitura.join(5)
+    assert resultado == [MetadadosDoPdf("", "")]
+
+
+def test_erro_da_nossa_decodificacao_nao_vira_pdf_invalido(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # N2 da pós-auditoria: o `try` do pdfminer cobria também a nossa decodificação.
+    def decodificacao_quebrada(_: object) -> str:
+        mensagem = "bug plantado"
+        raise TypeError(mensagem)
+
+    monkeypatch.setattr("earbook.adaptadores.pdf._decodificar", decodificacao_quebrada)
+    pdf = montar_pdf(tmp_path / "livro.pdf", [[LinhaDeTeste("T.", 72, 700)]], {"Title": b"(T)"})
+    with pytest.raises(TypeError, match="bug plantado"):
+        _ = ler_metadados(pdf)
+
+
+def test_utf16_little_endian_quebrado_nao_derruba_a_importacao(tmp_path: Path) -> None:
+    pdf = montar_pdf(
+        tmp_path / "livro.pdf", [[LinhaDeTeste("T.", 72, 700)]], {"Title": b"<FFFE4100E7>"}
+    )
+    assert ler_metadados(pdf).titulo.startswith("A")

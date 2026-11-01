@@ -35,6 +35,8 @@ class _Opcoes(argparse.Namespace):
     pdf: Path = Path()
     saida: Path | None = None
     idioma: str = "und"
+    titulo: str | None = None
+    autor: str | None = None
     trabalho: Path = Path()
 
 
@@ -71,7 +73,8 @@ def _calar_a_saida() -> None:
 
 def _importar(opcoes: _Opcoes) -> tuple[str, int]:
     epub = opcoes.saida or epub_padrao(opcoes.pdf)
-    return _resumo_da_importacao(importar_pdf(opcoes.pdf, epub, opcoes.idioma)), 0
+    importacao = importar_pdf(opcoes.pdf, epub, opcoes.idioma, opcoes.titulo, opcoes.autor)
+    return _resumo_da_importacao(importacao), 0
 
 
 def _preparar(opcoes: _Opcoes) -> tuple[str, int]:
@@ -122,6 +125,10 @@ def _analisador() -> argparse.ArgumentParser:
         "--epub", dest="saida", type=Path, help="padrão: ao lado do PDF, com .epub"
     )
     _ = importacao.add_argument("--idioma", default="und", help="pt-BR, en... (padrão: und)")
+    _ = importacao.add_argument(
+        "--titulo", help="padrão: o do metadado do PDF ou o nome do arquivo"
+    )
+    _ = importacao.add_argument("--autor", help="padrão: o do metadado do PDF")
     conferencia = comandos.add_parser("conferir", help="confere se nada some antes de montar")
     _ = conferencia.add_argument("trabalho", type=Path, help="a pasta .earbook")
     montagem_ = comandos.add_parser("montar", help="pasta de trabalho → EPUB para ouvir")
@@ -137,6 +144,8 @@ def _resumo_da_importacao(importacao: Importacao) -> str:
     tipos = Counter(b.tipo for b in livro.blocos)
     paginas, capitulos = importacao.paginas, importacao.capitulos
     linhas = [f"Importado em {importacao.epub}: {paginas} páginas, {capitulos} capítulos."]
+    de = f", de {importacao.autor}" if importacao.autor else ", sem autor"
+    linhas.append(f"Título: {importacao.titulo}{de}.")
     titulos, paragrafos = tipos[TipoDeBloco.TITULO], tipos[TipoDeBloco.PARAGRAFO]
     codigo, notas = tipos[TipoDeBloco.CODIGO], tipos[TipoDeBloco.NOTA]
     linhas.append(

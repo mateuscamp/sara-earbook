@@ -148,3 +148,19 @@ def test_sumario_tem_o_primeiro_titulo_ou_a_posicao_e_aponta_cada_capitulo(
     links = [(a.get("href"), "".join(a.itertext())) for a in nav.iter("{*}a")]
     assert links == [("c001.xhtml", "A & <B>"), ("c002.xhtml", "2")]
     assert nav.get("lang") == 'en"x'
+
+
+def test_autor_entra_no_epub_e_o_preparar_le(tmp_path: Path) -> None:
+    epub = tmp_path / "livro.epub"
+    gravar_epub(
+        epub, "T", "pt-BR", [[_bloco(TipoDeBloco.PARAGRAFO, "Texto.")]], autor="Fulana & Cia"
+    )
+    livro = preparar(epub, tmp_path / "trabalho").livro
+    assert (livro.titulo, livro.autor) == ("T", "Fulana & Cia")
+
+
+def test_sem_autor_o_epub_sai_sem_creator(tmp_path: Path) -> None:
+    epub = tmp_path / "livro.epub"
+    gravar_epub(epub, "T", "pt-BR", [[_bloco(TipoDeBloco.PARAGRAFO, "Texto.")]])
+    with zipfile.ZipFile(epub) as zip_:
+        assert b"dc:creator" not in zip_.read("OEBPS/content.opf")

@@ -7,13 +7,17 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
+from dataclasses import dataclass
 from pathlib import Path
 from statistics import multimode
 
 from pdfminer.high_level import extract_pages
 from pdfminer.layout import LAParams, LTChar, LTPage, LTTextBox, LTTextLine
-from pdfminer.pdfdocument import PDFEncryptionError
+from pdfminer.pdfdocument import PDFDocument, PDFEncryptionError
+from pdfminer.pdfparser import PDFParser
+from pdfminer.pdftypes import PDFObjRef
+from pdfminer.utils import decode_text
 
 from earbook.dominio.pagina import Letra, Linha, Pagina, juntar_letras_espacadas
 from earbook.dominio.segmento import normalizar_espacos
@@ -22,8 +26,60 @@ from earbook.dominio.segmento import normalizar_espacos
 _FONTE_MONOESPACADA = re.compile(r"mono|courier|code|consol", re.IGNORECASE)
 
 
+_BOM_UTF8 = b"\xef\xbb\xbf"
+_BOM_UTF16LE = b"\xff\xfe"
+
+
 class PdfInvalidoError(ValueError):
     pass
+
+
+@dataclass(frozen=True)
+class MetadadosDoPdf:
+    titulo: str
+    autor: str
+
+
+def ler_metadados(pdf: Path) -> MetadadosDoPdf:
+    """Título e autor do dicionário `/Info` do PDF, vazios quando ele não os tem.
+
+    O valor vem cru do PDF (texto em PDFDocEncoding, UTF-16 ou UTF-8, ou referência a outro
+    objeto): só texto passa, e o resto vira vazio.
+    """
+    with pdf.open("rb") as arquivo:
+        info = _pelo_pdfminer(pdf, lambda: _info(PDFDocument(PDFParser(arquivo))))
+        titulo = _pelo_pdfminer(pdf, lambda: _bytes_do_info(info, "Title"))
+        autor = _pelo_pdfminer(pdf, lambda: _bytes_do_info(info, "Author"))
+    # Fora do `try`: a decodificação é nossa, e bug nosso não é PDF inválido (N2 da
+    # pós-auditoria).
+    return MetadadosDoPdf(_decodificar(titulo), _decodificar(autor))
+
+
+def _info(documento: PDFDocument) -> list[dict[str, object]]:
+    return documento.info  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]  # motivo: o pdfminer não tipa o `info`; cada valor é validado em `_texto_do_info`
+
+
+def _bytes_do_info(info: list[dict[str, object]], chave: str) -> bytes:
+    """O valor cru de `chave`, seguindo uma referência só: o `resolve1` do pdfminer segue
+    sem limite, e um objeto que aponta para si mesmo travava o importar-pdf (N1 da
+    pós-auditoria). Referência de referência, ou o que não é texto, vira vazio."""
+    for dicionario in info:
+        valor = dicionario.get(chave)
+        if isinstance(valor, PDFObjRef):
+            valor = valor.resolve()  # pyright: ignore[reportAny]  # motivo: o pdfminer devolve Any; o isinstance a seguir valida
+        if isinstance(valor, bytes):
+            return valor
+    return b""
+
+
+def _decodificar(valor: bytes) -> str:
+    """O texto do `/Info`: PDFDocEncoding ou UTF-16BE com BOM, pelo pdfminer; UTF-8 com BOM,
+    que o PDF 2.0 aceita (revisão); e UTF-16LE com BOM, fora da especificação mas visto
+    (A3 da auditoria). O `decode_text` do pdfminer só conhece o UTF-16BE."""
+    for bom, codificacao in ((_BOM_UTF8, "utf-8"), (_BOM_UTF16LE, "utf-16-le")):
+        if valor.startswith(bom):
+            return valor[len(bom) :].decode(codificacao, errors="replace")
+    return decode_text(valor)
 
 
 def ler_paginas(pdf: Path) -> tuple[Pagina, ...]:
@@ -43,14 +99,18 @@ def ler_paginas(pdf: Path) -> tuple[Pagina, ...]:
 
 
 def _proximo_layout(pdf: Path, layouts: Iterator[LTPage]) -> LTPage | None:
-    """A próxima página do pdfminer, com toda falha dele virando `PdfInvalidoError`.
+    return _pelo_pdfminer(pdf, lambda: next(layouts, None))
+
+
+def _pelo_pdfminer[T](pdf: Path, chamada: Callable[[], T]) -> T:
+    """`chamada()`, com toda falha do pdfminer virando `PdfInvalidoError`.
 
     O `try` cobre só a biblioteca, não a nossa conversão: bug do adaptador continua
     aparecendo como bug, não como "PDF inválido" (revisão nº 1). Falta de memória é da
     máquina, não do PDF, e passa como veio.
     """
     try:
-        return next(layouts, None)
+        return chamada()
     except MemoryError:
         raise
     except PDFEncryptionError as erro:

@@ -21,7 +21,7 @@ O comando `preparar` cria `livro.earbook/` com:
 
 - `livro.json`: metadados, capítulos na ordem do spine e texto que ficou fora de segmento.
 - `segmentos/cNNN.json`: os segmentos de cada capítulo como vieram do EPUB, cada um com `id`, `papel` (`titulo`, `paragrafo`, `nota`, `item`, `celula` ou `citacao`), `texto` e `notas`.
-- `limpos/cNNN.json`: os mesmos segmentos, sem o que a limpeza para o ouvido tirou (por exemplo, o cabeçalho de página). É o que segue na esteira.
+- `limpos/cNNN.json`: os mesmos segmentos, sem o que a limpeza para o ouvido tirou (por exemplo, o cabeçalho de página e a página de direitos autorais). É o que segue na esteira.
 - `limpeza.json`: cada segmento que saiu (`remocoes`), cada cabeçalho aparado do fim de um parágrafo (`aparos`), cada parágrafo partido que foi juntado ao anterior (`juncoes`) e os suspeitos que ficaram no texto para decidir (`suspeitas`).
 - `epub/`: o EPUB extraído, com cada segmento marcado no XHTML por `data-earbook`.
 
@@ -44,7 +44,8 @@ uv run earbook importar-pdf livro.pdf --idioma pt-BR
 uv run earbook preparar livro.epub
 ```
 
-O `importar-pdf` grava `livro.epub` ao lado do PDF (ou onde `--epub` mandar). Ele tira
+O `importar-pdf` grava `livro.epub` ao lado do PDF (ou onde `--epub` mandar), com o título
+e o autor do metadado do PDF (ou os de `--titulo` e `--autor`). Ele tira
 número de página e cabeçalho repetido pela posição na página, junta as linhas em
 parágrafos, devolve inteira a palavra partida no fim da linha e divide os capítulos pelo
 tamanho dos títulos. O EPUB serve para ouvir, não para ler na tela: sai sem imagem e sem

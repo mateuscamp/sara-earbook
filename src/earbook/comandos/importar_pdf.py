@@ -7,8 +7,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from earbook.adaptadores.epub_simples import gravar_epub
-from earbook.adaptadores.pdf import ler_paginas
+from earbook.adaptadores.pdf import ler_metadados, ler_paginas
 from earbook.dominio.blocos import LivroMontado, dividir_em_capitulos, montar_blocos
+from earbook.dominio.metadados import autor_do_livro, titulo_do_livro
 from earbook.dominio.paginacao import LinhaRemovida, tirar_cabecalhos_e_rodapes
 
 
@@ -23,6 +24,8 @@ class Importacao:
     remocoes: tuple[LinhaRemovida, ...]
     livro: LivroMontado
     capitulos: int
+    titulo: str
+    autor: str
 
 
 def epub_padrao(pdf: Path) -> Path:
@@ -30,11 +33,18 @@ def epub_padrao(pdf: Path) -> Path:
     return pdf.with_suffix(".epub")
 
 
-def importar_pdf(pdf: Path, epub: Path, idioma: str = "und") -> Importacao:
+def importar_pdf(
+    pdf: Path,
+    epub: Path,
+    idioma: str = "und",
+    titulo: str | None = None,
+    autor: str | None = None,
+) -> Importacao:
     """Lê o PDF, tira cabeçalho e rodapé, monta parágrafos e grava o EPUB em `epub`.
 
-    O título do livro é o nome do arquivo: o metadado de título do PDF costuma ser
-    o nome do arquivo do editor ("Microsoft Word - cap1.doc"), e o ouvido o ouviria.
+    Título e autor vêm de `titulo` e `autor`, se dados; senão, do metadado do PDF, que os
+    dois livros medidos trazem certos; o título que parece nome de arquivo ("Microsoft
+    Word - cap1.doc") cede ao nome do PDF (`dominio/metadados.py`).
     """
     if epub.exists():
         # A gravação também recusa; checar antes poupa os minutos de leitura do PDF.
@@ -47,5 +57,8 @@ def importar_pdf(pdf: Path, epub: Path, idioma: str = "und") -> Importacao:
         mensagem = f"{pdf}: nenhum texto nas {len(paginas)} páginas (escaneado? não há OCR)"
         raise PdfSemTextoError(mensagem)
     capitulos = dividir_em_capitulos(livro.blocos)
-    gravar_epub(epub, pdf.stem, idioma, capitulos)
-    return Importacao(epub, len(paginas), limpas.remocoes, livro, len(capitulos))
+    metadados = ler_metadados(pdf)
+    titulo = titulo or titulo_do_livro(metadados.titulo, pdf.stem)
+    autor = autor or autor_do_livro(metadados.autor)
+    gravar_epub(epub, titulo, idioma, capitulos, autor=autor)
+    return Importacao(epub, len(paginas), limpas.remocoes, livro, len(capitulos), titulo, autor)

@@ -153,3 +153,41 @@ def test_cli_cano_real_fechado_antes_do_resumo_sai_quieto(
     assert (tmp_path / "livro.epub").is_file()
     saida.flush()
     saida.close()
+
+
+def _pdf_com_metadado(tmp_path: Path) -> Path:
+    info = {"Title": b"(Livro Bom)", "Author": b"(Fulana;Beltrano;)"}
+    return montar_pdf(tmp_path / "arquivo-feio.pdf", [_pagina(1, titulo="Abertura")], info)
+
+
+def test_titulo_e_autor_vem_do_metadado_do_pdf(tmp_path: Path) -> None:
+    # Escuta de 2026-11-01: o título era o nome do arquivo, "Competente-o-Suficiente-ebook".
+    importacao = importar_pdf(_pdf_com_metadado(tmp_path), tmp_path / "livro.epub")
+    livro = preparar(importacao.epub, tmp_path / "trabalho").livro
+    assert (livro.titulo, livro.autor) == ("Livro Bom", "Fulana; Beltrano")
+
+
+def test_titulo_e_autor_da_linha_de_comando_valem_mais(tmp_path: Path) -> None:
+    pdf = _pdf_com_metadado(tmp_path)
+    importacao = importar_pdf(pdf, tmp_path / "livro.epub", titulo="Outro", autor="Sicrana")
+    livro = preparar(importacao.epub, tmp_path / "trabalho").livro
+    assert (livro.titulo, livro.autor) == ("Outro", "Sicrana")
+
+
+def test_sem_metadado_o_titulo_e_o_nome_do_arquivo(pdf: Path, tmp_path: Path) -> None:
+    importacao = importar_pdf(pdf, tmp_path / "x.epub")
+    assert (importacao.titulo, importacao.autor) == ("livro", "")
+
+
+def test_cli_importar_pdf_aceita_titulo_e_diz_o_que_entrou(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    pdf = _pdf_com_metadado(tmp_path)
+    assert principal(["importar-pdf", str(pdf), "--titulo", "Meu Título"]) == 0
+    assert "Título: Meu Título, de Fulana; Beltrano." in capsys.readouterr().out
+
+
+def test_cli_importar_pdf_aceita_autor(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    pdf = _pdf_com_metadado(tmp_path)
+    assert principal(["importar-pdf", str(pdf), "--autor", "Sicrana"]) == 0
+    assert "Título: Livro Bom, de Sicrana." in capsys.readouterr().out

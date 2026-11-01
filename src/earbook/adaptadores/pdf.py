@@ -32,10 +32,13 @@ def ler_paginas(pdf: Path) -> tuple[Pagina, ...]:
     Converte uma página por vez: guardar todos os layouts do pdfminer levava o
     Competente (503 páginas) a 720 MB de memória (A3 da auditoria).
     """
-    layouts = extract_pages(pdf, laparams=LAParams())
-    paginas: list[Pagina] = []
-    while (layout := _proximo_layout(pdf, layouts)) is not None:
-        paginas.append(_pagina(pdf, len(paginas) + 1, layout))
+    # O arquivo abre fora do `try`: arquivo inexistente é OSError da máquina, enquanto o
+    # OSError de dentro da leitura vem do conteúdo (F2: xref com deslocamento negativo).
+    with pdf.open("rb") as arquivo:
+        layouts = extract_pages(arquivo, laparams=LAParams())
+        paginas: list[Pagina] = []
+        while (layout := _proximo_layout(pdf, layouts)) is not None:
+            paginas.append(_pagina(pdf, len(paginas) + 1, layout))
     return tuple(paginas)
 
 
@@ -43,12 +46,12 @@ def _proximo_layout(pdf: Path, layouts: Iterator[LTPage]) -> LTPage | None:
     """A próxima página do pdfminer, com toda falha dele virando `PdfInvalidoError`.
 
     O `try` cobre só a biblioteca, não a nossa conversão: bug do adaptador continua
-    aparecendo como bug, não como "PDF inválido" (revisão nº 1). Falta de memória e
-    arquivo inacessível são da máquina, não do PDF, e passam como vieram.
+    aparecendo como bug, não como "PDF inválido" (revisão nº 1). Falta de memória é da
+    máquina, não do PDF, e passa como veio.
     """
     try:
         return next(layouts, None)
-    except MemoryError, OSError:
+    except MemoryError:
         raise
     except PDFEncryptionError as erro:
         mensagem = f"{pdf}: PDF protegido por senha ({type(erro).__name__})"
@@ -84,5 +87,10 @@ def _linha(linha: LTTextLine, altura: float) -> Linha | None:
         x=linha.x0,
         topo=1 - linha.y1 / altura,
         tamanho=mean(c.size for c in caracteres),
-        monoespacada=any(_FONTE_MONOESPACADA.search(c.fontname) for c in caracteres),
+        monoespacada=any(_eh_monoespacada(c.fontname) for c in caracteres),
     )
+
+
+def _eh_monoespacada(nome_da_fonte: object) -> bool:
+    """O pdfminer entrega o nome cru quando ele não é nome PDF: bytes ou número (F1)."""
+    return isinstance(nome_da_fonte, str) and _FONTE_MONOESPACADA.search(nome_da_fonte) is not None

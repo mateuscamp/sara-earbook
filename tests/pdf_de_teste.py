@@ -119,3 +119,34 @@ def montar_pdf_com_senha(destino: Path) -> Path:
     novo = trailer + b" /Encrypt " + cifra + b" /ID [<" + b"01" * 16 + b"> <" + b"01" * 16 + b">]"
     _ = destino.write_bytes(dados.replace(trailer, novo, 1))
     return destino
+
+
+_HELVETICA = b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>"
+
+
+def montar_pdf_com_nome_de_fonte(destino: Path, nome_da_fonte: bytes) -> Path:
+    """Fonte fora das 14 padrão, cujo /FontName no descritor é `nome_da_fonte` cru.
+
+    Nome PDF é `/Courier`; `(Courier)` (texto) e `5` (número) são malformados, e o
+    pdfminer os entrega sem converter em `str`.
+    """
+    _ = montar_pdf(destino, [[LinhaDeTeste("Texto.", 72, 700)]])
+    larguras = b"/FirstChar 32 /LastChar 126 /Widths [" + b" ".join([b"600"] * 95) + b"]"
+    descritor = (
+        b"<< /Type /FontDescriptor /FontName " + nome_da_fonte
+        + b" /Flags 32 /FontBBox [0 -200 600 800] /Ascent 800 /Descent -200 >>"
+    )  # fmt: skip
+    fonte = (
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Estranha /Encoding /WinAnsiEncoding "
+        + larguras + b" /FontDescriptor " + descritor + b" >>"
+    )  # fmt: skip
+    _ = destino.write_bytes(destino.read_bytes().replace(_HELVETICA, fonte, 1))
+    return destino
+
+
+def montar_pdf_com_xref_negativo(destino: Path) -> Path:
+    """O primeiro objeto da tabela xref aponta para um deslocamento negativo."""
+    dados = montar_pdf(destino, [[LinhaDeTeste("Texto.", 72, 700)]]).read_bytes()
+    inicio = dados.index(b"0000000000 65535 f \n") + len(b"0000000000 65535 f \n")
+    _ = destino.write_bytes(dados[:inicio] + b"-000000005" + dados[inicio + 10 :])
+    return destino

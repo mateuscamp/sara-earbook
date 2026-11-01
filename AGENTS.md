@@ -47,7 +47,7 @@ Verificadas por ferramenta (import-linter e `tests/test_arquitetura.py`):
 Verificadas só em revisão (`code-audit`):
 - Só `adaptadores/pasta_de_trabalho.py` conhece o layout da pasta de trabalho.
 - EPUB é entrada não confiável: XML só pelo `PARSER_SEGURO` de `adaptadores/xml_seguro.py`; nenhum caminho sai da pasta de trabalho.
-- PDF também é entrada não confiável (pode vir de site de terceiros): toda falha do pdfminer vira `PdfInvalidoError` com o nome do arquivo, menos falta de memória e arquivo inacessível, que passam como vieram. O `try` cobre só a biblioteca, nunca a nossa conversão. O PDF é lido uma página por vez.
+- PDF também é entrada não confiável (pode vir de site de terceiros): toda falha do pdfminer vira `PdfInvalidoError` com o nome do arquivo, menos falta de memória, que passa como veio. O arquivo abre fora do `try`: inexistente ou sem permissão chega como `OSError`; um erro de disco no meio da leitura sai como "não é um PDF válido", com a causa no `from`. O `try` cobre só a biblioteca, nunca a nossa conversão. O que vem do pdfminer com tipo incerto (nome de fonte) é validado no adaptador. O PDF é lido uma página por vez.
 
 ## O que atrapalha o ouvido (alvo da limpeza)
 

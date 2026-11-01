@@ -14,7 +14,9 @@ from tests.pdf_de_teste import (
     LinhaDeTeste,
     montar_pdf,
     montar_pdf_com_arvore_funda,
+    montar_pdf_com_nome_de_fonte,
     montar_pdf_com_senha,
+    montar_pdf_com_xref_negativo,
 )
 
 
@@ -134,10 +136,30 @@ def test_falta_de_memoria_nao_vira_pdf_invalido(
         return map(estoura, [None])
 
     monkeypatch.setattr("earbook.adaptadores.pdf.extract_pages", paginas_sem_memoria)
+    pdf = montar_pdf(tmp_path / "grande.pdf", [[LinhaDeTeste("Texto.", 72, 700)]])
     with pytest.raises(MemoryError):
-        _ = ler_paginas(tmp_path / "qualquer.pdf")
+        _ = ler_paginas(pdf)
 
 
 def test_arquivo_que_nao_existe_continua_erro_de_arquivo(tmp_path: Path) -> None:
     with pytest.raises(FileNotFoundError):
         _ = ler_paginas(tmp_path / "sumiu.pdf")
+
+
+@pytest.mark.parametrize("nome_da_fonte", [b"(Courier)", b"5"], ids=["texto", "numero"])
+def test_nome_de_fonte_malformado_nao_derruba_a_leitura(
+    tmp_path: Path, nome_da_fonte: bytes
+) -> None:
+    # F1 da pós-auditoria: o pdfminer entrega bytes ou int no nome, e a regex quebrava com
+    # TypeError, sem o nome do arquivo. Nome que não é texto não é monoespaçado.
+    pdf = montar_pdf_com_nome_de_fonte(tmp_path / "fonte.pdf", nome_da_fonte)
+    linhas = _linhas(ler_paginas(pdf))
+    assert [(linha.texto, linha.monoespacada) for linha in linhas] == [("Texto.", False)]
+
+
+def test_xref_com_deslocamento_negativo_e_recusado_com_o_nome(tmp_path: Path) -> None:
+    # F2 da pós-auditoria: o seek negativo dava OSError, que passava como "arquivo
+    # inacessível" ("[Errno 22] Invalid argument"), sem o nome do arquivo.
+    pdf = montar_pdf_com_xref_negativo(tmp_path / "xref.pdf")
+    with pytest.raises(PdfInvalidoError, match=r"xref\.pdf"):
+        _ = ler_paginas(pdf)

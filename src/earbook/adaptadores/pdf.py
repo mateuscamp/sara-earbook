@@ -15,7 +15,7 @@ from pdfminer.high_level import extract_pages
 from pdfminer.layout import LAParams, LTChar, LTPage, LTTextBox, LTTextLine
 from pdfminer.pdfdocument import PDFEncryptionError
 
-from earbook.dominio.pagina import Linha, Pagina
+from earbook.dominio.pagina import Letra, Linha, Pagina, juntar_letras_espacadas
 from earbook.dominio.segmento import normalizar_espacos
 
 # Medido no spike: o código do "Hard Parts" vem em UbuntuMono.
@@ -82,18 +82,17 @@ def _linha(linha: LTTextLine, altura: float) -> Linha | None:
     texto = normalizar_espacos(linha.get_text())
     if not caracteres or not texto:
         return None
-    return Linha(
-        texto=texto,
-        x=linha.x0,
-        topo=1 - linha.y1 / altura,
-        # A moda, não a média: nome de código em 8,5 pt numa linha de 9 pt puxava a média
-        # para baixo de 0,85 do corpo, e a prosa virava nota (A1 da auditoria, Hard Parts).
-        # No empate, o maior: a letra menor é a do código ou da nota (pós-revisão).
-        tamanho=max(multimode(round(c.size, 1) for c in caracteres)),
-        # Toda letra, não alguma: no Hard Parts, as 584 linhas de código são 100% monoespaçadas
-        # e as 183 de prosa com um nome de código no meio ("ss.survey") ficam entre 0 e 90%.
-        monoespacada=all(_eh_monoespacada(c.fontname) for c in caracteres),
-    )
+    # A moda, não a média: nome de código em 8,5 pt numa linha de 9 pt puxava a média
+    # para baixo de 0,85 do corpo, e a prosa virava nota (A1 da auditoria, Hard Parts).
+    # No empate, o maior: a letra menor é a do código ou da nota (pós-revisão).
+    tamanho = max(multimode(round(c.size, 1) for c in caracteres))
+    # Toda letra, não alguma: no Hard Parts, as 584 linhas de código são 100% monoespaçadas
+    # e as 183 de prosa com um nome de código no meio ("ss.survey") ficam entre 0 e 90%.
+    monoespacada = all(_eh_monoespacada(c.fontname) for c in caracteres)
+    if not monoespacada:
+        letras = [Letra(c.get_text(), c.x0, c.x1) for c in caracteres if c.get_text().strip()]
+        texto = juntar_letras_espacadas(letras, tamanho) or texto
+    return Linha(texto, linha.x0, 1 - linha.y1 / altura, tamanho, monoespacada)
 
 
 def _eh_monoespacada(nome_da_fonte: object) -> bool:

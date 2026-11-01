@@ -103,6 +103,30 @@ def test_empate_de_tamanho_fica_com_o_maior(tmp_path: Path) -> None:
     assert [linha.tamanho for linha in _linhas(paginas)] == [9.0]
 
 
+def test_letra_espacada_sai_do_pdf_como_palavra(tmp_path: Path) -> None:
+    # Escuta de 2026-11-01: o ElevenReader colou "P A R T E I" em "PARTEI" e leu "partei".
+    # Larguras do Helvetica 8,5 pt (P 5,67, A 5,67, R 6,14, T 5,19, E 5,67), 1,4 pt entre
+    # letras e 4,5 pt antes do "I", como no Competente p. 20. No livro, o fim da palavra
+    # espaçada traz um glifo de espaço de verdade ("E "), que não é letra.
+    letras = [("P", 100.0), ("A", 107.07), ("R", 114.14), ("T", 121.68), ("E ", 128.27)]
+    linhas = [LinhaDeTeste(letra, x, 700, tamanho=8.5) for letra, x in letras]
+    paginas = _ler(tmp_path, [*linhas, LinhaDeTeste("I", 138.44, 700, tamanho=8.5)])
+    assert [linha.texto for linha in _linhas(paginas)] == ["PARTE I"]
+
+
+def test_codigo_com_caracteres_soltos_nao_e_juntado(tmp_path: Path) -> None:
+    # Em fonte monoespaçada o espaço tem a largura de uma letra: "1 2 3 4 5" passaria
+    # por letra espaçada e viraria "12345".
+    paginas = _ler(tmp_path, [LinhaDeTeste("a = 1 2 3 4 5", 72, 700, mono=True)])
+    assert [linha.texto for linha in _linhas(paginas)] == ["a = 1 2 3 4 5"]
+
+
+def test_prosa_com_numeros_soltos_sai_do_pdf_como_esta(tmp_path: Path) -> None:
+    # F1 da auditoria: saía "Siga os passos 1234e5 da lista."
+    paginas = _ler(tmp_path, [LinhaDeTeste("Siga os passos 1 2 3 4 e 5 da lista.", 72, 700)])
+    assert [linha.texto for linha in _linhas(paginas)] == ["Siga os passos 1 2 3 4 e 5 da lista."]
+
+
 def test_acento_do_portugues_chega_inteiro(tmp_path: Path) -> None:
     paginas = _ler(tmp_path, [LinhaDeTeste("Coração, ação e não.", 72, 700)])
     assert [linha.texto for linha in _linhas(paginas)] == ["Coração, ação e não."]

@@ -8,6 +8,8 @@ no rodapé.
 
 from __future__ import annotations
 
+import pytest
+
 from earbook.dominio.pagina import Linha, Pagina
 from earbook.dominio.paginacao import LinhaRemovida, PaginasLimpas, tirar_cabecalhos_e_rodapes
 
@@ -193,3 +195,32 @@ def test_numero_decimal_no_pe_nao_vira_numero_de_pagina() -> None:
     # Revisão nº 5: o ponto como separador lia "1.2" como 12, coerente com a página 2.
     paginas = [[_corpo(n), _linha(f"1.{n}", topo)] for n, topo in ((1, 0.93), (2, 0.96), (3, 0.99))]
     assert [len(p.linhas) for p in _limpar(*paginas).paginas] == [2, 2, 2]
+
+
+def test_linha_so_de_numero_que_nao_segue_a_paginacao_fica_mesmo_repetida() -> None:
+    # O1 da pós-auditoria: "2020." no mesmo topo em 3 páginas virava "#." e saía como
+    # rodapé repetido, mesmo reprovado na coerência da numeração.
+    paginas = [[_corpo(n), _linha(f"{ano}.", PE)] for n, ano in ((1, 2020), (2, 1999), (3, 1984))]
+    assert [len(p.linhas) for p in _limpar(*paginas).paginas] == [2, 2, 2]
+
+
+@pytest.mark.parametrize("rodape", ["2021", "\u00a9 2020", "01/11/2026"])
+def test_rodape_sem_letra_identico_em_toda_pagina_sai(rodape: str) -> None:
+    # A3 da auditoria e revisão xhigh: o O1 pulava toda linha sem letra, e o rodapé fixo
+    # ("2021", "\u00a9 2020", uma data) deixou de sair. O que o O1 separa são números
+    # DIFERENTES que o "#" juntava; o mesmo texto em toda página é rodapé.
+    paginas = [[_corpo(n), _linha(rodape, PE)] for n in range(1, 4)]
+    assert [len(p.linhas) for p in _limpar(*paginas).paginas] == [1, 1, 1]
+
+
+def test_mesma_frase_em_duas_alturas_da_mesma_faixa_sai_das_duas() -> None:
+    # O2 da pós-auditoria: 3 páginas a 0,02 e 3 a 0,05 empatavam, a mediana caía entre as
+    # duas alturas, e nada saía.
+    paginas = [[_linha("Competente", 0.02 if n <= 3 else 0.05), _corpo(n)] for n in range(1, 7)]
+    assert [len(p.linhas) for p in _limpar(*paginas).paginas] == [1] * 6
+
+
+def test_frase_repetida_em_altura_minoritaria_tambem_sai() -> None:
+    # O2: com 4 páginas numa altura e 3 noutra, só a maioria saía.
+    paginas = [[_linha("Competente", 0.02 if n <= 4 else 0.05), _corpo(n)] for n in range(1, 8)]
+    assert [len(p.linhas) for p in _limpar(*paginas).paginas] == [1] * 7

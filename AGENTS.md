@@ -29,12 +29,14 @@ ADRs em `docs/adr/`. O Claude Code traduz; o Python nunca chama o LLM (ADR-0001)
 - Huxley, *The Doors of Perception*: notas de rodapé e sumário. Serve de régua de tradução, porque existe edição brasileira (*As Portas da Percepção*).
 - Rosenberg, *Tides of Darkness*: convertido de PDF, com cabeçalho de página, parágrafo partido e capitular perdida. Muito nome próprio de lugar e personagem a preservar (glossário).
 - Mudou a limpeza ou a segmentação? Rode `earbook preparar` nos dois e compare as contagens com as do ADR-0003.
+- PDF: *Competente o Suficiente* (`~/Documentos/Akita/`, pt-BR) e *Software Architecture: The Hard Parts* (`~/Documentos/livros/arquitetura-ai-first/`, en). Mudou o `importar-pdf`? Rode `importar-pdf --epub <fora do repo>` e depois `preparar` nos dois e compare com a tabela de ponta a ponta do ADR-0004.
 
 ## Comandos
 
 - Setup: `uv sync`.
 - Portão: `make check` (`scripts/portao.sh`: lock, formato, lint, supressão, tipos, fronteiras, testes, `uv audit`). O hook Stop roda o mesmo. Rodar antes de declarar qualquer tarefa concluída e mostrar a saída.
 - Uso: `uv run earbook preparar livro.epub` → `livro.earbook/`.
+- PDF: `uv run earbook importar-pdf livro.pdf --idioma pt-BR` → `livro.epub`, que segue para o `preparar`.
 
 ## Fronteiras (ADR-0001)
 
@@ -48,6 +50,7 @@ Verificadas só em revisão (`code-audit`):
 - Só `adaptadores/pasta_de_trabalho.py` conhece o layout da pasta de trabalho.
 - EPUB é entrada não confiável: XML só pelo `PARSER_SEGURO` de `adaptadores/xml_seguro.py`; nenhum caminho sai da pasta de trabalho.
 - PDF também é entrada não confiável (pode vir de site de terceiros): toda falha do pdfminer vira `PdfInvalidoError` com o nome do arquivo, menos falta de memória, que passa como veio. O arquivo abre fora do `try`: inexistente ou sem permissão chega como `OSError`; um erro de disco no meio da leitura sai como "não é um PDF válido", com a causa no `from`. O `try` cobre só a biblioteca, nunca a nossa conversão. O que vem do pdfminer com tipo incerto (nome de fonte) é validado no adaptador. O PDF é lido uma página por vez.
+- O EPUB que o `importar-pdf` grava carrega texto do PDF: todo texto passa por `escape` e pela retirada do caractere que o XML 1.0 não aceita, e o `preparar` é o teste de contrato do que foi gravado.
 
 ## O que atrapalha o ouvido (alvo da limpeza)
 
@@ -90,9 +93,11 @@ Verificadas só em revisão (`code-audit`):
 ```
 src/earbook/
   dominio/      segmento.py (Segmento, IDs), trabalho.py (LivroPreparado), limpeza.py (regras do ouvido),
-                pagina.py (Pagina, Linha do PDF), paginacao.py (cabeçalho do PDF pela posição)
+                pagina.py (Pagina, Linha do PDF), paginacao.py (cabeçalho do PDF pela posição),
+                blocos.py (parágrafo, título, código, nota e capítulo do PDF)
   adaptadores/  xml_seguro.py (parser), pacote_epub.py (zip + OPF), xhtml.py, pasta_de_trabalho.py,
-                pdf.py (pdfminer)
-  comandos/     preparar.py, cli.py
-tests/          test_<módulo>.py, test_arquitetura.py, livro_de_teste.py (EPUB), pdf_de_teste.py (PDF)
+                pdf.py (pdfminer), epub_simples.py (grava o EPUB do PDF)
+  comandos/     preparar.py, importar_pdf.py, cli.py
+tests/          test_<módulo>.py, test_arquitetura.py, livro_de_teste.py (EPUB), pdf_de_teste.py (PDF),
+                linhas_de_teste.py (linhas do PDF já lidas, para os testes de blocos)
 ```

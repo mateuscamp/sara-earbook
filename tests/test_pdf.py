@@ -62,6 +62,47 @@ def test_fonte_monoespacada_e_marcada(tmp_path: Path) -> None:
     assert [linha.monoespacada for linha in _linhas(paginas)] == [False, True]
 
 
+def test_codigo_no_meio_da_prosa_nao_faz_a_linha_monoespacada(tmp_path: Path) -> None:
+    # Hard Parts: 183 linhas de prosa com um nome em fonte de código ("ss.survey") viravam
+    # bloco de código e partiam o parágrafo; as 584 linhas de código são 100% monoespaçadas.
+    # "na pasta " em Helvetica 10,5 mede 43,2 pt: o Courier começa colado, na mesma linha.
+    paginas = _ler(
+        tmp_path,
+        [LinhaDeTeste("na pasta ", 72, 700), LinhaDeTeste("ss.order", 115.2, 700, mono=True)],
+    )
+    linhas = [(linha.texto, linha.monoespacada) for linha in _linhas(paginas)]
+    assert linhas == [("na pasta ss.order", False)]
+
+
+def test_tamanho_da_linha_e_o_da_maioria_das_letras(tmp_path: Path) -> None:
+    # A1 da auditoria: no Hard Parts, a saga vem em 9 pt (corpo 10,5) e o nome de código em
+    # 8,5 pt; a média caía abaixo de 0,85 do corpo, e a linha de prosa virava nota de rodapé
+    # ("Addi-" + "removed" no parágrafo, "son created" na nota). "ss.survey " em Courier
+    # 8,5 mede 51 pt: o Helvetica começa colado, na mesma linha.
+    paginas = _ler(
+        tmp_path,
+        [
+            LinhaDeTeste("ss.survey ", 72, 700, tamanho=8.5, mono=True),
+            LinhaDeTeste("son created. Notice that", 123, 700, tamanho=9),
+        ],
+    )
+    linhas = [(linha.texto, linha.tamanho) for linha in _linhas(paginas)]
+    assert linhas == [("ss.survey son created. Notice that", 9.0)]
+
+
+def test_empate_de_tamanho_fica_com_o_maior(tmp_path: Path) -> None:
+    # Pós-revisão: com tantas letras de código (8,5 pt) quanto de prosa (9 pt), a moda
+    # ficava com o tamanho que vinha primeiro, e a linha voltava a virar nota.
+    paginas = _ler(
+        tmp_path,
+        [
+            LinhaDeTeste("ss.survey ", 72, 700, tamanho=8.5, mono=True),
+            LinhaDeTeste("son create", 123, 700, tamanho=9),
+        ],
+    )
+    assert [linha.tamanho for linha in _linhas(paginas)] == [9.0]
+
+
 def test_acento_do_portugues_chega_inteiro(tmp_path: Path) -> None:
     paginas = _ler(tmp_path, [LinhaDeTeste("Coração, ação e não.", 72, 700)])
     assert [linha.texto for linha in _linhas(paginas)] == ["Coração, ação e não."]
@@ -114,11 +155,11 @@ def test_erro_da_propria_conversao_nao_vira_pdf_invalido(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     # Revisão nº 1: o except em volta de tudo mostrava bug do adaptador como PDF ruim.
-    def media_quebrada(_: object) -> float:
+    def moda_quebrada(_: object) -> float:
         mensagem = "bug plantado"
         raise TypeError(mensagem)
 
-    monkeypatch.setattr("earbook.adaptadores.pdf.mean", media_quebrada)
+    monkeypatch.setattr("earbook.adaptadores.pdf.multimode", moda_quebrada)
     pdf = montar_pdf(tmp_path / "bom.pdf", [[LinhaDeTeste("Texto.", 72, 700)]])
     with pytest.raises(TypeError, match="bug plantado"):
         _ = ler_paginas(pdf)

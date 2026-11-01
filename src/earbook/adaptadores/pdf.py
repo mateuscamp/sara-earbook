@@ -9,7 +9,7 @@ from __future__ import annotations
 import re
 from collections.abc import Iterator
 from pathlib import Path
-from statistics import mean
+from statistics import multimode
 
 from pdfminer.high_level import extract_pages
 from pdfminer.layout import LAParams, LTChar, LTPage, LTTextBox, LTTextLine
@@ -86,8 +86,13 @@ def _linha(linha: LTTextLine, altura: float) -> Linha | None:
         texto=texto,
         x=linha.x0,
         topo=1 - linha.y1 / altura,
-        tamanho=mean(c.size for c in caracteres),
-        monoespacada=any(_eh_monoespacada(c.fontname) for c in caracteres),
+        # A moda, não a média: nome de código em 8,5 pt numa linha de 9 pt puxava a média
+        # para baixo de 0,85 do corpo, e a prosa virava nota (A1 da auditoria, Hard Parts).
+        # No empate, o maior: a letra menor é a do código ou da nota (pós-revisão).
+        tamanho=max(multimode(round(c.size, 1) for c in caracteres)),
+        # Toda letra, não alguma: no Hard Parts, as 584 linhas de código são 100% monoespaçadas
+        # e as 183 de prosa com um nome de código no meio ("ss.survey") ficam entre 0 e 90%.
+        monoespacada=all(_eh_monoespacada(c.fontname) for c in caracteres),
     )
 
 

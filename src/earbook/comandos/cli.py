@@ -4,11 +4,16 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
+import io
+import os
 import sys
 from collections import Counter
 from pathlib import Path
 
+from earbook.comandos.importar_pdf import Importacao, epub_padrao, importar_pdf
 from earbook.comandos.preparar import Preparo, pasta_padrao, preparar
+from earbook.dominio.blocos import TipoDeBloco
 from earbook.dominio.limpeza import LivroLimpo
 from earbook.dominio.trabalho import LivroPreparado
 
@@ -18,24 +23,56 @@ EXEMPLOS_DE_TEXTO_FORA = 5
 class _Opcoes(argparse.Namespace):
     """Tipa o resultado do argparse, que de outro modo devolve atributos `Any`.
 
-    Os valores aqui são só o ponto de partida; o argparse sobrescreve os dois.
+    Os valores aqui são só o ponto de partida; o argparse sobrescreve os do subcomando.
     """
 
+    comando: str = ""
     epub: Path = Path()
     pasta: Path | None = None
+    pdf: Path = Path()
+    saida: Path | None = None
+    idioma: str = "und"
 
 
 def principal(argumentos: list[str] | None = None) -> int:
     """`principal(["preparar", "Duna.epub"])` cria `Duna.earbook/` e devolve 0."""
     opcoes = _analisador().parse_args(argumentos, namespace=_Opcoes())
-    pasta = opcoes.pasta or pasta_padrao(opcoes.epub)
     try:
-        preparo = preparar(opcoes.epub, pasta)
+        resumo = _importar(opcoes) if opcoes.comando == "importar-pdf" else _preparar(opcoes)
     except (OSError, ValueError) as erro:
         print(f"earbook: {erro}", file=sys.stderr)
         return 1
-    print(_resumo(preparo, pasta))
+    # Fora do try: saída fechada (`| head`) não é falha do trabalho, que já está gravado.
+    try:
+        # flush aqui: num cano, o print só enche o buffer, e o EPIPE viria no fim do
+        # processo, fora deste try (B1 da pós-auditoria).
+        print(resumo, flush=True)
+    except BrokenPipeError:
+        _calar_a_saida()
     return 0
+
+
+def _calar_a_saida() -> None:
+    """Manda o resto da saída para /dev/null, receita da documentação do Python (signal).
+
+    Sem isso, o flush do fim do processo escreve de novo no cano fechado e mostra
+    "Exception ignored" com traceback.
+    """
+    with contextlib.suppress(io.UnsupportedOperation):  # saída sem descritor (teste)
+        descritor = sys.stdout.fileno()
+        nulo = os.open(os.devnull, os.O_WRONLY)
+        _ = os.dup2(nulo, descritor)
+        os.close(nulo)
+
+
+def _importar(opcoes: _Opcoes) -> str:
+    epub = opcoes.saida or epub_padrao(opcoes.pdf)
+    return _resumo_da_importacao(importar_pdf(opcoes.pdf, epub, opcoes.idioma))
+
+
+def _preparar(opcoes: _Opcoes) -> str:
+    pasta = opcoes.pasta or pasta_padrao(opcoes.epub)
+    return _resumo(preparar(opcoes.epub, pasta), pasta)
 
 
 def _analisador() -> argparse.ArgumentParser:
@@ -44,7 +81,32 @@ def _analisador() -> argparse.ArgumentParser:
     preparo = comandos.add_parser("preparar", help="EPUB → pasta de trabalho com segmentos")
     _ = preparo.add_argument("epub", type=Path)
     _ = preparo.add_argument("--pasta", type=Path, help="padrão: ao lado do EPUB, com .earbook")
+    importacao = comandos.add_parser("importar-pdf", help="PDF com texto → EPUB para o preparar")
+    _ = importacao.add_argument("pdf", type=Path)
+    _ = importacao.add_argument(
+        "--epub", dest="saida", type=Path, help="padrão: ao lado do PDF, com .epub"
+    )
+    _ = importacao.add_argument("--idioma", default="und", help="pt-BR, en... (padrão: und)")
     return analisador
+
+
+def _resumo_da_importacao(importacao: Importacao) -> str:
+    livro = importacao.livro
+    tipos = Counter(b.tipo for b in livro.blocos)
+    paginas, capitulos = importacao.paginas, importacao.capitulos
+    linhas = [f"Importado em {importacao.epub}: {paginas} páginas, {capitulos} capítulos."]
+    titulos, paragrafos = tipos[TipoDeBloco.TITULO], tipos[TipoDeBloco.PARAGRAFO]
+    codigo, notas = tipos[TipoDeBloco.CODIGO], tipos[TipoDeBloco.NOTA]
+    linhas.append(
+        f"Blocos: {titulos} títulos, {paragrafos} parágrafos, {codigo} de código, {notas} notas."
+    )
+    linhas.append(f"{len(importacao.remocoes)} linhas tiradas da borda da página.")
+    motivos = Counter(r.motivo for r in importacao.remocoes)
+    linhas += [f"  {motivo}: {n}" for motivo, n in motivos.most_common()]
+    tirados, mantidos = livro.hifens_tirados, livro.hifens_mantidos
+    linhas.append(f"Hífen de fim de linha: {tirados} tirados, {mantidos} mantidos.")
+    linhas.append(f"Próximo passo: earbook preparar {importacao.epub}")
+    return "\n".join(linhas)
 
 
 def _resumo(preparo: Preparo, pasta: Path) -> str:

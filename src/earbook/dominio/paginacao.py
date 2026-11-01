@@ -14,12 +14,11 @@ corpo) e, além disso, ou é número que segue a paginação ou se repete no mes
 from __future__ import annotations
 
 import re
-from collections import Counter, defaultdict
+from collections import defaultdict
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
-from statistics import median
 
-from earbook.dominio.pagina import Linha, Pagina
+from earbook.dominio.pagina import Linha, Pagina, tamanho_do_corpo
 
 # Medido no spike: o cabeçalho ficou acima de 90% da altura, e o rodapé abaixo de 8%.
 FAIXA_DA_BORDA = 0.08
@@ -33,6 +32,7 @@ FOLGA_DA_FONTE = 0.5
 _SEPARADORES = re.compile(r"[\s|\u00b7\u2022\-\u2013\u2014]")
 _ARABICO = re.compile(r"[0-9]{1,5}")
 _ROMANO = re.compile(r"M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})")
+_LETRA = re.compile(r"[^\W\d_]")
 _VALOR_ROMANO = {"M": 1000, "D": 500, "C": 100, "L": 50, "X": 10, "V": 5, "I": 1}
 
 type _Ocorrencia = tuple[int, int, Linha]
@@ -78,22 +78,13 @@ def tirar_cabecalhos_e_rodapes(paginas: Sequence[Pagina]) -> PaginasLimpas:
 
 def _candidatas(paginas: Sequence[Pagina]) -> list[_Ocorrencia]:
     """Linhas na faixa da borda com fonte de rodapé: no máximo o tamanho do corpo."""
-    limite = _tamanho_do_corpo(paginas) + FOLGA_DA_FONTE
+    limite = tamanho_do_corpo(paginas) + FOLGA_DA_FONTE
     return [
         (pagina.numero, posicao, linha)
         for pagina in paginas
         for posicao, linha in enumerate(pagina.linhas)
         if _na_borda(linha) and linha.tamanho <= limite
     ]
-
-
-def _tamanho_do_corpo(paginas: Sequence[Pagina]) -> float:
-    """O tamanho de fonte com mais caracteres no livro."""
-    caracteres: Counter[float] = Counter()
-    for pagina in paginas:
-        for linha in pagina.linhas:
-            caracteres[round(linha.tamanho, 1)] += len(linha.texto)
-    return caracteres.most_common(1)[0][0] if caracteres else 0.0
 
 
 def _na_borda(linha: Linha) -> bool:
@@ -148,14 +139,34 @@ def _repetidas(candidatas: Iterable[_Ocorrencia]) -> dict[tuple[int, int], str]:
     # mediana do grupo inteiro caía no meio da página e nada saía (revisão nº 3).
     grupos: defaultdict[tuple[str, bool], list[_Ocorrencia]] = defaultdict(list)
     for ocorrencia in candidatas:
-        grupos[_chave(ocorrencia[2].texto), ocorrencia[2].topo < FAIXA_DA_BORDA].append(ocorrencia)
+        chave = _chave(ocorrencia[2].texto)
+        # O1: sem letra, o "#" juntaria números diferentes ("2020.", "1999.", "1984.") num
+        # rodapé falso. A chave vira o texto literal: só o mesmo rodapé em toda página sai
+        # ("2021", "© 2020", uma data; A3 da auditoria).
+        if not _LETRA.search(chave):
+            chave = "".join(ocorrencia[2].texto.split())
+        grupos[chave, ocorrencia[2].topo < FAIXA_DA_BORDA].append(ocorrencia)
     motivos: dict[tuple[int, int], str] = {}
     for ocorrencias in grupos.values():
-        meio = median(linha.topo for _, _, linha in ocorrencias)
-        estaveis = [o for o in ocorrencias if abs(o[2].topo - meio) <= TOLERANCIA_DO_TOPO]
-        if len({pagina for pagina, _, _ in estaveis}) < PAGINAS_MINIMAS:
-            continue
-        for pagina, posicao, linha in estaveis:
-            lugar = "cabeçalho" if linha.topo < FAIXA_DA_BORDA else "rodapé"
-            motivos[pagina, posicao] = f"{lugar} de página repetido"
+        for mesma_altura in _por_altura(ocorrencias):
+            if len({pagina for pagina, _, _ in mesma_altura}) < PAGINAS_MINIMAS:
+                continue
+            for pagina, posicao, linha in mesma_altura:
+                lugar = "cabeçalho" if linha.topo < FAIXA_DA_BORDA else "rodapé"
+                motivos[pagina, posicao] = f"{lugar} de página repetido"
     return motivos
+
+
+def _por_altura(ocorrencias: Sequence[_Ocorrencia]) -> list[list[_Ocorrencia]]:
+    """Agrupa as ocorrências seguidas, em ordem de topo, a menos da tolerância uma da outra.
+
+    O2: a mediana do grupo inteiro empatava entre duas alturas e não tirava nenhuma.
+    """
+    ordenadas = sorted(ocorrencias, key=lambda o: o[2].topo)
+    grupos: list[list[_Ocorrencia]] = [[ordenadas[0]]]
+    for ocorrencia in ordenadas[1:]:
+        if ocorrencia[2].topo - grupos[-1][-1][2].topo <= TOLERANCIA_DO_TOPO:
+            grupos[-1].append(ocorrencia)
+        else:
+            grupos.append([ocorrencia])
+    return grupos

@@ -8,6 +8,7 @@ import pytest
 
 from ai_book.adaptadores import pacote_epub
 from ai_book.comandos.preparar import pasta_padrao, preparar
+from ai_book.dominio.limpeza import MOTIVO_DA_CAPITULAR
 from ai_book.dominio.trabalho import ItemIgnorado
 from tests.livro_de_teste import Adulteracao, montar_epub, opf, xhtml
 
@@ -96,9 +97,9 @@ def test_preparar_grava_os_segmentos_limpos_e_o_registro_da_limpeza(tmp_path: Pa
             {"id": "c002-s0001", "motivo": motivo, "texto": "Livro de Teste 6"},
         ],
         "suspeitas": [
-            {"id": "c002-s0002", "motivo": suspeito, "texto": "Dia 1"},
-            {"id": "c002-s0003", "motivo": suspeito, "texto": "Dia 2"},
-            {"id": "c002-s0004", "motivo": suspeito, "texto": "Dia 3"},
+            {"id": "c002-s0002", "motivo": suspeito, "texto": "Dia 1", "pista": None},
+            {"id": "c002-s0003", "motivo": suspeito, "texto": "Dia 2", "pista": None},
+            {"id": "c002-s0004", "motivo": suspeito, "texto": "Dia 3", "pista": None},
         ],
         "aparos": [],
         "juncoes": [],
@@ -151,6 +152,17 @@ def test_preparar_nao_junta_lista_tabela_nem_citacao(tmp_path: Path) -> None:
     _ = preparar(epub, pasta)
     assert '"juncoes": []' in _ler(pasta / "limpeza.json")
     assert _ler(pasta / "limpos" / "c001.json").count('"id"') == 5
+
+
+def test_preparar_marca_capitular_perdida_com_a_pista_da_letra_solta(tmp_path: Path) -> None:
+    # A7 da auditoria: o caminho inteiro, do <h1> com capitular perdida até o limpeza.json.
+    texto = "re we ready, he asked, and A Lothar nodded."
+    epub = montar_epub(tmp_path / "livro.epub", {"a.xhtml": f"<h1>EIGHT</h1><p>{texto}</p>"})
+    pasta = tmp_path / "trabalho"
+    _ = preparar(epub, pasta)
+    pista = {"id": "c001-s0002", "posicao": texto.index(" A ") + 1, "letra": "A"}
+    suspeita = {"id": "c001-s0002", "motivo": MOTIVO_DA_CAPITULAR, "texto": texto, "pista": pista}
+    assert _json({"suspeitas": [suspeita]})[2:-3] in _ler(pasta / "limpeza.json")
 
 
 def test_preparar_le_xhtml_repetido_no_spine_uma_vez_so_e_relata(tmp_path: Path) -> None:

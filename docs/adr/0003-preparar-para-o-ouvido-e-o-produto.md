@@ -44,13 +44,14 @@ quando o idioma do livro é diferente do idioma de saída.
   - só `paragrafo` se junta com `paragrafo`. O segmentador passou a dar papel próprio a item de lista (`item`: li, dt, dd), célula (`celula`: td, th) e bloco dentro de `<blockquote>` (`citacao`); antes, o `<p>` sem ponto engolia a lista seguinte;
   - travessão que fecha um parágrafo seguido de travessão que abre o próximo não junta, porque é ação interrompida de propósito;
   - cabeçalho colado logo depois de hífen (`sub-429 Aaron Rosenberg`) também sai, e a palavra hifenizada volta sem espaço (`sub-commander`).
+- **Capitular perdida** (2026-11-01, corrigido pela auditoria no mesmo dia). O parágrafo que começa em minúscula, depois de aspas e travessões, logo depois de um título ou de uma linha curta (título que veio como `<p>`), vira suspeita com o motivo "capitular perdida". A linha curta em si (`first prologue`) nunca é capitular, e o começo de capítulo sem título não é marcado, porque não teve nenhum caso medido (A3). A letra **não sumiu, foi deslocada**: a conversão do PDF a deixou sozinha no meio do texto (`stirred, D unable`, `present K both`, `G demanded.`). A suspeita traz uma `pista` com a primeira maiúscula sozinha (fora o `I`, que se confunde com o pronome) no parágrafo marcado ou nos dois seguintes: o ID, a posição e a letra. O texto não muda. Quem corrige as duas pontas é o Claude Code. No Tides são 25 começos de capítulo, todos com a letra deslocada. Em 24 a pista acerta a letra; no 25º a letra é um `I`, e a suspeita sai sem pista. Nenhum outro parágrafo em minúscula do livro estava nessa posição. Um segmento entra uma vez só nas suspeitas, com o primeiro motivo que o marcou (A4).
 
 ### Medição depois da limpeza (2026-11-01)
 
 | Livro | Removidos | Aparos | Junções | Suspeitas | O que ainda sobra |
 |---|---|---|---|---|---|
 | *The Doors of Perception* | 0 | 0 | 0 | 0 | sumário e página do epubBooks |
-| *Tides of Darkness* | 258 | 165 | 290 | 9 | cerca de 20 capitulares perdidas depois de título `<h1>` (`re we ready?”`), ainda sem marca; cerca de 20 pausas no meio da frase onde havia cabeçalho entre os dois parágrafos e o seguinte começa com nome próprio (`…had` + `Proudmoore’s`), que a regra da minúscula não junta (A5 da auditoria); folha de rosto com ISBN e URL |
+| *Tides of Darkness* | 258 | 165 | 290 | 26 (25 capitulares, 24 com pista; 1 título) | as 25 capitulares estão marcadas, mas ainda não corrigidas, porque isso é com o agente; cerca de 20 pausas no meio da frase onde havia cabeçalho entre os dois parágrafos e o seguinte começa com nome próprio (`…had` + `Proudmoore’s`), que a regra da minúscula não junta (A5 da auditoria); folha de rosto com ISBN e URL |
 
 Limite conhecido (A6 da auditoria): o cabeçalho solto é comparado em `casefold`, que desfaz ligaduras (`ﬁ` → `fi`), mas o colado é procurado no texto cru. Cabeçalho colado com ligadura tipográfica fica no texto. Nenhum dos dois livros medidos tem esse caso.
 
@@ -67,9 +68,13 @@ Limite conhecido (A6 da auditoria): o cabeçalho solto é comparado em `casefold
 - Cabeçalho com o título do *capítulo* (comum em não ficção) não está no título do livro: ele não sai sozinho e vira suspeita, o que custa uma decisão do agente por frase.
 - O `conferir` deixa de poder procurar "parágrafo em inglês" de forma cega, porque depende do modo.
 
-**Aceito conscientemente:** a letra capitular perdida não tem conserto determinístico. Se o
-agente errar a letra, o erro vai para o áudio. Revisitar se a taxa de acerto do agente ficar
-abaixo de quase todas, medida nos livros de `livros/`.
+**Aceito conscientemente:** a capitular deslocada é corrigida pelo agente a partir da pista, não pelo Python. A pista é a primeira maiúscula sozinha por perto, e num livro com "A" no começo de frase ela pode apontar a letra errada. Revisitar, e talvez tornar a correção determinística, se o agente acertar quase todas nos livros de `livros/` (no Tides, a pista acerta 24 de 24).
+
+Limites registrados pela auditoria de 2026-11-01, sem caso nos livros medidos:
+- A2: depois de uma linha curta que não é título (verso, entrada de índice, cabeçalho que ficou como suspeita), o motivo diz "capitular" quando o certo seria juntar ou tirar.
+- A5: a capitular depois de uma epígrafe em `<blockquote>`, de um título em `<p>` com pontuação (`Chapter One: The Dark Portal`) ou de um `<hr>` não é marcada.
+- A6: se a primeira palavra vinha em versalete e virou maiúscula (`AWN, and fog`), a regra da minúscula não vê.
+- Capítulo que abre em minúscula de propósito depois do título (`— disse ele` em português, poesia moderna) é marcado como capitular: o agente descarta.
 
 ## Governança
 

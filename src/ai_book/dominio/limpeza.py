@@ -34,6 +34,14 @@ _PONTUACAO = re.compile(r"[.,;:!?…“”\"]")
 # "first prologue", "ONE", "acknowledgments": título de capítulo que veio como <p>.
 PALAVRAS_DA_LINHA_CURTA = 3
 MOTIVO_DA_LINHA_CURTA = "parágrafo partido ou título? linha curta sem pontuação: não juntei"
+# Letra maiúscula sozinha, sem ser inicial ("J."), contração ou pronome "I": a capitular
+# que a conversão do PDF deixou no meio do texto.
+_LETRA_SOLTA = re.compile(r"(?<![\w\u2019'.\-])(?P<letra>[A-HJ-Z])(?![\w\u2019'.\-])")
+# O parágrafo marcado e os dois seguintes: no Tides, a letra solta nunca foi mais longe.
+PARAGRAFOS_DA_PISTA = 3
+MOTIVO_DA_CAPITULAR = (
+    "capitular perdida? começa em minúscula logo depois de título: corrigir a primeira letra"
+)
 
 
 @dataclass(frozen=True)
@@ -46,12 +54,20 @@ class Remocao:
 
 
 @dataclass(frozen=True)
+class Pista:
+    id: str
+    posicao: int
+    letra: str
+
+
+@dataclass(frozen=True)
 class Suspeita:
     """Um segmento que parece lixo de página, mas ficou no texto: quem decide é o agente."""
 
     id: str
     motivo: str
     texto: str
+    pista: Pista | None = None
 
 
 @dataclass(frozen=True)
@@ -99,7 +115,8 @@ def limpar_para_o_ouvido(
     sem_cabecalho = tirar_cabecalhos_de_pagina(capitulos, titulo, autor)
     repetidas = _frases_de_cabecalho([s for _, segmentos in capitulos for s in segmentos])
     frases = _frases_do_livro(repetidas, titulo, autor)
-    return _juntar_paragrafos_partidos(_aparar_cabecalhos_colados(sem_cabecalho, frases))
+    juntado = _juntar_paragrafos_partidos(_aparar_cabecalhos_colados(sem_cabecalho, frases))
+    return _marcar_capitulares_perdidas(juntado)
 
 
 def _aparar_cabecalhos_colados(livro: LivroLimpo, frases: set[str]) -> LivroLimpo:
@@ -138,7 +155,10 @@ def _juntar_paragrafos_partidos(livro: LivroLimpo) -> LivroLimpo:
             if anterior is None or not _parece_continuacao(anterior, segmento):
                 saida.append(segmento)
             elif _linha_curta(anterior.texto) or _linha_curta(segmento.texto):
-                suspeitas.append(Suspeita(segmento.id, MOTIVO_DA_LINHA_CURTA, segmento.texto))
+                # Linha curta antes: o seguinte perdeu a capitular, e quem marca é o passo
+                # da capitular. Linha curta depois: o seguinte é o título, marcado aqui.
+                if _linha_curta(segmento.texto):
+                    suspeitas.append(Suspeita(segmento.id, MOTIVO_DA_LINHA_CURTA, segmento.texto))
                 saida.append(segmento)
             else:
                 saida[-1] = _juntar(anterior, segmento)
@@ -155,12 +175,57 @@ def _parece_continuacao(anterior: Segmento, segmento: Segmento) -> bool:
         return False
     if anterior.texto.endswith(TRAVESSAO) and segmento.texto.startswith(TRAVESSAO):
         return False
-    primeira = _PRIMEIRA_LETRA.match(segmento.texto)
-    return (
-        not anterior.texto.endswith(_FIM_DE_FRASE)
-        and primeira is not None
-        and primeira["letra"].islower()
-    )
+    return not anterior.texto.endswith(_FIM_DE_FRASE) and _comeca_em_minuscula(segmento.texto)
+
+
+def _comeca_em_minuscula(texto: str) -> bool:
+    """A primeira letra, depois de aspas e travessões, é minúscula."""
+    primeira = _PRIMEIRA_LETRA.match(texto)
+    return primeira is not None and primeira["letra"].islower()
+
+
+def _marcar_capitulares_perdidas(livro: LivroLimpo) -> LivroLimpo:
+    """Parágrafo em minúscula logo depois do título ou de linha curta (título como <p>).
+
+    Medido no Tides of Darkness: os 25 começos de capítulo tinham a capitular deslocada para
+    o meio do texto ("stirred, D unable"), e nenhum outro parágrafo em minúscula estava nessa
+    posição. A pista aponta a letra solta, para o agente corrigir as duas pontas (A1).
+    """
+    # A4 da auditoria: um segmento entra uma vez só, com o primeiro motivo que o marcou.
+    ja_marcados = {s.id for s in livro.suspeitas}
+    novas: list[Suspeita] = []
+    for capitulo in livro.capitulos:
+        segmentos = capitulo.segmentos
+        for i, segmento in enumerate(segmentos):
+            anterior = segmentos[i - 1] if i else None
+            if segmento.id in ja_marcados or not _perdeu_a_capitular(anterior, segmento):
+                continue
+            pista = _pista_da_letra_solta(segmentos[i : i + PARAGRAFOS_DA_PISTA])
+            novas.append(Suspeita(segmento.id, MOTIVO_DA_CAPITULAR, segmento.texto, pista))
+    return replace(livro, suspeitas=livro.suspeitas + tuple(novas))
+
+
+def _pista_da_letra_solta(segmentos: Sequence[Segmento]) -> Pista | None:
+    """A primeira maiúscula sozinha, fora o "I": no Tides, 24 das 25 capitulares estavam assim."""
+    for segmento in segmentos:
+        achado = _LETRA_SOLTA.search(segmento.texto)
+        if achado is not None:
+            return Pista(segmento.id, achado.start("letra"), achado["letra"])
+    return None
+
+
+def _perdeu_a_capitular(anterior: Segmento | None, segmento: Segmento) -> bool:
+    if segmento.papel is not Papel.PARAGRAFO or not _comeca_em_minuscula(segmento.texto):
+        return False
+    # "first prologue" no começo do capítulo é o título em minúscula, não a capitular.
+    if _linha_curta(segmento.texto):
+        return False
+    # A3 da auditoria: sem título antes (começo do capítulo), o Tides não teve nenhum caso.
+    if anterior is None:
+        return False
+    if anterior.papel is Papel.TITULO:
+        return True
+    return anterior.papel is Papel.PARAGRAFO and _linha_curta(anterior.texto)
 
 
 def _linha_curta(texto: str) -> bool:

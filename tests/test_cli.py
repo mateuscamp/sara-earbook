@@ -49,6 +49,8 @@ def test_preparar_resume_a_limpeza_agrupada_por_motivo(
     assert "  cabeçalho de página 'Livro de Teste': 3" in saida
     assert "limpeza.json" in saida
     assert "3 segmentos suspeitos ficaram no texto" in saida
+    # Agrupadas por motivo: no Tides são 25 capitulares e 1 título, e o número diz o que fazer.
+    assert "  possível cabeçalho de página 'Dia': não está no título nem no autor: 3" in saida
 
 
 def test_preparar_conta_aparos_e_juncoes(

@@ -101,9 +101,12 @@ def test_proximo_em_maiuscula_nao_junta() -> None:
 
 def test_linha_curta_antes_de_minuscula_fica_como_suspeita() -> None:
     # "first prologue" é título de capítulo como <p>; "awn" perdeu a capitular ("Dawn").
+    # A suspeita é uma só, com o motivo mais útil para quem corrige: a capitular.
     livro = _livro(["first prologue", "awn, and fog still shrouded the world."])
     assert _textos(livro) == [["first prologue", "awn, and fog still shrouded the world."]]
-    motivo = "parágrafo partido ou título? linha curta sem pontuação: não juntei"
+    motivo = (
+        "capitular perdida? começa em minúscula logo depois de título: corrigir a primeira letra"
+    )
     assert livro.suspeitas == (
         Suspeita("c001-s0002", motivo, "awn, and fog still shrouded the world."),
     )

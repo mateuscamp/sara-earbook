@@ -81,6 +81,8 @@ def _linhas_da_limpeza(limpeza: LivroLimpo, pasta: Path) -> list[str]:
     if limpeza.suspeitas:
         suspeitas = len(limpeza.suspeitas)
         linhas.append(f"{suspeitas} segmentos suspeitos ficaram no texto (decidir no registro).")
+        por_motivo = Counter(s.motivo for s in limpeza.suspeitas)
+        linhas += [f"  {motivo}: {n}" for motivo, n in por_motivo.most_common()]
     return linhas
 
 

@@ -4,13 +4,21 @@
 from __future__ import annotations
 
 import shutil
+from dataclasses import dataclass
 from pathlib import Path
 
 from ai_book.adaptadores import pasta_de_trabalho as trabalho
 from ai_book.adaptadores.pacote_epub import PacoteEpub, extrair_epub
 from ai_book.adaptadores.xhtml import segmentar_xhtml
-from ai_book.dominio.segmento import id_do_capitulo
+from ai_book.dominio.limpeza import LivroLimpo, tirar_cabecalhos_de_pagina
+from ai_book.dominio.segmento import Segmento, id_do_capitulo
 from ai_book.dominio.trabalho import CapituloPreparado, LivroPreparado, TextoForaDeSegmento
+
+
+@dataclass(frozen=True)
+class Preparo:
+    livro: LivroPreparado
+    limpeza: LivroLimpo
 
 
 def pasta_padrao(epub: Path) -> Path:
@@ -18,8 +26,8 @@ def pasta_padrao(epub: Path) -> Path:
     return epub.with_suffix(".ai-book")
 
 
-def preparar(epub: Path, pasta: Path) -> LivroPreparado:
-    """Extrai, segmenta e grava o livro em `pasta`, que não pode existir ainda.
+def preparar(epub: Path, pasta: Path) -> Preparo:
+    """Extrai, segmenta, limpa e grava o livro em `pasta`, que não pode existir ainda.
 
     Se algo falhar no meio, apaga a pasta que acabou de criar: pasta pela metade
     faria o próximo `preparar` recusar sem motivo.
@@ -27,16 +35,23 @@ def preparar(epub: Path, pasta: Path) -> LivroPreparado:
     trabalho.criar_pasta_de_trabalho(pasta)
     try:
         pacote = extrair_epub(epub, trabalho.pasta_do_epub(pasta))
-        livro = _segmentar_livro(epub, pasta, pacote)
+        livro, segmentados = _segmentar_livro(epub, pasta, pacote)
+        limpeza = tirar_cabecalhos_de_pagina(segmentados, pacote.titulo, pacote.autor)
+        for capitulo in limpeza.capitulos:
+            trabalho.gravar_limpos(pasta, capitulo)
+        trabalho.gravar_limpeza(pasta, limpeza)
         trabalho.gravar_livro(pasta, livro)
     except BaseException:
         shutil.rmtree(pasta)
         raise
-    return livro
+    return Preparo(livro, limpeza)
 
 
-def _segmentar_livro(epub: Path, pasta: Path, pacote: PacoteEpub) -> LivroPreparado:
+def _segmentar_livro(
+    epub: Path, pasta: Path, pacote: PacoteEpub
+) -> tuple[LivroPreparado, list[tuple[str, list[Segmento]]]]:
     capitulos: list[CapituloPreparado] = []
+    segmentados: list[tuple[str, list[Segmento]]] = []
     fora: list[TextoForaDeSegmento] = []
     for posicao, arquivo in enumerate(pacote.spine, start=1):
         capitulo = id_do_capitulo(posicao)
@@ -44,7 +59,17 @@ def _segmentar_livro(epub: Path, pasta: Path, pacote: PacoteEpub) -> LivroPrepar
         trabalho.gravar_xhtml(pasta, arquivo, resultado.xhtml_marcado)
         trabalho.gravar_segmentos(pasta, capitulo, resultado.segmentos)
         capitulos.append(CapituloPreparado(capitulo, arquivo, len(resultado.segmentos)))
+        segmentados.append((capitulo, resultado.segmentos))
         fora.extend(TextoForaDeSegmento(capitulo, t) for t in resultado.texto_fora_de_segmento)
+    return _livro(epub, pacote, capitulos, fora), segmentados
+
+
+def _livro(
+    epub: Path,
+    pacote: PacoteEpub,
+    capitulos: list[CapituloPreparado],
+    fora: list[TextoForaDeSegmento],
+) -> LivroPreparado:
     return LivroPreparado(
         origem=epub.name,
         titulo=pacote.titulo,

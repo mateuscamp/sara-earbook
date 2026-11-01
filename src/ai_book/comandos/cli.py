@@ -5,9 +5,11 @@ from __future__ import annotations
 
 import argparse
 import sys
+from collections import Counter
 from pathlib import Path
 
-from ai_book.comandos.preparar import pasta_padrao, preparar
+from ai_book.comandos.preparar import Preparo, pasta_padrao, preparar
+from ai_book.dominio.limpeza import LivroLimpo
 from ai_book.dominio.trabalho import LivroPreparado
 
 EXEMPLOS_DE_TEXTO_FORA = 5
@@ -28,11 +30,11 @@ def principal(argumentos: list[str] | None = None) -> int:
     opcoes = _analisador().parse_args(argumentos, namespace=_Opcoes())
     pasta = opcoes.pasta or pasta_padrao(opcoes.epub)
     try:
-        livro = preparar(opcoes.epub, pasta)
+        preparo = preparar(opcoes.epub, pasta)
     except (OSError, ValueError) as erro:
         print(f"ai-book: {erro}", file=sys.stderr)
         return 1
-    print(_resumo(livro, pasta))
+    print(_resumo(preparo, pasta))
     return 0
 
 
@@ -45,7 +47,8 @@ def _analisador() -> argparse.ArgumentParser:
     return analisador
 
 
-def _resumo(livro: LivroPreparado, pasta: Path) -> str:
+def _resumo(preparo: Preparo, pasta: Path) -> str:
+    livro = preparo.livro
     segmentos = sum(c.segmentos for c in livro.capitulos)
     fora = livro.texto_fora_de_segmento
     linhas = [
@@ -55,7 +58,20 @@ def _resumo(livro: LivroPreparado, pasta: Path) -> str:
     linhas += [f"  {t.capitulo}: {t.texto}" for t in fora[:EXEMPLOS_DE_TEXTO_FORA]]
     if len(fora) > EXEMPLOS_DE_TEXTO_FORA:
         linhas.append(f"  ... a lista completa está em {pasta / 'livro.json'}")
+    linhas += _linhas_da_limpeza(preparo.limpeza, pasta)
     return "\n".join(linhas + _linhas_dos_ignorados(livro))
+
+
+def _linhas_da_limpeza(limpeza: LivroLimpo, pasta: Path) -> list[str]:
+    """Agrupadas por motivo: um livro tem centenas de cabeçalhos, e a lista mora no registro."""
+    total = len(limpeza.remocoes)
+    linhas = [f"{total} segmentos removidos na limpeza (registro em {pasta / 'limpeza.json'})."]
+    motivos = Counter(r.motivo for r in limpeza.remocoes)
+    linhas += [f"  {motivo}: {n}" for motivo, n in motivos.most_common()]
+    if limpeza.suspeitas:
+        suspeitas = len(limpeza.suspeitas)
+        linhas.append(f"{suspeitas} segmentos suspeitos ficaram no texto (decidir no registro).")
+    return linhas
 
 
 def _linhas_dos_ignorados(livro: LivroPreparado) -> list[str]:

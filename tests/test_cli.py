@@ -37,6 +37,20 @@ def test_preparar_mostra_os_itens_do_spine_ignorados(
     assert "  fantasma: idref sem item no manifesto" in saida
 
 
+def test_preparar_resume_a_limpeza_agrupada_por_motivo(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # No Tides of Darkness são 258 remoções: o resumo agrupa, e o detalhe fica no registro.
+    corpo = "".join(f"<p>Livro de Teste {n}</p><p>A</p><p>Dia {n}</p>" for n in (2, 4, 6))
+    epub = montar_epub(tmp_path / "livro.epub", {"a.xhtml": corpo})
+    assert principal(["preparar", str(epub)]) == 0
+    saida = capsys.readouterr().out
+    assert "3 segmentos removidos na limpeza" in saida
+    assert "  cabeçalho de página 'Livro de Teste': 3" in saida
+    assert "limpeza.json" in saida
+    assert "3 segmentos suspeitos ficaram no texto" in saida
+
+
 def test_preparar_aceita_outra_pasta(tmp_path: Path) -> None:
     epub = montar_epub(tmp_path / "livro.epub", {"a.xhtml": "<p>A</p>"})
     assert principal(["preparar", str(epub), "--pasta", str(tmp_path / "outra")]) == 0

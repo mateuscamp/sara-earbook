@@ -68,6 +68,43 @@ def test_preparar_grava_metadados_capitulos_e_texto_fora_no_livro_json(
     )
 
 
+def test_preparar_grava_os_segmentos_limpos_e_o_registro_da_limpeza(tmp_path: Path) -> None:
+    # ADR-0003: o texto que vai para o áudio sai sem cabeçalho de página, e nada some em
+    # silêncio. segmentos/ guarda a origem; limpos/ é o que segue; limpeza.json diz o que saiu
+    # e o que ficou sob suspeita. O título do OPF de teste é "Livro de Teste".
+    epub = montar_epub(
+        tmp_path / "livro.epub",
+        {
+            "a.xhtml": "<p>A.</p><p>Livro de Teste 2</p><p>B.</p><p>Livro de Teste 4</p>",
+            "b.xhtml": "<p>Livro de Teste 6</p><p>Dia 1</p><p>Dia 2</p><p>Dia 3</p>",
+        },
+    )
+    pasta = tmp_path / "trabalho"
+    _ = preparar(epub, pasta)
+    limpos: list[dict[str, object]] = [
+        {"id": "c001-s0001", "papel": "paragrafo", "texto": "A.", "notas": []},
+        {"id": "c001-s0003", "papel": "paragrafo", "texto": "B.", "notas": []},
+    ]
+    assert _ler(pasta / "limpos" / "c001.json") == _json(limpos)
+    assert '"texto": "Dia 1"' in _ler(pasta / "limpos" / "c002.json")
+    motivo = "cabeçalho de página 'Livro de Teste'"
+    suspeito = "possível cabeçalho de página 'Dia': não está no título nem no autor"
+    registro = {
+        "remocoes": [
+            {"id": "c001-s0002", "motivo": motivo, "texto": "Livro de Teste 2"},
+            {"id": "c001-s0004", "motivo": motivo, "texto": "Livro de Teste 4"},
+            {"id": "c002-s0001", "motivo": motivo, "texto": "Livro de Teste 6"},
+        ],
+        "suspeitas": [
+            {"id": "c002-s0002", "motivo": suspeito, "texto": "Dia 1"},
+            {"id": "c002-s0003", "motivo": suspeito, "texto": "Dia 2"},
+            {"id": "c002-s0004", "motivo": suspeito, "texto": "Dia 3"},
+        ],
+    }
+    assert _ler(pasta / "limpeza.json") == _json(registro)
+    assert "Livro de Teste 2" in _ler(pasta / "segmentos" / "c001.json")
+
+
 def test_preparar_le_xhtml_repetido_no_spine_uma_vez_so_e_relata(tmp_path: Path) -> None:
     # A3 da auditoria: o texto saía duas vezes, e o primeiro ID ficava sem elemento no XHTML.
     # O itemref "a.xhtml" se repete, e o item "b.xhtml" do manifesto é um apelido de a.xhtml.
@@ -77,7 +114,7 @@ def test_preparar_le_xhtml_repetido_no_spine_uma_vez_so_e_relata(tmp_path: Path)
         ordem_no_spine=["a.xhtml", "a.xhtml", "b.xhtml"],
         adulteracao=Adulteracao(hrefs={"b.xhtml": "x/../a.xhtml"}),
     )
-    livro = preparar(epub, tmp_path / "trabalho")
+    livro = preparar(epub, tmp_path / "trabalho").livro
     assert [c.arquivo for c in livro.capitulos] == ["OEBPS/a.xhtml"]
     assert livro.itens_do_spine_ignorados == (
         ItemIgnorado("a.xhtml", "repete OEBPS/a.xhtml"),
@@ -93,7 +130,7 @@ def test_preparar_le_capitulo_com_variante_de_tipo_xhtml(tmp_path: Path, tipo: s
         {"a.xhtml": "<p>A</p>"},
         adulteracao=Adulteracao(tipos={"a.xhtml": tipo}),
     )
-    livro = preparar(epub, tmp_path / "trabalho")
+    livro = preparar(epub, tmp_path / "trabalho").livro
     assert [c.arquivo for c in livro.capitulos] == ["OEBPS/a.xhtml"]
 
 
@@ -105,7 +142,7 @@ def test_preparar_relata_item_do_spine_que_nao_le(tmp_path: Path) -> None:
         ordem_no_spine=["a.xhtml", "img.svg", "fantasma"],
         adulteracao=Adulteracao(tipos={"img.svg": "image/svg+xml"}),
     )
-    livro = preparar(epub, tmp_path / "trabalho")
+    livro = preparar(epub, tmp_path / "trabalho").livro
     assert livro.itens_do_spine_ignorados == (
         ItemIgnorado("img.svg", "tipo image/svg+xml não é XHTML"),
         ItemIgnorado("fantasma", "idref sem item no manifesto"),

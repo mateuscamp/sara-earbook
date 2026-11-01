@@ -17,7 +17,9 @@ uv run ai-book preparar livro.epub
 O comando `preparar` cria `livro.ai-book/` com:
 
 - `livro.json`: metadados, capítulos na ordem do spine e texto que ficou fora de segmento.
-- `segmentos/cNNN.json`: os segmentos de cada capítulo, cada um com `id`, `papel` (`titulo`, `paragrafo` ou `nota`), `texto` e `notas`.
+- `segmentos/cNNN.json`: os segmentos de cada capítulo como vieram do EPUB, cada um com `id`, `papel` (`titulo`, `paragrafo` ou `nota`), `texto` e `notas`.
+- `limpos/cNNN.json`: os mesmos segmentos, sem o que a limpeza para o ouvido tirou (por exemplo, o cabeçalho de página). É o que segue na esteira.
+- `limpeza.json`: cada segmento que saiu, com o motivo, e os suspeitos que ficaram no texto para decidir.
 - `epub/`: o EPUB extraído, com cada segmento marcado no XHTML por `data-ai-book`.
 
 ## Licença

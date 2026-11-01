@@ -9,7 +9,8 @@ ADRs em `docs/adr/`. O Claude Code traduz; o Python nunca chama o LLM (ADR-0001)
 
 ## Decisões (2026-10-31)
 
-- Par de línguas: inglês → pt-BR.
+- Esteira (ADR-0003): `preparar → limpar → [traduzir] → conferir → montar`. Livro em inglês é traduzido para pt-BR; livro em português só é preparado para o ouvido.
+- A limpeza nunca apaga em silêncio: toda remoção fica em `limpeza.json`, com o ID do segmento de origem.
 - Entrada: EPUB, quase sempre. PDF fica fora do escopo até aparecer um caso real.
 - Motor: o Claude Code na sessão, pela assinatura, com um subagente por capítulo. O limite de uso conta.
 - Notas de rodapé: o marcador sai do meio da frase e o texto da nota vai para o fim do capítulo.
@@ -21,6 +22,12 @@ ADRs em `docs/adr/`. O Claude Code traduz; o Python nunca chama o LLM (ADR-0001)
 - A skill `arquitetura-ai-first` orienta toda decisão estrutural; fronteira nova exige ADR antes do código.
 - A skill `code-audit` roda ao fim de toda implementação de código.
 - O asset se julga **ouvindo no ElevenReader**, não lendo lado a lado.
+
+## Livros de medição (em `livros/`, fora do git; o original fica em `~/Documentos/livros/ingles/`)
+
+- Huxley, *The Doors of Perception*: notas de rodapé e sumário. Serve de régua de tradução, porque existe edição brasileira (*As Portas da Percepção*).
+- Rosenberg, *Tides of Darkness*: convertido de PDF, com cabeçalho de página, parágrafo partido e capitular perdida. Muito nome próprio de lugar e personagem a preservar (glossário).
+- Mudou a limpeza ou a segmentação? Rode `ai-book preparar` nos dois e compare as contagens com as do ADR-0003.
 
 ## Comandos
 
@@ -79,7 +86,7 @@ Verificadas só em revisão (`code-audit`):
 
 ```
 src/ai_book/
-  dominio/      segmento.py (Segmento, IDs), trabalho.py (LivroPreparado)
+  dominio/      segmento.py (Segmento, IDs), trabalho.py (LivroPreparado), limpeza.py (regras do ouvido)
   adaptadores/  xml_seguro.py (parser), pacote_epub.py (zip + OPF), xhtml.py, pasta_de_trabalho.py
   comandos/     preparar.py, cli.py
 tests/          test_<módulo>.py, test_arquitetura.py, livro_de_teste.py

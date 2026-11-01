@@ -32,8 +32,28 @@ Quantum atual: 1 (CLI local + pasta de trabalho em arquivos).
 
 - `ai-book importar-pdf livro.pdf` gera um EPUB simples (títulos, parágrafos e notas), que segue pela esteira normal. O contrato com o resto do projeto continua sendo o EPUB.
 - O conversor usa o que só o PDF sabe: a posição na página, para cabeçalho e número de página, e o tamanho da fonte, para título e capitular. O `limpar` continua existindo, porque EPUB mal convertido por outros (como o do epdf.pub) segue chegando.
-- A biblioteca é escolhida por medição num PDF real, em spike descartável. Os candidatos são `pdfplumber`, sobre `pdfminer.six`, ambos MIT, puro Python e com posição e fonte de cada caractere. PyMuPDF (AGPL) e modelos de layout ficam fora, pelo peso.
+- A biblioteca é **`pdfminer.six`** (MIT, Python puro), escolhida pela medição abaixo. O `pdfplumber` dá a mesma informação por caractere, mas traz 28 MB a mais (Pillow e pdfium, para renderizar página, o que não fazemos). PyMuPDF (AGPL) e modelos de layout ficam fora, pelo peso.
 - PDF escaneado, sem camada de texto, fica fora do escopo. OCR seria outro ADR.
+
+### Spike (2026-11-01, descartado depois da medição)
+
+Foram medidas as páginas 21 a 60 de dois PDFs do Mateus, com `pdfminer.six`:
+
+| Medida | *Competente o Suficiente* (pt-BR, 503 p.) | *Software Architecture: The Hard Parts* (en, 462 p.) |
+|---|---|---|
+| Velocidade | 20 ms/página: o livro inteiro em ~10 s | 14 ms/página |
+| Camada de texto | todas as páginas | 1 página é só imagem |
+| Cabeçalho corrente | em cima: número de página (27/40) e o título do livro e do capítulo com letras espaçadas (`C O M P E T E N T E …`) | embaixo: número, `|` e `Chapter N: <título do capítulo>` |
+| Títulos | pelo tamanho da fonte (19 pt contra 10,5 pt no corpo) | hierarquia pelo tamanho (18,9 / 15,8 / 15 pt) |
+| Parágrafo | recuo da primeira linha (x 67 contra a margem 54) | recuo (x 90 contra a margem 72) |
+| Hifenização no fim da linha | 16 em 40 páginas | 14 em 40 páginas |
+| Código | nenhum | fonte monoespaçada (UbuntuMono) |
+| Capitular | nenhuma | nenhuma (os 3 casos que a medição achou eram a 1ª letra de títulos) |
+
+O que muda no plano:
+- **O cabeçalho sai pela posição na página, não pelo texto.** Nos dois livros, o cabeçalho tem o título do *capítulo*, que a regra do `limpar` (frase no título ou no autor do livro) só marcaria como suspeita. As letras espaçadas tornam o reconhecimento por texto quase impossível.
+- A hifenização no fim da linha precisa de regra própria, porque o português tem palavra composta com hífen (`guarda-chuva`).
+- O código precisa de uma decisão para o áudio (ler, resumir ou pular), que é outro ADR.
 
 ## Consequências
 

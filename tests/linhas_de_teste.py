@@ -7,6 +7,8 @@ As medidas imitam o Competente: corpo de 10,5 pt, margem em x = 54, recuo de par
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 from earbook.dominio.blocos import LivroMontado, montar_blocos
 from earbook.dominio.pagina import Linha, Pagina
 
@@ -19,6 +21,10 @@ def linha(
     texto: str, topo: float, x: float = MARGEM, tamanho: float = 10.5, *, mono: bool = False
 ) -> Linha:
     return Linha(texto, x=x, topo=topo, tamanho=tamanho, monoespacada=mono)
+
+
+def em_negrito(linha: Linha) -> Linha:
+    return replace(linha, negrito=True)
 
 
 def texto_corrido(topo: float, linhas: int = 6) -> list[Linha]:

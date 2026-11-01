@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import re
 import threading
 from collections.abc import Iterator
 from pathlib import Path
@@ -74,6 +75,62 @@ def test_codigo_no_meio_da_prosa_nao_faz_a_linha_monoespacada(tmp_path: Path) ->
     )
     linhas = [(linha.texto, linha.monoespacada) for linha in _linhas(paginas)]
     assert linhas == [("na pasta ss.order", False)]
+
+
+def test_fonte_negrito_e_marcada(tmp_path: Path) -> None:
+    paginas = _ler(
+        tmp_path,
+        [
+            LinhaDeTeste("Texto.", 72, 700),
+            LinhaDeTeste("Pedaços de palavra", 72, 660, negrito=True),
+        ],
+    )
+    assert [linha.negrito for linha in _linhas(paginas)] == [False, True]
+
+
+@pytest.mark.parametrize(
+    ("nome_da_fonte", "negrito"),
+    [
+        (b"/ABCDEF+SourceSans3-SemiboldIt", True),
+        (b"/Arial,Bold", True),
+        (b"/Blackadder", False),
+        (b"/Helvetica", False),
+    ],
+    ids=["subconjunto", "virgula", "familia-black", "comum"],
+)
+def test_negrito_vem_do_estilo_depois_do_separador_do_nome(
+    tmp_path: Path, nome_da_fonte: bytes, *, negrito: bool
+) -> None:
+    pdf = montar_pdf_com_nome_de_fonte(tmp_path / "fonte.pdf", nome_da_fonte)
+    assert [linha.negrito for linha in _linhas(ler_paginas(pdf))] == [negrito]
+
+
+def test_espaco_em_fonte_comum_entre_palavras_em_negrito_nao_desfaz_o_negrito(
+    tmp_path: Path,
+) -> None:
+    # Auditoria: o negrito olha só as letras visíveis; o espaço entre palavras pode vir na
+    # fonte comum. "Pedaços" em Helvetica-Bold 10,5 mede 43,19 pt; o espaço em Helvetica, 2,92.
+    paginas = _ler(
+        tmp_path,
+        [
+            LinhaDeTeste("Pedaços", 72, 700, negrito=True),
+            LinhaDeTeste(" ", 115.19, 700),
+            LinhaDeTeste("de palavra", 118.11, 700, negrito=True),
+        ],
+    )
+    linhas = [(linha.texto, linha.negrito) for linha in _linhas(paginas)]
+    assert linhas == [("Pedaços de palavra", True)]
+
+
+def test_enfase_em_negrito_no_meio_da_prosa_nao_faz_a_linha_negrito(tmp_path: Path) -> None:
+    # Competente: 619 linhas de prosa têm ênfase em negrito no meio; virariam título e
+    # partiriam o parágrafo. "na pasta " em Helvetica 10,5 mede 43,2 pt.
+    paginas = _ler(
+        tmp_path,
+        [LinhaDeTeste("na pasta ", 72, 700), LinhaDeTeste("certa", 115.2, 700, negrito=True)],
+    )
+    linhas = [(linha.texto, linha.negrito) for linha in _linhas(paginas)]
+    assert linhas == [("na pasta certa", False)]
 
 
 def test_tamanho_da_linha_e_o_da_maioria_das_letras(tmp_path: Path) -> None:
@@ -172,7 +229,11 @@ def test_pdf_com_senha_e_recusado_dizendo_que_tem_senha(tmp_path: Path) -> None:
 def test_arvore_com_filho_que_nao_e_objeto_e_recusada_com_o_nome(tmp_path: Path) -> None:
     # P1 da pós-auditoria: o AttributeError do pdfminer escapava do erro do projeto.
     pdf = montar_pdf(tmp_path / "filho.pdf", [[LinhaDeTeste("Texto.", 72, 700)]])
-    _ = pdf.write_bytes(pdf.read_bytes().replace(b"/Kids [6 0 R]", b"/Kids [foo]"))
+    # Pelo padrão, e não pelo número do objeto: a fonte negrito empurrou a página de 6 para 7,
+    # e a troca literal deixava de acontecer sem falhar.
+    dados, trocas = re.subn(rb"/Kids \[\d+ 0 R\]", b"/Kids [foo]", pdf.read_bytes())
+    assert trocas == 1
+    _ = pdf.write_bytes(dados)
     with pytest.raises(PdfInvalidoError, match=r"filho\.pdf"):
         _ = ler_paginas(pdf)
 
@@ -218,10 +279,11 @@ def test_nome_de_fonte_malformado_nao_derruba_a_leitura(
     tmp_path: Path, nome_da_fonte: bytes
 ) -> None:
     # F1 da pós-auditoria: o pdfminer entrega bytes ou int no nome, e a regex quebrava com
-    # TypeError, sem o nome do arquivo. Nome que não é texto não é monoespaçado.
+    # TypeError, sem o nome do arquivo. Nome que não é texto não é monoespaçado nem negrito.
     pdf = montar_pdf_com_nome_de_fonte(tmp_path / "fonte.pdf", nome_da_fonte)
     linhas = _linhas(ler_paginas(pdf))
-    assert [(linha.texto, linha.monoespacada) for linha in linhas] == [("Texto.", False)]
+    resultado = [(linha.texto, linha.monoespacada, linha.negrito) for linha in linhas]
+    assert resultado == [("Texto.", False, False)]
 
 
 def test_xref_com_deslocamento_negativo_e_recusado_com_o_nome(tmp_path: Path) -> None:

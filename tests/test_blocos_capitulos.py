@@ -3,7 +3,8 @@
 
 from __future__ import annotations
 
-from earbook.dominio.blocos import Bloco, TipoDeBloco, dividir_em_capitulos
+from earbook.dominio.blocos import Bloco, TipoDeBloco
+from earbook.dominio.capitulos import dividir_em_capitulos
 
 
 def _titulo(texto: str, pagina: int, tamanho: float) -> Bloco:

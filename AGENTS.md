@@ -101,8 +101,8 @@ Verificadas só em revisão (`code-audit`):
 src/earbook/
   dominio/      segmento.py (Segmento, IDs), trabalho.py (LivroPreparado), limpeza.py (regras do ouvido),
                 pagina.py (Pagina, Linha e letra espaçada do PDF), paginacao.py (cabeçalho do PDF
-                pela posição), blocos.py (parágrafo, título, código, nota e capítulo do PDF),
-                conferencia.py (o conferir), direitos.py (página de direitos autorais),
+                pela posição), blocos.py (parágrafo, título, código e nota do PDF),
+                capitulos.py (capítulo e nível do título), conferencia.py (o conferir), direitos.py (página de direitos autorais),
                 metadados.py (título e autor do PDF)
   adaptadores/  xml_seguro.py (parser), pacote_epub.py (zip + OPF), xhtml.py, pasta_de_trabalho.py,
                 pdf.py (pdfminer), epub_simples.py (grava o EPUB do PDF)

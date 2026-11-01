@@ -8,7 +8,8 @@ from pathlib import Path
 
 from earbook.adaptadores.epub_simples import gravar_epub
 from earbook.adaptadores.pdf import ler_metadados, ler_paginas
-from earbook.dominio.blocos import LivroMontado, dividir_em_capitulos, montar_blocos
+from earbook.dominio.blocos import LivroMontado, montar_blocos
+from earbook.dominio.capitulos import dividir_em_capitulos
 from earbook.dominio.metadados import autor_do_livro, titulo_do_livro
 from earbook.dominio.paginacao import LinhaRemovida, tirar_cabecalhos_e_rodapes
 

@@ -4,8 +4,9 @@
 As regras vêm da medição no Competente (pt-BR) e no Hard Parts (en):
 - parágrafo novo quando a linha recua em relação ao parágrafo (Competente: recuo de 13 pt) ou
   quando o espaço acima dela passa de 1,35 entrelinha (Hard Parts: 0,028 contra 0,019);
-- título é fonte de 1,2 vez o corpo ou mais; código é linha toda monoespaçada; nota é fonte
-  menor que 0,85 do corpo;
+- título é fonte de 1,2 vez o corpo ou mais, ou linha toda em negrito do tamanho do corpo para
+  cima (subtítulo do Competente); código é linha toda monoespaçada; nota é fonte menor que
+  0,85 do corpo;
 - a palavra partida no fim da linha volta inteira, a não ser que o livro escreva a mesma
   palavra com hífen em outro lugar (`non-productive`, `anti-pattern`).
 """
@@ -20,7 +21,7 @@ from enum import StrEnum
 from itertools import pairwise
 from typing import final
 
-from earbook.dominio.pagina import Linha, Pagina, tamanho_do_corpo
+from earbook.dominio.pagina import Linha, Pagina, corpo_em_negrito, tamanho_do_corpo
 
 RAZAO_DO_TITULO = 1.2
 RAZAO_DA_NOTA = 0.85
@@ -29,11 +30,13 @@ RECUO_MINIMO = 3.0
 """Em pontos. Medido: parágrafo recua 13 (Competente) e 18 (Hard Parts); item de lista, 4 e 5;
 nenhuma linha de corpo entre 1 e 3."""
 DIFERENCA_DE_TAMANHO = 0.5
+# O subtítulo em negrito vai do corpo para cima, com esta folga: o cabeçalho de tabela do Hard
+# Parts tem 10 pt, com corpo de 10,5; o rótulo de figura, 9 pt (ADR-0004).
+FOLGA_DO_SUBTITULO = 0.5
 # Linhas a menos disso de topo estão na mesma altura (células de tabela no Hard Parts: 0,001).
 MESMA_ALTURA = 0.004
 # Com 3 pedaços ou mais na mesma altura, é linha de tabela; com 2, linha justificada partida.
 CELULAS_DA_TABELA = 3
-PAGINAS_DO_CAPITULO = 3
 _PONTUACAO_DA_PONTA = ".,;:!?\"'()[]\u201c\u201d\u2018\u2019"
 _FIM_DE_FRASE = tuple('.!?:\u201d"')
 _HIFEN_NO_FIM = re.compile(r"\w[-\u2010]$")
@@ -92,6 +95,8 @@ class _Dicionario:
 class _Medidas:
     corpo: float
     entrelinha: float
+    negrito_destaca: bool
+    """O corpo não é negrito: só então a linha toda em negrito é subtítulo."""
 
 
 @dataclass
@@ -146,28 +151,39 @@ def _linhas_visuais(linhas: Sequence[Linha]) -> list[tuple[Linha, int]]:
             pedacos[0],
             texto=" ".join(pedaco.texto for pedaco in pedacos),
             monoespacada=all(pedaco.monoespacada for pedaco in pedacos),
+            negrito=all(pedaco.negrito for pedaco in pedacos),
         )
         visuais.append((juntas, len(pedacos)))
     return visuais
 
 
-def _tipo(linha: Linha, corpo: float) -> TipoDeBloco:
+def _tipo(linha: Linha, corpo: float, *, negrito_destaca: bool) -> TipoDeBloco:
     if linha.monoespacada:
         return TipoDeBloco.CODIGO
     if linha.tamanho >= corpo * RAZAO_DO_TITULO:
         return TipoDeBloco.TITULO
     if linha.tamanho < corpo * RAZAO_DA_NOTA:
         return TipoDeBloco.NOTA
+    # O subtítulo em negrito tem o tamanho do corpo ou mais (Competente: 10,5 e 12 pt, com
+    # corpo de 10,5). O negrito menor é rótulo de figura, célula ou verbete (Hard Parts: 9 pt).
+    # ADR-0004, "Subtítulo em negrito do tamanho do corpo", com os limites.
+    if negrito_destaca and linha.negrito and linha.tamanho >= corpo - FOLGA_DO_SUBTITULO:
+        return TipoDeBloco.TITULO
     return TipoDeBloco.PARAGRAFO
 
 
 def _medir(paginas: Sequence[Pagina]) -> _Medidas:
     """O corpo e a entrelinha mais comum entre linhas de corpo seguidas da mesma página."""
     corpo = tamanho_do_corpo(paginas)
+    destaca = not corpo_em_negrito(paginas, corpo)
     distancias: Counter[float] = Counter()
     for pagina in paginas:
         corpo_da_pagina = sorted(
-            (linha for linha in pagina.linhas if _tipo(linha, corpo) is TipoDeBloco.PARAGRAFO),
+            (
+                linha
+                for linha in pagina.linhas
+                if _tipo(linha, corpo, negrito_destaca=destaca) is TipoDeBloco.PARAGRAFO
+            ),
             key=lambda linha: linha.topo,
         )
         for de_cima, de_baixo in pairwise(corpo_da_pagina):
@@ -175,7 +191,7 @@ def _medir(paginas: Sequence[Pagina]) -> _Medidas:
             if distancia > 0:
                 distancias[distancia] += 1
     entrelinha = distancias.most_common(1)[0][0] if distancias else 0.0
-    return _Medidas(corpo, entrelinha)
+    return _Medidas(corpo, entrelinha, destaca)
 
 
 def _dicionario(paginas: Sequence[Pagina]) -> _Dicionario:
@@ -213,7 +229,8 @@ class _Montador:
         self._posicao_do_aberto: int | None = None
 
     def acrescentar(self, pagina: int, linha: Linha, anterior: Linha | None, pedacos: int) -> None:
-        tipo = _tipo(linha, self._medidas.corpo)
+        medidas = self._medidas
+        tipo = _tipo(linha, medidas.corpo, negrito_destaca=medidas.negrito_destaca)
         de_tabela = tipo is TipoDeBloco.PARAGRAFO and pedacos >= CELULAS_DA_TABELA
         aberto = self._aberto
         if tipo is TipoDeBloco.PARAGRAFO and not de_tabela and self._retomar(linha):
@@ -238,7 +255,7 @@ class _Montador:
     def _quebra(self, aberto: _Aberto, linha: Linha, anterior: Linha | None) -> bool:
         """A linha começa bloco novo, embora seja do mesmo tipo do bloco aberto?"""
         if aberto.tipo is TipoDeBloco.TITULO:
-            return abs(linha.tamanho - aberto.tamanho) > DIFERENCA_DE_TAMANHO or anterior is None
+            return self._quebra_o_titulo(aberto, linha, anterior)
         if aberto.tipo is not TipoDeBloco.PARAGRAFO:
             return anterior is None and aberto.tipo is TipoDeBloco.NOTA
         if aberto.tabela or self._mudou_o_recuo(aberto, linha):
@@ -249,6 +266,24 @@ class _Montador:
         if anterior is None:
             return self._comeca_frase_na_pagina_nova(aberto, linha)
         return linha.topo - anterior.topo >= self._medidas.entrelinha * RAZAO_DO_ESPACO
+
+    def _quebra_o_titulo(self, aberto: _Aberto, linha: Linha, anterior: Linha | None) -> bool:
+        """Título novo no tamanho que muda e na página nova.
+
+        O título da faixa do subtítulo, abaixo de 1,2 vez o corpo, quebra também como o
+        parágrafo: no item de lista (revisão nº 2) e no vão (A1 da auditoria: "A.", "B.", "C."
+        e "Index" do sumário do Hard Parts saíam num título só). O título grande não: "CAPÍTULO
+        1", linha em branco, "O começo" é um título e um capítulo (N1 da pós-auditoria).
+        """
+        if anterior is None or abs(linha.tamanho - aberto.tamanho) > DIFERENCA_DE_TAMANHO:
+            return True
+        if aberto.tamanho >= self._medidas.corpo * RAZAO_DO_TITULO:
+            return False
+        if _ITEM_DE_LISTA.match(linha.texto):
+            return True
+        # Sem entrelinha medida, o vão não tem régua, e o subtítulo segue junto.
+        entrelinha = self._medidas.entrelinha
+        return bool(entrelinha) and linha.topo - anterior.topo >= entrelinha * RAZAO_DO_ESPACO
 
     @staticmethod
     def _mudou_o_recuo(aberto: _Aberto, linha: Linha) -> bool:
@@ -337,48 +372,3 @@ class _Montador:
             self._interrompido = None if terminou else (aberto, posicao)
         elif aberto.tipo is TipoDeBloco.TITULO or aberto.tabela:
             self._interrompido = None
-
-
-def dividir_em_capitulos(blocos: Sequence[Bloco]) -> tuple[tuple[Bloco, ...], ...]:
-    """Corta o livro no maior tamanho de título que aparece em 3 páginas ou mais.
-
-    No Competente é o número do capítulo (30 pt); no Hard Parts, o título do capítulo
-    (25,2 pt). O que vem antes do primeiro capítulo fica num capítulo de abertura.
-    """
-    capitulo = _tamanho_do_capitulo(blocos)
-    niveis = _niveis(blocos, capitulo)
-    capitulos: list[list[Bloco]] = [[]]
-    for bloco in blocos:
-        if bloco.tipo is TipoDeBloco.TITULO:
-            bloco = replace(bloco, nivel=niveis[round(bloco.tamanho, 1)])  # noqa: PLW2901  # motivo: o mesmo bloco, agora com o nível
-            if (
-                capitulo is not None
-                and abs(bloco.tamanho - capitulo) <= DIFERENCA_DE_TAMANHO
-                and capitulos[-1]
-            ):
-                capitulos.append([])
-        capitulos[-1].append(bloco)
-    return tuple(tuple(capitulo) for capitulo in capitulos if capitulo)
-
-
-def _tamanho_do_capitulo(blocos: Sequence[Bloco]) -> float | None:
-    paginas_por_tamanho: dict[float, set[int]] = {}
-    for bloco in blocos:
-        if bloco.tipo is TipoDeBloco.TITULO:
-            paginas_por_tamanho.setdefault(round(bloco.tamanho, 1), set()).add(bloco.pagina)
-    frequentes = [
-        t for t, paginas in paginas_por_tamanho.items() if len(paginas) >= PAGINAS_DO_CAPITULO
-    ]
-    return max(frequentes) if frequentes else None
-
-
-def _niveis(blocos: Sequence[Bloco], capitulo: float | None) -> dict[float, int]:
-    """Nível 1 para o capítulo e o que for maior que ele; os menores descem, até o 6."""
-    tamanhos = sorted(
-        {round(b.tamanho, 1) for b in blocos if b.tipo is TipoDeBloco.TITULO}, reverse=True
-    )
-    topo = capitulo if capitulo is not None else (tamanhos[0] if tamanhos else 0.0)
-    menores = [t for t in tamanhos if t < topo - DIFERENCA_DE_TAMANHO]
-    niveis = {t: 1 for t in tamanhos if t not in menores}
-    niveis.update({t: min(n, 6) for n, t in enumerate(menores, 2)})
-    return niveis

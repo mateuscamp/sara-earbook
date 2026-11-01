@@ -24,6 +24,10 @@ from earbook.dominio.segmento import normalizar_espacos
 
 # Medido no spike: o código do "Hard Parts" vem em UbuntuMono.
 _FONTE_MONOESPACADA = re.compile(r"mono|courier|code|consol", re.IGNORECASE)
+# O estilo vem depois do traço ou da vírgula do nome: "SourceSans3-SemiboldIt" (Competente),
+# "MyriadPro-SemiboldCond" (Hard Parts), "Arial,Bold". Sem o separador, "Blackadder" seria
+# negrito. ADR-0004, "Subtítulo em negrito do tamanho do corpo".
+_FONTE_NEGRITO = re.compile(r"[-,]\w*(?:bold|black|heavy|demi)", re.IGNORECASE)
 
 
 _BOM_UTF8 = b"\xef\xbb\xbf"
@@ -148,13 +152,17 @@ def _linha(linha: LTTextLine, altura: float) -> Linha | None:
     tamanho = max(multimode(round(c.size, 1) for c in caracteres))
     # Toda letra, não alguma: no Hard Parts, as 584 linhas de código são 100% monoespaçadas
     # e as 183 de prosa com um nome de código no meio ("ss.survey") ficam entre 0 e 90%.
-    monoespacada = all(_eh_monoespacada(c.fontname) for c in caracteres)
+    monoespacada = all(_fonte_casa(_FONTE_MONOESPACADA, c.fontname) for c in caracteres)
+    visiveis = [c for c in caracteres if c.get_text().strip()]
     if not monoespacada:
-        letras = [Letra(c.get_text(), c.x0, c.x1) for c in caracteres if c.get_text().strip()]
+        letras = [Letra(c.get_text(), c.x0, c.x1) for c in visiveis]
         texto = juntar_letras_espacadas(letras, tamanho) or texto
-    return Linha(texto, linha.x0, 1 - linha.y1 / altura, tamanho, monoespacada)
+    # Toda letra visível, como na monoespaçada: a ênfase no meio da prosa (619 linhas no
+    # Competente) não faz a linha negrito.
+    negrito = all(_fonte_casa(_FONTE_NEGRITO, c.fontname) for c in visiveis)
+    return Linha(texto, linha.x0, 1 - linha.y1 / altura, tamanho, monoespacada, negrito)
 
 
-def _eh_monoespacada(nome_da_fonte: object) -> bool:
+def _fonte_casa(padrao: re.Pattern[str], nome_da_fonte: object) -> bool:
     """O pdfminer entrega o nome cru quando ele não é nome PDF: bytes ou número (F1)."""
-    return isinstance(nome_da_fonte, str) and _FONTE_MONOESPACADA.search(nome_da_fonte) is not None
+    return isinstance(nome_da_fonte, str) and padrao.search(nome_da_fonte) is not None

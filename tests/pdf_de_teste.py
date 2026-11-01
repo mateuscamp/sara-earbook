@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Monta PDFs mínimos para os testes, em vez de guardar binário no repositório.
 
-Usa as fontes padrão do PDF (Helvetica e Courier, sem embutir) com WinAnsiEncoding,
+Usa as fontes padrão do PDF (Helvetica, Helvetica-Bold e Courier, sem embutir) com WinAnsiEncoding,
 que cobre os acentos do português. A página tem 612 x 792 pontos (carta).
 """
 
@@ -23,6 +23,7 @@ class LinhaDeTeste:
     y: float
     tamanho: float = 10.5
     mono: bool = False
+    negrito: bool = False
 
 
 def _cadeia_pdf(texto: str) -> str:
@@ -38,10 +39,14 @@ def _cadeia_pdf(texto: str) -> str:
     return "".join(partes)
 
 
+def _fonte(linha: LinhaDeTeste) -> str:
+    return "F2" if linha.mono else "F3" if linha.negrito else "F1"
+
+
 def _conteudo(linhas: list[LinhaDeTeste]) -> bytes:
     comandos = [
         (
-            f"BT /{'F2' if linha.mono else 'F1'} {linha.tamanho} Tf {linha.x} {linha.y} Td "
+            f"BT /{_fonte(linha)} {linha.tamanho} Tf {linha.x} {linha.y} Td "
             f"({_cadeia_pdf(linha.texto)}) Tj ET"
         )
         for linha in linhas
@@ -63,12 +68,13 @@ def montar_pdf(
         b"",  # a árvore de páginas entra depois, quando os números das páginas existem
         fonte.format("Helvetica").encode(),
         fonte.format("Courier").encode(),
+        fonte.format("Helvetica-Bold").encode(),
     ]
     filhos: list[str] = []
     for linhas in paginas:
         conteudo = _conteudo(linhas)
         objetos.append(b"<< /Length %d >>\nstream\n%s\nendstream" % (len(conteudo), conteudo))
-        recursos = "<< /Font << /F1 3 0 R /F2 4 0 R >> >>"
+        recursos = "<< /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >>"
         objetos.append(
             (
                 f"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {LARGURA} {ALTURA}] "

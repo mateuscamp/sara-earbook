@@ -34,6 +34,8 @@ class Linha:
     tamanho: float
     """Tamanho médio da fonte da linha, em pontos."""
     monoespacada: bool = False
+    negrito: bool = False
+    """Toda letra visível em fonte negrito: o subtítulo do tamanho do corpo (Competente)."""
 
 
 @dataclass(frozen=True)
@@ -59,6 +61,19 @@ def tamanho_do_corpo(paginas: Sequence[Pagina]) -> float:
         for linha in pagina.linhas:
             caracteres[round(linha.tamanho, 1)] += len(linha.texto)
     return caracteres.most_common(1)[0][0] if caracteres else 0.0
+
+
+def corpo_em_negrito(paginas: Sequence[Pagina], corpo: float) -> bool:
+    """Se a maior parte do texto do tamanho `corpo` está em linha toda negrito.
+
+    Aí o negrito é o corpo do livro e não destaca subtítulo nenhum (revisão nº 1).
+    """
+    caracteres: Counter[bool] = Counter()
+    for pagina in paginas:
+        for linha in pagina.linhas:
+            if round(linha.tamanho, 1) == corpo:
+                caracteres[linha.negrito] += len(linha.texto)
+    return caracteres[True] > caracteres[False]
 
 
 def juntar_letras_espacadas(letras: Sequence[Letra], tamanho: float) -> str | None:

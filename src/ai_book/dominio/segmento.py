@@ -15,6 +15,9 @@ class Papel(StrEnum):
     TITULO = "titulo"
     PARAGRAFO = "paragrafo"
     NOTA = "nota"
+    ITEM = "item"
+    CELULA = "celula"
+    CITACAO = "citacao"
 
 
 @dataclass(frozen=True)

@@ -51,6 +51,18 @@ def test_preparar_resume_a_limpeza_agrupada_por_motivo(
     assert "3 segmentos suspeitos ficaram no texto" in saida
 
 
+def test_preparar_conta_aparos_e_juncoes(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    soltos = "".join(f"<p>Livro de Teste {n}</p>" for n in (2, 4, 6))
+    corpo = f"<p>They peered, trying Livro de Teste 8</p><p>to pierce the fog.</p>{soltos}"
+    epub = montar_epub(tmp_path / "livro.epub", {"a.xhtml": corpo})
+    assert principal(["preparar", str(epub)]) == 0
+    saida = capsys.readouterr().out
+    assert "1 cabeçalho colado aparado do fim de parágrafo." in saida
+    assert "1 parágrafo partido na quebra de página juntado." in saida
+
+
 def test_preparar_aceita_outra_pasta(tmp_path: Path) -> None:
     epub = montar_epub(tmp_path / "livro.epub", {"a.xhtml": "<p>A</p>"})
     assert principal(["preparar", str(epub), "--pasta", str(tmp_path / "outra")]) == 0

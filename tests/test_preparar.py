@@ -100,9 +100,57 @@ def test_preparar_grava_os_segmentos_limpos_e_o_registro_da_limpeza(tmp_path: Pa
             {"id": "c002-s0003", "motivo": suspeito, "texto": "Dia 2"},
             {"id": "c002-s0004", "motivo": suspeito, "texto": "Dia 3"},
         ],
+        "aparos": [],
+        "juncoes": [],
     }
     assert _ler(pasta / "limpeza.json") == _json(registro)
     assert "Livro de Teste 2" in _ler(pasta / "segmentos" / "c001.json")
+
+
+def test_preparar_apara_cabecalho_colado_e_junta_o_paragrafo_partido(tmp_path: Path) -> None:
+    # O padrão do Tides of Darkness: a quebra de página parte o parágrafo, e o cabeçalho
+    # fica colado no fim da primeira metade. Os três soltos firmam a frase do título.
+    soltos = "<p>Livro de Teste 2</p><p>Livro de Teste 4</p><p>Livro de Teste 6</p>"
+    corpo = f"<p>They peered, trying Livro de Teste 8</p><p>to pierce the fog.</p>{soltos}"
+    epub = montar_epub(tmp_path / "livro.epub", {"a.xhtml": corpo})
+    pasta = tmp_path / "trabalho"
+    _ = preparar(epub, pasta)
+    juntado: dict[str, object] = {
+        "id": "c001-s0001",
+        "papel": "paragrafo",
+        "texto": "They peered, trying to pierce the fog.",
+        "notas": [],
+    }
+    assert _ler(pasta / "limpos" / "c001.json") == _json([juntado])
+    solto = "cabeçalho de página 'Livro de Teste'"
+    registro: dict[str, list[dict[str, str]]] = {
+        "remocoes": [
+            {"id": f"c001-s000{n}", "motivo": solto, "texto": f"Livro de Teste {2 * n - 4}"}
+            for n in (3, 4, 5)
+        ],
+        "suspeitas": [],
+        "aparos": [
+            {"id": "c001-s0001", "motivo": f"{solto} colado no fim", "texto": "Livro de Teste 8"}
+        ],
+        "juncoes": [{"id": "c001-s0002", "em": "c001-s0001"}],
+    }
+    assert _ler(pasta / "limpeza.json") == _json(registro)
+
+
+def test_preparar_nao_junta_lista_tabela_nem_citacao(tmp_path: Path) -> None:
+    # A3 da auditoria: os 7 blocos abaixo viravam um segmento só, e o montar esvaziaria a
+    # lista, a tabela e a citação. Todos começam em minúscula e têm 4 palavras ou mais.
+    corpo = (
+        "<p>the list goes like this and</p>"
+        "<ul><li>first item of the list</li><li>second item of the list</li></ul>"
+        "<table><tr><td>a cell with some words</td></tr></table>"
+        "<blockquote><p>a quoted line with words</p></blockquote>"
+    )
+    epub = montar_epub(tmp_path / "livro.epub", {"a.xhtml": corpo})
+    pasta = tmp_path / "trabalho"
+    _ = preparar(epub, pasta)
+    assert '"juncoes": []' in _ler(pasta / "limpeza.json")
+    assert _ler(pasta / "limpos" / "c001.json").count('"id"') == 5
 
 
 def test_preparar_le_xhtml_repetido_no_spine_uma_vez_so_e_relata(tmp_path: Path) -> None:

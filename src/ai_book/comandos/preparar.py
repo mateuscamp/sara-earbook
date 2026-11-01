@@ -10,7 +10,7 @@ from pathlib import Path
 from ai_book.adaptadores import pasta_de_trabalho as trabalho
 from ai_book.adaptadores.pacote_epub import PacoteEpub, extrair_epub
 from ai_book.adaptadores.xhtml import segmentar_xhtml
-from ai_book.dominio.limpeza import LivroLimpo, tirar_cabecalhos_de_pagina
+from ai_book.dominio.limpeza import LivroLimpo, limpar_para_o_ouvido
 from ai_book.dominio.segmento import Segmento, id_do_capitulo
 from ai_book.dominio.trabalho import CapituloPreparado, LivroPreparado, TextoForaDeSegmento
 
@@ -36,7 +36,7 @@ def preparar(epub: Path, pasta: Path) -> Preparo:
     try:
         pacote = extrair_epub(epub, trabalho.pasta_do_epub(pasta))
         livro, segmentados = _segmentar_livro(epub, pasta, pacote)
-        limpeza = tirar_cabecalhos_de_pagina(segmentados, pacote.titulo, pacote.autor)
+        limpeza = limpar_para_o_ouvido(segmentados, pacote.titulo, pacote.autor)
         for capitulo in limpeza.capitulos:
             trabalho.gravar_limpos(pasta, capitulo)
         trabalho.gravar_limpeza(pasta, limpeza)

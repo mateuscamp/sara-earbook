@@ -4,7 +4,7 @@
 livro.json            metadados, capítulos e texto fora de segmento
 segmentos/cNNN.json   segmentos de cada capítulo como vieram do EPUB (a origem)
 limpos/cNNN.json      os mesmos, sem o que a limpeza tirou: é o que segue na esteira
-limpeza.json          o que a limpeza tirou e o que ficou sob suspeita, com o motivo (ADR-0003)
+limpeza.json          remoções, suspeitas, aparos e junções da limpeza, com o motivo (ADR-0003)
 epub/                 EPUB extraído, com o XHTML marcado por `data-ai-book`
 """
 
@@ -53,6 +53,8 @@ def gravar_limpeza(pasta: Path, limpeza: LivroLimpo) -> None:
     registro = {
         "remocoes": [asdict(r) for r in limpeza.remocoes],
         "suspeitas": [asdict(s) for s in limpeza.suspeitas],
+        "aparos": [asdict(a) for a in limpeza.aparos],
+        "juncoes": [asdict(j) for j in limpeza.juncoes],
     }
     _gravar_json(pasta / "limpeza.json", registro)
 

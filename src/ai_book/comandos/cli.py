@@ -68,6 +68,16 @@ def _linhas_da_limpeza(limpeza: LivroLimpo, pasta: Path) -> list[str]:
     linhas = [f"{total} segmentos removidos na limpeza (registro em {pasta / 'limpeza.json'})."]
     motivos = Counter(r.motivo for r in limpeza.remocoes)
     linhas += [f"  {motivo}: {n}" for motivo, n in motivos.most_common()]
+    if limpeza.aparos:
+        aparos = len(limpeza.aparos)
+        plural = "cabeçalho colado aparado" if aparos == 1 else "cabeçalhos colados aparados"
+        linhas.append(f"{aparos} {plural} do fim de parágrafo.")
+    if limpeza.juncoes:
+        juncoes = len(limpeza.juncoes)
+        plural = "parágrafo partido" if juncoes == 1 else "parágrafos partidos"
+        linhas.append(
+            f"{juncoes} {plural} na quebra de página {'juntado' if juncoes == 1 else 'juntados'}."
+        )
     if limpeza.suspeitas:
         suspeitas = len(limpeza.suspeitas)
         linhas.append(f"{suspeitas} segmentos suspeitos ficaram no texto (decidir no registro).")

@@ -104,6 +104,31 @@ def test_titulo_tem_papel_titulo() -> None:
     assert [s.papel for s in _segmentar("<h2>Chapter One</h2>").segmentos] == [Papel.TITULO]
 
 
+def test_item_de_lista_tem_papel_item() -> None:
+    # A3 da auditoria: como parágrafo, o item se juntava ao <p> anterior na limpeza.
+    corpo = "<ul><li>One.</li></ul><dl><dt>Term</dt><dd>Meaning.</dd></dl>"
+    assert [s.papel for s in _segmentar(corpo).segmentos] == [Papel.ITEM] * 3
+
+
+def test_celula_de_tabela_tem_papel_celula() -> None:
+    corpo = "<table><tr><th>Name</th><td>Lothar</td></tr></table>"
+    assert [s.papel for s in _segmentar(corpo).segmentos] == [Papel.CELULA] * 2
+
+
+def test_bloco_dentro_de_citacao_tem_papel_citacao() -> None:
+    corpo = "<blockquote><p>Quoted.</p><div>Also quoted.</div></blockquote><p>Plain.</p>"
+    papeis = [s.papel for s in _segmentar(corpo).segmentos]
+    assert papeis == [Papel.CITACAO, Papel.CITACAO, Papel.PARAGRAFO]
+
+
+def test_nota_em_lista_continua_nota_e_titulo_em_citacao_continua_titulo() -> None:
+    corpo = (
+        '<aside epub:type="footnote" id="n1"><ol><li>The note.</li></ol></aside>'
+        "<blockquote><h3>Epigraph</h3></blockquote>"
+    )
+    assert [s.papel for s in _segmentar(corpo).segmentos] == [Papel.NOTA, Papel.TITULO]
+
+
 def test_quebra_de_linha_vira_espaco() -> None:
     assert _textos("<p>Line one<br/>line two</p>") == ["Line one line two"]
 

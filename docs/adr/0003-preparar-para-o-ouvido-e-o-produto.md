@@ -40,6 +40,20 @@ quando o idioma do livro é diferente do idioma de saída.
 - **Só sai cabeçalho que é do livro.** Frase com número que se repete com 3 ou mais números diferentes só é removida se estiver, como palavras inteiras, no título ou no autor do OPF. A que se repete sem estar lá ("Dia 1", "Dia 2", "Dia 3" num diário) fica no texto e entra em `suspeitas` no `limpeza.json`, para o Claude Code decidir. Rótulo de capítulo (`Chapter N`, `Cap. N`) nunca sai. Essa regra veio do achado H1 da auditoria, em 2026-11-01.
 - **Nada é apagado em silêncio.** Toda remoção e toda junção fica registrada na pasta de trabalho, com o ID do segmento de origem, e o `conferir` cobra que origem = mantidos + removidos + juntados.
 
+- **Cabeçalho colado e parágrafo partido** (2026-11-01). O cabeçalho de uma frase já firmada como cabeçalho do livro sai do fim do parágrafo e fica registrado como `aparo`. Depois disso, dois parágrafos seguidos viram um só (`juncao`) quando o primeiro não termina em `.`, `!`, `?`, `…`, `:` ou `;` e a primeira letra do segundo, depois de aspas e travessões, é minúscula. Aspas e apóstrofo no fim não fecham: `of course,”` + `he answered` é uma fala só, e `warriors’` + `reach` é um possessivo. Quando um dos dois é linha curta sem pontuação (até 3 palavras, como `first prologue`, `ONE` ou `acknowledgments`), não junto e marco suspeita: é título que veio como `<p>`, quase sempre seguido de capitular perdida. Correções da auditoria de 2026-11-01:
+  - só `paragrafo` se junta com `paragrafo`. O segmentador passou a dar papel próprio a item de lista (`item`: li, dt, dd), célula (`celula`: td, th) e bloco dentro de `<blockquote>` (`citacao`); antes, o `<p>` sem ponto engolia a lista seguinte;
+  - travessão que fecha um parágrafo seguido de travessão que abre o próximo não junta, porque é ação interrompida de propósito;
+  - cabeçalho colado logo depois de hífen (`sub-429 Aaron Rosenberg`) também sai, e a palavra hifenizada volta sem espaço (`sub-commander`).
+
+### Medição depois da limpeza (2026-11-01)
+
+| Livro | Removidos | Aparos | Junções | Suspeitas | O que ainda sobra |
+|---|---|---|---|---|---|
+| *The Doors of Perception* | 0 | 0 | 0 | 0 | sumário e página do epubBooks |
+| *Tides of Darkness* | 258 | 165 | 290 | 9 | cerca de 20 capitulares perdidas depois de título `<h1>` (`re we ready?”`), ainda sem marca; cerca de 20 pausas no meio da frase onde havia cabeçalho entre os dois parágrafos e o seguinte começa com nome próprio (`…had` + `Proudmoore’s`), que a regra da minúscula não junta (A5 da auditoria); folha de rosto com ISBN e URL |
+
+Limite conhecido (A6 da auditoria): o cabeçalho solto é comparado em `casefold`, que desfaz ligaduras (`ﬁ` → `fi`), mas o colado é procurado no texto cru. Cabeçalho colado com ligadura tipográfica fica no texto. Nenhum dos dois livros medidos tem esse caso.
+
 ## Consequências
 
 **Ganha:**

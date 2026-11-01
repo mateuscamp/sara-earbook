@@ -25,6 +25,8 @@ OPS = "http://www.idpf.org/2007/ops"
 ATRIBUTO_DO_ID = "data-ai-book"
 
 TITULOS = frozenset({"h1", "h2", "h3", "h4", "h5", "h6"})
+ITENS = frozenset({"li", "dt", "dd"})
+CELULAS = frozenset({"td", "th"})
 BLOCOS = TITULOS | frozenset(
     {
         "p", "div", "li", "blockquote", "section", "article", "aside", "header",
@@ -184,10 +186,22 @@ def _pedacos_de_texto(
 
 
 def _papel(folha: Elemento, alvos_locais: set[str]) -> Papel:
-    for elemento in (folha, *folha.iterancestors()):
-        if _eh_corpo_de_nota(elemento, alvos_locais):
-            return Papel.NOTA
-    return Papel.TITULO if _nome(folha) in TITULOS else Papel.PARAGRAFO
+    """Nota vence tudo; depois título; depois o contêiner (A3 da auditoria: só parágrafo
+    com parágrafo se junta na limpeza, então item, célula e citação precisam de papel próprio).
+    """
+    ancestrais = (folha, *folha.iterancestors())
+    if any(_eh_corpo_de_nota(elemento, alvos_locais) for elemento in ancestrais):
+        return Papel.NOTA
+    nome = _nome(folha)
+    if nome in TITULOS:
+        return Papel.TITULO
+    if nome in ITENS:
+        return Papel.ITEM
+    if nome in CELULAS:
+        return Papel.CELULA
+    if any(_nome(elemento) == "blockquote" for elemento in ancestrais):
+        return Papel.CITACAO
+    return Papel.PARAGRAFO
 
 
 def _eh_corpo_de_nota(elemento: Elemento, alvos_locais: set[str]) -> bool:

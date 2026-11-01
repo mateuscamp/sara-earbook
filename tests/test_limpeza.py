@@ -3,8 +3,8 @@ from __future__ import annotations
 
 import pytest
 
-from ai_book.dominio.limpeza import LivroLimpo, Remocao, Suspeita, tirar_cabecalhos_de_pagina
-from ai_book.dominio.segmento import Papel, Segmento
+from earbook.dominio.limpeza import LivroLimpo, Remocao, Suspeita, tirar_cabecalhos_de_pagina
+from earbook.dominio.segmento import Papel, Segmento
 
 # Os metadados reais do OPF do Tides of Darkness: o cabeçalho é um pedaço do título.
 TITULO = "World of WarCraft - Tides of Darkness"

@@ -1,6 +1,7 @@
-# ai-book
+# earbook
 
-Traduzir ebooks do inglês para pt-BR e **ouvir** o resultado no ElevenReader.
+Preparar livros para **ouvir** no ElevenReader e, quando o livro é em inglês, traduzi-lo
+para pt-BR. Até 2026-11-01 o projeto se chamava ai-book; os ADRs 0001 a 0004 usam o nome antigo.
 O produto final é áudio, não página: o critério de qualidade é o que soa bem,
 não o que fica bonito na tela.
 
@@ -27,13 +28,13 @@ ADRs em `docs/adr/`. O Claude Code traduz; o Python nunca chama o LLM (ADR-0001)
 
 - Huxley, *The Doors of Perception*: notas de rodapé e sumário. Serve de régua de tradução, porque existe edição brasileira (*As Portas da Percepção*).
 - Rosenberg, *Tides of Darkness*: convertido de PDF, com cabeçalho de página, parágrafo partido e capitular perdida. Muito nome próprio de lugar e personagem a preservar (glossário).
-- Mudou a limpeza ou a segmentação? Rode `ai-book preparar` nos dois e compare as contagens com as do ADR-0003.
+- Mudou a limpeza ou a segmentação? Rode `earbook preparar` nos dois e compare as contagens com as do ADR-0003.
 
 ## Comandos
 
 - Setup: `uv sync`.
 - Portão: `make check` (`scripts/portao.sh`: lock, formato, lint, supressão, tipos, fronteiras, testes, `uv audit`). O hook Stop roda o mesmo. Rodar antes de declarar qualquer tarefa concluída e mostrar a saída.
-- Uso: `uv run ai-book preparar livro.epub` → `livro.ai-book/`.
+- Uso: `uv run earbook preparar livro.epub` → `livro.earbook/`.
 
 ## Fronteiras (ADR-0001)
 
@@ -85,7 +86,7 @@ Verificadas só em revisão (`code-audit`):
 ## Estrutura
 
 ```
-src/ai_book/
+src/earbook/
   dominio/      segmento.py (Segmento, IDs), trabalho.py (LivroPreparado), limpeza.py (regras do ouvido)
   adaptadores/  xml_seguro.py (parser), pacote_epub.py (zip + OPF), xhtml.py, pasta_de_trabalho.py
   comandos/     preparar.py, cli.py

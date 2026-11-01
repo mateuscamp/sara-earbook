@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from ai_book.adaptadores.xhtml import CapituloSegmentado, XhtmlInvalidoError, segmentar_xhtml
-from ai_book.dominio.segmento import Papel
+from earbook.adaptadores.xhtml import CapituloSegmentado, XhtmlInvalidoError, segmentar_xhtml
+from earbook.dominio.segmento import Papel
 from tests.livro_de_teste import DOCTYPE_XHTML11, xhtml
 
 CAMINHO = "OEBPS/cap1.xhtml"
@@ -148,7 +148,7 @@ def test_ids_seguem_a_ordem_do_documento() -> None:
 
 def test_xhtml_marcado_traz_o_id_no_elemento_do_segmento() -> None:
     marcado = _segmentar("<blockquote><p>Quoted.</p></blockquote>").xhtml_marcado
-    assert b'<p data-ai-book="c001-s0001">Quoted.</p>' in marcado
+    assert b'<p data-earbook="c001-s0001">Quoted.</p>' in marcado
     assert b"<blockquote>" in marcado
 
 

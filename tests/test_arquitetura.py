@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parents[1]
-PACOTE = "ai_book"
+PACOTE = "earbook"
 SRC = RAIZ / "src" / PACOTE
 
 # ADR-0001: biblioteca de terceiro só no adaptador; o domínio fica testável sem nada.

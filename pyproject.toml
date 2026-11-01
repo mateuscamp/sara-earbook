@@ -1,5 +1,5 @@
 [project]
-name = "ai-book"
+name = "earbook"
 version = "0.1.0"
 description = "Traduz ebooks para ouvir no ElevenReader, com o Claude Code no comando."
 readme = "README.md"
@@ -9,7 +9,7 @@ license-files = ["LICENSE"]
 dependencies = ["lxml>=5"]
 
 [project.scripts]
-ai-book = "ai_book.comandos.cli:principal"
+earbook = "earbook.comandos.cli:principal"
 
 [dependency-groups]
 dev = [
@@ -56,7 +56,7 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101", "PLR2004", "ANN401"]  # assert, número mágico e Any de fixture em teste
-"src/ai_book/comandos/cli.py" = ["T201"]  # ADR-0002: o CLI é a camada de interface com humano
+"src/earbook/comandos/cli.py" = ["T201"]  # ADR-0002: o CLI é a camada de interface com humano
 
 [tool.ruff.lint.mccabe]
 max-complexity = 8
@@ -83,16 +83,16 @@ filterwarnings = ["error"]   # depreciação vira falha hoje, não quebra amanh�
 
 # ADR-0001: a dependência aponta para dentro, e o domínio não conhece biblioteca de borda.
 [tool.importlinter]
-root_package = "ai_book"
+root_package = "earbook"
 include_external_packages = true
 
 [[tool.importlinter.contracts]]
 name = "camadas: comandos → adaptadores → domínio"
 type = "layers"
-layers = ["ai_book.comandos", "ai_book.adaptadores", "ai_book.dominio"]
+layers = ["earbook.comandos", "earbook.adaptadores", "earbook.dominio"]
 
 [[tool.importlinter.contracts]]
 name = "domínio não conhece biblioteca de borda"
 type = "forbidden"
-source_modules = ["ai_book.dominio"]
+source_modules = ["earbook.dominio"]
 forbidden_modules = ["lxml"]

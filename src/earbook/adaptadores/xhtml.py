@@ -17,12 +17,12 @@ from urllib.parse import unquote
 
 from lxml import etree
 
-from ai_book.adaptadores.xml_seguro import PARSER_SEGURO, Elemento
-from ai_book.dominio.segmento import Papel, Segmento, id_do_segmento, normalizar_espacos
+from earbook.adaptadores.xml_seguro import PARSER_SEGURO, Elemento
+from earbook.dominio.segmento import Papel, Segmento, id_do_segmento, normalizar_espacos
 
 XHTML = "http://www.w3.org/1999/xhtml"
 OPS = "http://www.idpf.org/2007/ops"
-ATRIBUTO_DO_ID = "data-ai-book"
+ATRIBUTO_DO_ID = "data-earbook"
 
 TITULOS = frozenset({"h1", "h2", "h3", "h4", "h5", "h6"})
 ITENS = frozenset({"li", "dt", "dd"})
@@ -58,7 +58,7 @@ def segmentar_xhtml(conteudo: bytes, capitulo: str, caminho: str) -> CapituloSeg
     """Segmenta o XHTML `caminho` (relativo à raiz do EPUB) do capítulo `capitulo`.
 
     `segmentar_xhtml(dados, "c003", "OEBPS/cap3.xhtml")` devolve os segmentos
-    `c003-s0001`, `c003-s0002`... e o XHTML com `data-ai-book` em cada um.
+    `c003-s0001`, `c003-s0002`... e o XHTML com `data-earbook` em cada um.
     """
     corpo = _corpo(conteudo, caminho)
     chamadas = {a for a in corpo.iter(f"{{{XHTML}}}a") if _eh_chamada_de_nota(a)}

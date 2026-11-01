@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""Ponto de entrada do `ai-book`. A saída é texto para humano; os dados ficam na pasta."""
+"""Ponto de entrada do `earbook`. A saída é texto para humano; os dados ficam na pasta."""
 
 from __future__ import annotations
 
@@ -8,9 +8,9 @@ import sys
 from collections import Counter
 from pathlib import Path
 
-from ai_book.comandos.preparar import Preparo, pasta_padrao, preparar
-from ai_book.dominio.limpeza import LivroLimpo
-from ai_book.dominio.trabalho import LivroPreparado
+from earbook.comandos.preparar import Preparo, pasta_padrao, preparar
+from earbook.dominio.limpeza import LivroLimpo
+from earbook.dominio.trabalho import LivroPreparado
 
 EXEMPLOS_DE_TEXTO_FORA = 5
 
@@ -26,24 +26,24 @@ class _Opcoes(argparse.Namespace):
 
 
 def principal(argumentos: list[str] | None = None) -> int:
-    """`principal(["preparar", "Duna.epub"])` cria `Duna.ai-book/` e devolve 0."""
+    """`principal(["preparar", "Duna.epub"])` cria `Duna.earbook/` e devolve 0."""
     opcoes = _analisador().parse_args(argumentos, namespace=_Opcoes())
     pasta = opcoes.pasta or pasta_padrao(opcoes.epub)
     try:
         preparo = preparar(opcoes.epub, pasta)
     except (OSError, ValueError) as erro:
-        print(f"ai-book: {erro}", file=sys.stderr)
+        print(f"earbook: {erro}", file=sys.stderr)
         return 1
     print(_resumo(preparo, pasta))
     return 0
 
 
 def _analisador() -> argparse.ArgumentParser:
-    analisador = argparse.ArgumentParser(prog="ai-book")
+    analisador = argparse.ArgumentParser(prog="earbook")
     comandos = analisador.add_subparsers(dest="comando", required=True)
     preparo = comandos.add_parser("preparar", help="EPUB → pasta de trabalho com segmentos")
     _ = preparo.add_argument("epub", type=Path)
-    _ = preparo.add_argument("--pasta", type=Path, help="padrão: ao lado do EPUB, com .ai-book")
+    _ = preparo.add_argument("--pasta", type=Path, help="padrão: ao lado do EPUB, com .earbook")
     return analisador
 
 

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from ai_book.dominio.limpeza import (
+from earbook.dominio.limpeza import (
     MOTIVO_DA_CAPITULAR,
     MOTIVO_DA_LINHA_CURTA,
     LivroLimpo,
@@ -18,7 +18,7 @@ from ai_book.dominio.limpeza import (
     Suspeita,
     limpar_para_o_ouvido,
 )
-from ai_book.dominio.segmento import Papel, Segmento
+from earbook.dominio.segmento import Papel, Segmento
 
 
 def _livro(*capitulos: Sequence[str | Segmento]) -> LivroLimpo:

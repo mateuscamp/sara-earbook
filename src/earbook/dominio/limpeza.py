@@ -8,7 +8,7 @@ from collections import defaultdict
 from collections.abc import Sequence
 from dataclasses import dataclass, replace
 
-from ai_book.dominio.segmento import Papel, Segmento
+from earbook.dominio.segmento import Papel, Segmento
 
 # "Tides of Darkness 4" ou "12 Aaron Rosenberg": frase e número de página, sozinhos na linha.
 _FRASE_E_NUMERO = re.compile(r"^(?P<frase>\D.*?)\s+(?P<numero>\d{1,4})$")

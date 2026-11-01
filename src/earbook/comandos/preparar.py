@@ -7,12 +7,12 @@ import shutil
 from dataclasses import dataclass
 from pathlib import Path
 
-from ai_book.adaptadores import pasta_de_trabalho as trabalho
-from ai_book.adaptadores.pacote_epub import PacoteEpub, extrair_epub
-from ai_book.adaptadores.xhtml import segmentar_xhtml
-from ai_book.dominio.limpeza import LivroLimpo, limpar_para_o_ouvido
-from ai_book.dominio.segmento import Segmento, id_do_capitulo
-from ai_book.dominio.trabalho import CapituloPreparado, LivroPreparado, TextoForaDeSegmento
+from earbook.adaptadores import pasta_de_trabalho as trabalho
+from earbook.adaptadores.pacote_epub import PacoteEpub, extrair_epub
+from earbook.adaptadores.xhtml import segmentar_xhtml
+from earbook.dominio.limpeza import LivroLimpo, limpar_para_o_ouvido
+from earbook.dominio.segmento import Segmento, id_do_capitulo
+from earbook.dominio.trabalho import CapituloPreparado, LivroPreparado, TextoForaDeSegmento
 
 
 @dataclass(frozen=True)
@@ -22,8 +22,8 @@ class Preparo:
 
 
 def pasta_padrao(epub: Path) -> Path:
-    """`pasta_padrao(Path("Duna.epub"))` → `Path("Duna.ai-book")`."""
-    return epub.with_suffix(".ai-book")
+    """`pasta_padrao(Path("Duna.epub"))` → `Path("Duna.earbook")`."""
+    return epub.with_suffix(".earbook")
 
 
 def preparar(epub: Path, pasta: Path) -> Preparo:

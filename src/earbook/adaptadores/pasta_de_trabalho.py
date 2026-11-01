@@ -5,7 +5,7 @@ livro.json            metadados, capítulos e texto fora de segmento
 segmentos/cNNN.json   segmentos de cada capítulo como vieram do EPUB (a origem)
 limpos/cNNN.json      os mesmos, sem o que a limpeza tirou: é o que segue na esteira
 limpeza.json          remoções, suspeitas, aparos e junções da limpeza, com o motivo (ADR-0003)
-epub/                 EPUB extraído, com o XHTML marcado por `data-ai-book`
+epub/                 EPUB extraído, com o XHTML marcado por `data-earbook`
 """
 
 from __future__ import annotations
@@ -14,9 +14,9 @@ import json
 from dataclasses import asdict
 from pathlib import Path
 
-from ai_book.dominio.limpeza import CapituloLimpo, LivroLimpo
-from ai_book.dominio.segmento import Segmento
-from ai_book.dominio.trabalho import LivroPreparado
+from earbook.dominio.limpeza import CapituloLimpo, LivroLimpo
+from earbook.dominio.segmento import Segmento
+from earbook.dominio.trabalho import LivroPreparado
 
 
 def criar_pasta_de_trabalho(pasta: Path) -> None:

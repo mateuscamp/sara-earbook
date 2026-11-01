@@ -11,8 +11,8 @@ from collections.abc import Sequence
 
 import pytest
 
-from ai_book.dominio.limpeza import Aparo, Juncao, LivroLimpo, Suspeita, limpar_para_o_ouvido
-from ai_book.dominio.segmento import Papel, Segmento
+from earbook.dominio.limpeza import Aparo, Juncao, LivroLimpo, Suspeita, limpar_para_o_ouvido
+from earbook.dominio.segmento import Papel, Segmento
 
 TITULO = "World of WarCraft - Tides of Darkness"
 AUTOR = "Aaron Rosenberg"

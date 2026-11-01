@@ -6,10 +6,10 @@ from pathlib import Path
 
 import pytest
 
-from ai_book.adaptadores import pacote_epub
-from ai_book.comandos.preparar import pasta_padrao, preparar
-from ai_book.dominio.limpeza import MOTIVO_DA_CAPITULAR
-from ai_book.dominio.trabalho import ItemIgnorado
+from earbook.adaptadores import pacote_epub
+from earbook.comandos.preparar import pasta_padrao, preparar
+from earbook.dominio.limpeza import MOTIVO_DA_CAPITULAR
+from earbook.dominio.trabalho import ItemIgnorado
 from tests.livro_de_teste import Adulteracao, montar_epub, opf, xhtml
 
 
@@ -214,7 +214,7 @@ def test_preparar_grava_copia_do_epub_com_o_xhtml_marcado(epub: Path, tmp_path: 
     _ = preparar(epub, pasta)
     assert (pasta / "epub" / "mimetype").read_text() == "application/epub+zip"
     marcado = (pasta / "epub" / "OEBPS" / "a.xhtml").read_text(encoding="utf-8")
-    assert '<p data-ai-book="c002-s0001">A</p>' in marcado
+    assert '<p data-earbook="c002-s0001">A</p>' in marcado
 
 
 def test_preparar_devolve_o_mesmo_resultado_em_duas_execucoes(epub: Path, tmp_path: Path) -> None:
@@ -305,4 +305,4 @@ def test_preparar_recusa_zip_que_descompacta_alem_do_limite(
 
 
 def test_pasta_padrao_fica_ao_lado_do_epub() -> None:
-    assert pasta_padrao(Path("/livros/Duna.epub")) == Path("/livros/Duna.ai-book")
+    assert pasta_padrao(Path("/livros/Duna.epub")) == Path("/livros/Duna.earbook")

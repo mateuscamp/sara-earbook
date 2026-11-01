@@ -11,8 +11,8 @@ from urllib.parse import unquote
 
 from lxml import etree
 
-from ai_book.adaptadores.xml_seguro import PARSER_SEGURO, Elemento
-from ai_book.dominio.trabalho import ItemIgnorado
+from earbook.adaptadores.xml_seguro import PARSER_SEGURO, Elemento
+from earbook.dominio.trabalho import ItemIgnorado
 
 CONTAINER = "urn:oasis:names:tc:opendocument:xmlns:container"
 OPF = "http://www.idpf.org/2007/opf"

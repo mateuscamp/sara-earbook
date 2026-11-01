@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from ai_book.comandos.cli import principal
+from earbook.comandos.cli import principal
 from tests.livro_de_teste import montar_epub
 
 
@@ -17,7 +17,7 @@ def test_preparar_cria_a_pasta_ao_lado_do_epub_e_resume(
         {"a.xhtml": "<p>A</p><p>B</p>", "b.xhtml": "<div>Stray<p>C</p></div>"},
     )
     assert principal(["preparar", str(epub)]) == 0
-    assert (tmp_path / "livro.ai-book" / "livro.json").is_file()
+    assert (tmp_path / "livro.earbook" / "livro.json").is_file()
     saida = capsys.readouterr().out
     assert "2 capítulos, 3 segmentos" in saida
     assert "1 trecho fora de segmento" in saida

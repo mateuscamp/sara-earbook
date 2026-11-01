@@ -6,7 +6,10 @@ readme = "README.md"
 requires-python = ">=3.14"
 license = "GPL-3.0-or-later"
 license-files = ["LICENSE"]
-dependencies = ["lxml>=5"]
+dependencies = [
+    "lxml>=5",
+    "pdfminer-six>=20251230",  # abaixo disso: CVE-2025-64512 e CVE-2025-70559
+]
 
 [project.scripts]
 earbook = "earbook.comandos.cli:principal"
@@ -95,4 +98,12 @@ layers = ["earbook.comandos", "earbook.adaptadores", "earbook.dominio"]
 name = "domínio não conhece biblioteca de borda"
 type = "forbidden"
 source_modules = ["earbook.dominio"]
-forbidden_modules = ["lxml"]
+forbidden_modules = ["lxml", "pdfminer"]
+
+# ADR-0004: a biblioteca de PDF só entra por adaptadores/pdf.py.
+[[tool.importlinter.contracts]]
+name = "comandos não conhecem a biblioteca de PDF"
+type = "forbidden"
+source_modules = ["earbook.comandos"]
+forbidden_modules = ["pdfminer", "lxml"]
+allow_indirect_imports = true  # o caminho permitido é comandos → adaptadores → biblioteca

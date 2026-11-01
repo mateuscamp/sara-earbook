@@ -21,7 +21,7 @@ ADRs em `docs/adr/`. O Claude Code traduz; o Python nunca chama o LLM (ADR-0001)
 ## Processo (pedido do Mateus, 2026-10-31)
 
 - A skill `arquitetura-ai-first` orienta toda decisão estrutural; fronteira nova exige ADR antes do código.
-- A skill `code-audit` roda ao fim de toda implementação de código.
+- Ao fim de toda implementação de código, nesta ordem: a skill `code-review` e, depois dela, a skill `code-audit` (pedido do Mateus, 2026-11-01).
 - O asset se julga **ouvindo no ElevenReader**, não lendo lado a lado.
 
 ## Livros de medição (em `livros/`, fora do git; o original fica em `~/Documentos/livros/ingles/`)
@@ -39,13 +39,15 @@ ADRs em `docs/adr/`. O Claude Code traduz; o Python nunca chama o LLM (ADR-0001)
 ## Fronteiras (ADR-0001)
 
 Verificadas por ferramenta (import-linter e `tests/test_arquitetura.py`):
-- `dominio/` importa só stdlib. `adaptadores/` importa `dominio/` e `lxml`. `comandos/` importa os dois.
+- `dominio/` importa só stdlib. `adaptadores/` importa `dominio/`, `lxml` e `pdfminer`. `comandos/` importa os dois, mas nenhuma biblioteca de borda.
+- `pdfminer` entra só por `adaptadores/pdf.py` (ADR-0004).
 - Proibido em todo o pacote: `subprocess`, `socket`, `http`, `requests`, `httpx`.
 - Arquivo ≤ 400 linhas; função ≤ 20 linhas (teto 40); primeira linha de todo `.py` é o SPDX.
 
 Verificadas só em revisão (`code-audit`):
 - Só `adaptadores/pasta_de_trabalho.py` conhece o layout da pasta de trabalho.
 - EPUB é entrada não confiável: XML só pelo `PARSER_SEGURO` de `adaptadores/xml_seguro.py`; nenhum caminho sai da pasta de trabalho.
+- PDF também é entrada não confiável (pode vir de site de terceiros): toda falha do pdfminer vira `PdfInvalidoError` com o nome do arquivo, menos falta de memória e arquivo inacessível, que passam como vieram. O `try` cobre só a biblioteca, nunca a nossa conversão. O PDF é lido uma página por vez.
 
 ## O que atrapalha o ouvido (alvo da limpeza)
 
@@ -87,8 +89,10 @@ Verificadas só em revisão (`code-audit`):
 
 ```
 src/earbook/
-  dominio/      segmento.py (Segmento, IDs), trabalho.py (LivroPreparado), limpeza.py (regras do ouvido)
-  adaptadores/  xml_seguro.py (parser), pacote_epub.py (zip + OPF), xhtml.py, pasta_de_trabalho.py
+  dominio/      segmento.py (Segmento, IDs), trabalho.py (LivroPreparado), limpeza.py (regras do ouvido),
+                pagina.py (Pagina, Linha do PDF), paginacao.py (cabeçalho do PDF pela posição)
+  adaptadores/  xml_seguro.py (parser), pacote_epub.py (zip + OPF), xhtml.py, pasta_de_trabalho.py,
+                pdf.py (pdfminer)
   comandos/     preparar.py, cli.py
-tests/          test_<módulo>.py, test_arquitetura.py, livro_de_teste.py
+tests/          test_<módulo>.py, test_arquitetura.py, livro_de_teste.py (EPUB), pdf_de_teste.py (PDF)
 ```

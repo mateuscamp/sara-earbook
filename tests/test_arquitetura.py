@@ -20,7 +20,7 @@ SRC = RAIZ / "src" / PACOTE
 # ADR-0001: biblioteca de terceiro só no adaptador; o domínio fica testável sem nada.
 TERCEIROS_PERMITIDOS: dict[str, set[str]] = {
     "dominio": set(),
-    "adaptadores": {"lxml"},
+    "adaptadores": {"lxml", "pdfminer"},  # ADR-0004: PDF só pelo adaptador
     "comandos": set(),
 }
 # ADR-0001: o Python não chama o LLM nem a rede; quem traduz é o Claude Code.
@@ -104,3 +104,13 @@ def test_todo_arquivo_python_declara_a_licenca() -> None:
         _relativo(c) for c in arquivos if not c.read_text(encoding="utf-8").startswith(SPDX)
     ]
     assert not sem_spdx, f"sem '{SPDX}' na primeira linha:\n" + "\n".join(sem_spdx)
+
+
+def test_so_o_adaptador_de_pdf_importa_o_pdfminer() -> None:
+    """ADR-0004: a biblioteca de PDF entra por um módulo só, para poder sair por ele."""
+    importadores = sorted(
+        _relativo(caminho)
+        for caminho in _arquivos()
+        if any(nome.split(".")[0] == "pdfminer" for nome, _ in _imports(caminho))
+    )
+    assert importadores == ["src/earbook/adaptadores/pdf.py"]

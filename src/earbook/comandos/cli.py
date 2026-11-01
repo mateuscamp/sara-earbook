@@ -9,8 +9,10 @@ import io
 import os
 import sys
 from collections import Counter
+from collections.abc import Callable
 from pathlib import Path
 
+from earbook.comandos import montar as montagem
 from earbook.comandos.importar_pdf import Importacao, epub_padrao, importar_pdf
 from earbook.comandos.preparar import Preparo, pasta_padrao, preparar
 from earbook.dominio.blocos import TipoDeBloco
@@ -18,6 +20,7 @@ from earbook.dominio.limpeza import LivroLimpo
 from earbook.dominio.trabalho import LivroPreparado
 
 EXEMPLOS_DE_TEXTO_FORA = 5
+PROBLEMAS_LISTADOS = 50
 
 
 class _Opcoes(argparse.Namespace):
@@ -32,13 +35,14 @@ class _Opcoes(argparse.Namespace):
     pdf: Path = Path()
     saida: Path | None = None
     idioma: str = "und"
+    trabalho: Path = Path()
 
 
 def principal(argumentos: list[str] | None = None) -> int:
     """`principal(["preparar", "Duna.epub"])` cria `Duna.earbook/` e devolve 0."""
     opcoes = _analisador().parse_args(argumentos, namespace=_Opcoes())
     try:
-        resumo = _importar(opcoes) if opcoes.comando == "importar-pdf" else _preparar(opcoes)
+        resumo, codigo = _COMANDOS[opcoes.comando](opcoes)
     except (OSError, ValueError) as erro:
         print(f"earbook: {erro}", file=sys.stderr)
         return 1
@@ -49,7 +53,7 @@ def principal(argumentos: list[str] | None = None) -> int:
         print(resumo, flush=True)
     except BrokenPipeError:
         _calar_a_saida()
-    return 0
+    return codigo
 
 
 def _calar_a_saida() -> None:
@@ -65,14 +69,45 @@ def _calar_a_saida() -> None:
         os.close(nulo)
 
 
-def _importar(opcoes: _Opcoes) -> str:
+def _importar(opcoes: _Opcoes) -> tuple[str, int]:
     epub = opcoes.saida or epub_padrao(opcoes.pdf)
-    return _resumo_da_importacao(importar_pdf(opcoes.pdf, epub, opcoes.idioma))
+    return _resumo_da_importacao(importar_pdf(opcoes.pdf, epub, opcoes.idioma)), 0
 
 
-def _preparar(opcoes: _Opcoes) -> str:
+def _preparar(opcoes: _Opcoes) -> tuple[str, int]:
     pasta = opcoes.pasta or pasta_padrao(opcoes.epub)
-    return _resumo(preparar(opcoes.epub, pasta), pasta)
+    return _resumo(preparar(opcoes.epub, pasta), pasta), 0
+
+
+def _conferir(opcoes: _Opcoes) -> tuple[str, int]:
+    """Código 1 quando há problema: o `montar` recusaria o livro (ADR-0005)."""
+    pasta = opcoes.trabalho
+    problemas = montagem.conferir_pasta(pasta)
+    if not problemas:
+        return f"{pasta}: nada faltando, sobrando ou repetido; pode montar.", 0
+    linhas = [f"{pasta}: {len(problemas)} problemas; o montar recusaria o livro."]
+    linhas += [f"  {p.id}: {p.motivo}" for p in problemas[:PROBLEMAS_LISTADOS]]
+    if len(problemas) > PROBLEMAS_LISTADOS:
+        linhas.append(f"  ... e mais {len(problemas) - PROBLEMAS_LISTADOS}")
+    return "\n".join(linhas), 1
+
+
+def _montar(opcoes: _Opcoes) -> tuple[str, int]:
+    pasta = opcoes.trabalho
+    feito = montagem.montar(pasta, opcoes.saida or montagem.epub_padrao(pasta))
+    resumo = (
+        f"Montado em {feito.epub}: {feito.capitulos} capítulos, {feito.segmentos} segmentos "
+        f"({feito.notas} notas levadas para o fim do capítulo)."
+    )
+    return resumo, 0
+
+
+_COMANDOS: dict[str, Callable[[_Opcoes], tuple[str, int]]] = {
+    "preparar": _preparar,
+    "importar-pdf": _importar,
+    "conferir": _conferir,
+    "montar": _montar,
+}
 
 
 def _analisador() -> argparse.ArgumentParser:
@@ -87,6 +122,13 @@ def _analisador() -> argparse.ArgumentParser:
         "--epub", dest="saida", type=Path, help="padrão: ao lado do PDF, com .epub"
     )
     _ = importacao.add_argument("--idioma", default="und", help="pt-BR, en... (padrão: und)")
+    conferencia = comandos.add_parser("conferir", help="confere se nada some antes de montar")
+    _ = conferencia.add_argument("trabalho", type=Path, help="a pasta .earbook")
+    montagem_ = comandos.add_parser("montar", help="pasta de trabalho → EPUB para ouvir")
+    _ = montagem_.add_argument("trabalho", type=Path, help="a pasta .earbook")
+    _ = montagem_.add_argument(
+        "--epub", dest="saida", type=Path, help="padrão: ao lado da pasta, com .pronto.epub"
+    )
     return analisador
 
 

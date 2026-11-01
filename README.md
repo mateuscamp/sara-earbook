@@ -25,6 +25,18 @@ O comando `preparar` cria `livro.earbook/` com:
 - `limpeza.json`: cada segmento que saiu (`remocoes`), cada cabeçalho aparado do fim de um parágrafo (`aparos`), cada parágrafo partido que foi juntado ao anterior (`juncoes`) e os suspeitos que ficaram no texto para decidir (`suspeitas`).
 - `epub/`: o EPUB extraído, com cada segmento marcado no XHTML por `data-earbook`.
 
+Depois de limpo (e, no livro em inglês, traduzido), o livro volta a ser EPUB:
+
+```bash
+uv run earbook conferir livro.earbook
+uv run earbook montar livro.earbook
+```
+
+O `conferir` cobra que nenhum trecho sumiu, sobrou ou se repetiu entre o EPUB original e a
+pasta de trabalho; o `montar` recusa o livro quando ele acha problema. O `montar` grava
+`livro.pronto.epub` (ou onde `--epub` mandar): o EPUB original, com o texto limpo no lugar,
+sem as marcas de trabalho e com cada nota de rodapé no fim do capítulo, sob "Notas".
+
 ### PDF
 
 ```bash

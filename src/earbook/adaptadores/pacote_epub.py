@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import posixpath
 import zipfile
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import unquote
@@ -139,3 +140,43 @@ def _caminho_dentro_do_epub(base: str, href: str, quem_aponta: str) -> str:
         mensagem = f"{quem_aponta} aponta para fora do EPUB: {href!r}"
         raise EpubInvalidoError(mensagem)
     return caminho
+
+
+def gravar_pacote(destino: Path, escrever: Callable[[zipfile.ZipFile], None]) -> None:
+    """Grava um EPUB em `destino`, que não pode existir ainda: o `mimetype` primeiro e sem
+    compressão (é assim que o leitor reconhece o EPUB), depois o que `escrever` puser.
+
+    Se algo falhar no meio, apaga o arquivo que acabou de criar: EPUB pela metade pareceria
+    um livro, e a próxima gravação recusaria o destino sem motivo.
+    """
+    arquivo = destino.open("xb")
+    # O `close` fica dentro do `try`: o último flush é onde o disco cheio aparece (revisão nº 3).
+    try:
+        with arquivo, zipfile.ZipFile(arquivo, "w", zipfile.ZIP_DEFLATED) as zip_:
+            zip_.writestr("mimetype", "application/epub+zip", zipfile.ZIP_STORED)
+            escrever(zip_)
+    except BaseException:
+        destino.unlink()
+        raise
+
+
+def empacotar_pasta(pasta: Path, destino: Path, substituicoes: Mapping[str, bytes]) -> None:
+    """Empacota o EPUB extraído em `pasta`, com `substituicoes` (caminho → conteúdo) no lugar."""
+
+    def escrever(zip_: zipfile.ZipFile) -> None:
+        for arquivo in sorted(pasta.rglob("*")):
+            nome = arquivo.relative_to(pasta).as_posix()
+            # A pasta é editada pelo agente e pela tradução: um link para fora levaria um
+            # arquivo qualquer do computador para dentro do EPUB (revisão).
+            if arquivo.is_symlink():
+                mensagem = f"{nome}: link simbólico na pasta do EPUB ({pasta}); não empacoto"
+                raise EpubInvalidoError(mensagem)
+            if arquivo.is_file() and nome != "mimetype":
+                conteudo = substituicoes[nome] if nome in substituicoes else arquivo.read_bytes()
+                zip_.writestr(nome, conteudo)
+        # A troca que não achou o arquivo deixaria o capítulo cru, sem aviso (A5 da auditoria).
+        if sobrando := sorted(set(substituicoes) - set(zip_.namelist())):
+            mensagem = f"{pasta}: sem arquivo para trocar: {', '.join(sobrando)}"
+            raise EpubInvalidoError(mensagem)
+
+    gravar_pacote(destino, escrever)

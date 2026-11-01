@@ -10,7 +10,7 @@ ADRs em `docs/adr/`. O Claude Code traduz; o Python nunca chama o LLM (ADR-0001)
 
 ## Decisões (2026-10-31)
 
-- Esteira (ADR-0003): `preparar → limpar → [traduzir] → conferir → montar`. Livro em inglês é traduzido para pt-BR; livro em português só é preparado para o ouvido.
+- Esteira (ADR-0003): `preparar → limpar → [traduzir] → conferir → montar`. O `montar` troca o texto no EPUB original e recusa o livro que o `conferir` reprova (ADR-0005). Livro em inglês é traduzido para pt-BR; livro em português só é preparado para o ouvido.
 - A limpeza nunca apaga em silêncio: toda remoção fica em `limpeza.json`, com o ID do segmento de origem.
 - Entrada: EPUB. PDF entra pelo comando `importar-pdf` (ADR-0004), só para ouvir: sem fidelidade visual, sem OCR, e a biblioteca de PDF só em `adaptadores/`.
 - Motor: o Claude Code na sessão, pela assinatura, com um subagente por capítulo. O limite de uso conta.
@@ -43,6 +43,7 @@ Saída de medição vai para `livros/trabalho/`, nunca para `/tmp` nem para o sc
 - Portão: `make check` (`scripts/portao.sh`: lock, formato, lint, supressão, tipos, fronteiras, testes, `uv audit`). O hook Stop roda o mesmo. Rodar antes de declarar qualquer tarefa concluída e mostrar a saída.
 - Uso: `uv run earbook preparar livro.epub` → `livro.earbook/`.
 - PDF: `uv run earbook importar-pdf livro.pdf --idioma pt-BR` → `livro.epub`, que segue para o `preparar`.
+- Fim da esteira: `uv run earbook conferir livro.earbook` e `uv run earbook montar livro.earbook` → `livro.pronto.epub`.
 
 ## Fronteiras (ADR-0001)
 
@@ -53,7 +54,7 @@ Verificadas por ferramenta (import-linter e `tests/test_arquitetura.py`):
 - Arquivo ≤ 400 linhas; função ≤ 20 linhas (teto 40); primeira linha de todo `.py` é o SPDX.
 
 Verificadas só em revisão (`code-audit`):
-- Só `adaptadores/pasta_de_trabalho.py` conhece o layout da pasta de trabalho.
+- Só `adaptadores/pasta_de_trabalho.py` conhece o layout da pasta de trabalho, e todo JSON lido dela é validado campo a campo (o tipo `Json`; a única supressão é a do `json.loads`).
 - EPUB é entrada não confiável: XML só pelo `PARSER_SEGURO` de `adaptadores/xml_seguro.py`; nenhum caminho sai da pasta de trabalho.
 - PDF também é entrada não confiável (pode vir de site de terceiros): toda falha do pdfminer vira `PdfInvalidoError` com o nome do arquivo, menos falta de memória, que passa como veio. O arquivo abre fora do `try`: inexistente ou sem permissão chega como `OSError`; um erro de disco no meio da leitura sai como "não é um PDF válido", com a causa no `from`. O `try` cobre só a biblioteca, nunca a nossa conversão. O que vem do pdfminer com tipo incerto (nome de fonte) é validado no adaptador. O PDF é lido uma página por vez.
 - O EPUB que o `importar-pdf` grava carrega texto do PDF: todo texto passa por `escape` e pela retirada do caractere que o XML 1.0 não aceita, e o `preparar` é o teste de contrato do que foi gravado.
@@ -99,11 +100,12 @@ Verificadas só em revisão (`code-audit`):
 ```
 src/earbook/
   dominio/      segmento.py (Segmento, IDs), trabalho.py (LivroPreparado), limpeza.py (regras do ouvido),
-                pagina.py (Pagina, Linha do PDF), paginacao.py (cabeçalho do PDF pela posição),
-                blocos.py (parágrafo, título, código, nota e capítulo do PDF)
+                pagina.py (Pagina, Linha e letra espaçada do PDF), paginacao.py (cabeçalho do PDF
+                pela posição), blocos.py (parágrafo, título, código, nota e capítulo do PDF),
+                conferencia.py (o conferir)
   adaptadores/  xml_seguro.py (parser), pacote_epub.py (zip + OPF), xhtml.py, pasta_de_trabalho.py,
                 pdf.py (pdfminer), epub_simples.py (grava o EPUB do PDF)
-  comandos/     preparar.py, importar_pdf.py, cli.py
+  comandos/     preparar.py, importar_pdf.py, montar.py (conferir e montar), cli.py
 tests/          test_<módulo>.py, test_arquitetura.py, livro_de_teste.py (EPUB), pdf_de_teste.py (PDF),
                 linhas_de_teste.py (linhas do PDF já lidas, para os testes de blocos)
 ```

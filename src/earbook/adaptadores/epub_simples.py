@@ -7,7 +7,6 @@ CSS nem de imagem, porque o EPUB não é para ler na tela.
 
 from __future__ import annotations
 
-import re
 import uuid
 import zipfile
 from collections.abc import Sequence
@@ -16,13 +15,10 @@ from html import escape
 from pathlib import Path
 from typing import assert_never
 
-from earbook.adaptadores.pacote_epub import CONTAINER, DC, OPF
+from earbook.adaptadores.pacote_epub import CONTAINER, DC, OPF, gravar_pacote
 from earbook.adaptadores.xhtml import OPS, XHTML
 from earbook.dominio.blocos import Bloco, TipoDeBloco
-
-# O XML 1.0 não aceita controle fora de tab e quebra de linha, nem surrogate solto. O texto
-# vem de PDF, que carrega de tudo; sem a limpeza, o `preparar` recusaria o EPUB inteiro.
-_FORA_DO_XML = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f\ud800-\udfff\ufffe\uffff]")
+from earbook.dominio.segmento import FORA_DO_XML
 
 _CONTAINER = """<?xml version="1.0" encoding="utf-8"?>
 <container version="1.0" xmlns="{container}">
@@ -65,26 +61,13 @@ xml:lang="{idioma}" lang="{idioma}">
 def gravar_epub(
     destino: Path, titulo: str, idioma: str, capitulos: Sequence[Sequence[Bloco]]
 ) -> None:
-    """Grava `capitulos` em `destino`, que não pode existir ainda.
-
-    Se algo falhar no meio, apaga o arquivo que acabou de criar: EPUB pela metade
-    pareceria um livro e faria o próximo `importar-pdf` recusar sem motivo.
-    """
-    arquivo = destino.open("xb")
-    # O `close` fica dentro do `try`: o último flush é onde o disco cheio aparece (revisão nº 3).
-    try:
-        with arquivo, zipfile.ZipFile(arquivo, "w", zipfile.ZIP_DEFLATED) as zip_:
-            _gravar(zip_, _limpo(titulo), _limpo(idioma), capitulos)
-    except BaseException:
-        destino.unlink()
-        raise
+    """Grava `capitulos` em `destino`, que não pode existir ainda (`gravar_pacote`)."""
+    gravar_pacote(destino, lambda zip_: _gravar(zip_, _limpo(titulo), _limpo(idioma), capitulos))
 
 
 def _gravar(
     zip_: zipfile.ZipFile, titulo: str, idioma: str, capitulos: Sequence[Sequence[Bloco]]
 ) -> None:
-    # O mimetype vem primeiro e sem compressão: é assim que o leitor reconhece o EPUB.
-    zip_.writestr("mimetype", "application/epub+zip", zipfile.ZIP_STORED)
     zip_.writestr("META-INF/container.xml", _CONTAINER.format(container=CONTAINER))
     nomes = [f"c{posicao:03d}" for posicao in range(1, len(capitulos) + 1)]
     for nome, blocos in zip(nomes, capitulos, strict=True):
@@ -153,4 +136,4 @@ def _pacote(titulo: str, idioma: str, nomes: Sequence[str]) -> str:
 
 
 def _limpo(texto: str) -> str:
-    return _FORA_DO_XML.sub("", texto)
+    return FORA_DO_XML.sub("", texto)

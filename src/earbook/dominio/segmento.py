@@ -7,8 +7,14 @@ entra na tradução tem de sair dela, sem faltar, sobrar ou repetir.
 
 from __future__ import annotations
 
+import re
+from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import StrEnum
+
+# O XML 1.0 não aceita controle fora de tab e quebra de linha, nem surrogate solto. O texto
+# vem de PDF e, depois, da tradução; sem a checagem, o lxml recusa sem dizer o segmento.
+FORA_DO_XML = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f\ud800-\udfff\ufffe\uffff]")
 
 
 class Papel(StrEnum):
@@ -47,3 +53,14 @@ def id_do_segmento(capitulo: str, posicao: int) -> str:
 def normalizar_espacos(texto: str) -> str:
     """Junta qualquer sequência de espaço Unicode (inclusive NBSP) num espaço só."""
     return " ".join(texto.split())
+
+
+def notas_para_o_fim(segmentos: Sequence[Segmento]) -> frozenset[str]:
+    """As notas que o `montar` leva para o fim do capítulo (ADR-0005).
+
+    Nenhuma quando o capítulo só tem notas e títulos: é a nota de fim de livro, que fica
+    sob o subtítulo do capítulo dela (A3 da auditoria).
+    """
+    if all(segmento.papel in {Papel.NOTA, Papel.TITULO} for segmento in segmentos):
+        return frozenset()
+    return frozenset(segmento.id for segmento in segmentos if segmento.papel is Papel.NOTA)

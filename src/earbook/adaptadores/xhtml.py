@@ -11,7 +11,7 @@ from __future__ import annotations
 import html.entities
 import posixpath
 import re
-from collections.abc import Iterator
+from collections.abc import Collection, Iterator, Mapping
 from dataclasses import dataclass
 from urllib.parse import unquote
 
@@ -23,6 +23,8 @@ from earbook.dominio.segmento import Papel, Segmento, id_do_segmento, normalizar
 XHTML = "http://www.w3.org/1999/xhtml"
 OPS = "http://www.idpf.org/2007/ops"
 ATRIBUTO_DO_ID = "data-earbook"
+# O livro montado é sempre em pt-BR: em português de origem ou traduzido (ADR-0003).
+TITULO_DAS_NOTAS = "Notas"
 
 TITULOS = frozenset({"h1", "h2", "h3", "h4", "h5", "h6"})
 ITENS = frozenset({"li", "dt", "dd"})
@@ -78,6 +80,133 @@ def segmentar_xhtml(conteudo: bytes, capitulo: str, caminho: str) -> CapituloSeg
         segmentos.append(segmento)
     marcado = etree.tostring(corpo.getroottree(), xml_declaration=True, encoding="utf-8")
     return CapituloSegmentado(marcado, segmentos, list(_texto_fora(corpo, chamadas)))
+
+
+def ids_marcados(conteudo: bytes, caminho: str) -> tuple[str, ...]:
+    """Os IDs marcados com `data-earbook` no XHTML, na ordem do documento."""
+    corpo = _corpo(conteudo, caminho)
+    return tuple(marca for e in corpo.iter() if (marca := e.get(ATRIBUTO_DO_ID)) is not None)
+
+
+def montar_xhtml(
+    conteudo: bytes, textos: Mapping[str, str], notas: Collection[str], caminho: str
+) -> bytes:
+    """O XHTML marcado com o texto final no lugar de cada segmento (ADR-0005).
+
+    `textos` tem o texto final de cada ID mantido; o elemento de ID fora dele (removido ou
+    juntado) sai. O ID em `notas` sai do lugar e entra no fim do capítulo, sob "Notas",
+    como parágrafo comum. A marca `data-earbook` sai de todos. Todo `id` do capítulo
+    continua nele (ver `_ancoras_no_comeco`).
+    """
+    corpo = _corpo(conteudo, caminho)
+    no_fim: list[str] = []
+    pendentes: list[str] = []
+    ultimo: Elemento | None = None
+    for elemento in [e for e in corpo.iter() if e.get(ATRIBUTO_DO_ID) is not None]:
+        id_ = elemento.attrib.pop(ATRIBUTO_DO_ID)
+        if _no_sumario(elemento):
+            _trocar_texto_do_link(elemento, textos.get(id_))
+            continue
+        if id_ in textos and id_ not in notas:
+            _trocar_texto(elemento, textos[id_], pendentes)
+            pendentes, ultimo = [], elemento
+            continue
+        if id_ in textos:
+            no_fim.append(textos[id_])
+        pendentes += _tirar(elemento, corpo)
+    _guardar_ancoras(corpo, ultimo, pendentes)
+    if no_fim:
+        _acrescentar_notas(corpo, no_fim)
+    return etree.tostring(corpo.getroottree(), xml_declaration=True, encoding="utf-8")
+
+
+def _no_sumario(elemento: Elemento) -> bool:
+    return any(_nome(ancestral) == "nav" for ancestral in elemento.iterancestors())
+
+
+def _trocar_texto_do_link(elemento: Elemento, texto: str | None) -> None:
+    """No sumário (`<nav>`), nada sai e o item não recebe âncora de fora: sem o `<a href>`,
+    ou sem o `<nav>`, o leitor perde a navegação, e `<a id>` no `<li>` é inválido (A1 da
+    auditoria; N1 a N3 da pós-auditoria). O texto final entra no link, que mantém o `href`:
+    no livro traduzido, o sumário também sai em português.
+    """
+    if texto is None:
+        return
+    links = [d for d in elemento.iterdescendants() if _nome(d) in {"a", "span"}]
+    alvo = links[0] if links else elemento
+    for filho in list(alvo):
+        alvo.remove(filho)
+    alvo.text = texto
+
+
+def _trocar_texto(elemento: Elemento, texto: str, ancoras_de_antes: list[str]) -> None:
+    """O texto final entra sem a marcação interna: itálico e link não mudam o áudio."""
+    de_dentro = _ids_de_dentro(elemento)
+    for filho in list(elemento):
+        elemento.remove(filho)
+    elemento.text = texto
+    _ancoras_no_comeco(elemento, [*ancoras_de_antes, *de_dentro])
+
+
+def _ancoras_no_comeco(elemento: Elemento, ids: list[str]) -> None:
+    """Todo `id` do capítulo continua nele, como `<a id>` vazio no começo de um bloco de
+    texto, que sempre aceita `<a>`: o sumário e as notas apontam para ele
+    (`cap.xhtml#calibre_toc_3`). Solto no `<ul>` ou no `<body>` do EPUB2, o `<a>` seria
+    XHTML inválido (A4 da auditoria)."""
+    if not ids:
+        return
+    texto, elemento.text = elemento.text, None
+    ancoras = [_ancora(id_) for id_ in ids]
+    for posicao, ancora in enumerate(ancoras):
+        elemento.insert(posicao, ancora)
+    ancoras[-1].tail = texto
+
+
+def _guardar_ancoras(corpo: Elemento, ultimo: Elemento | None, ids: list[str]) -> None:
+    """As âncoras tiradas depois do último bloco mantido vão para o fim dele; sem bloco
+    mantido no capítulo, para um `<div>`, que aceita `<a>`."""
+    if not ids:
+        return
+    destino = ultimo if ultimo is not None else etree.SubElement(corpo, f"{{{XHTML}}}div")
+    for id_ in ids:
+        destino.append(_ancora(id_))
+
+
+def _tirar(elemento: Elemento, corpo: Elemento) -> list[str]:
+    """Tira o elemento sem levar o texto solto que vem depois dele, e o contêiner que
+    esvaziou. Devolve os `id` que saíram, para virarem âncora num bloco mantido."""
+    pai = elemento.getparent()
+    if pai is None:
+        return []
+    ids = [id_ for id_ in [elemento.get("id")] if id_] + _ids_de_dentro(elemento)
+    if elemento.tail and elemento.tail.strip():
+        anterior = elemento.getprevious()
+        if anterior is not None:
+            anterior.tail = (anterior.tail or "") + elemento.tail
+        else:
+            pai.text = (pai.text or "") + elemento.tail
+    pai.remove(elemento)
+    if pai is not corpo and len(pai) == 0 and not (pai.text or "").strip():
+        ids += _tirar(pai, corpo)
+    return ids
+
+
+def _ids_de_dentro(elemento: Elemento) -> list[str]:
+    return [id_ for filho in elemento.iterdescendants() if (id_ := filho.get("id"))]
+
+
+def _ancora(id_: str) -> Elemento:
+    ancora = etree.Element(f"{{{XHTML}}}a")
+    ancora.set("id", id_)
+    return ancora
+
+
+def _acrescentar_notas(corpo: Elemento, textos: list[str]) -> None:
+    titulo = etree.SubElement(corpo, f"{{{XHTML}}}h2")
+    titulo.text = TITULO_DAS_NOTAS
+    for texto in textos:
+        paragrafo = etree.SubElement(corpo, f"{{{XHTML}}}p")
+        paragrafo.text = texto
 
 
 def _corpo(conteudo: bytes, caminho: str) -> Elemento:

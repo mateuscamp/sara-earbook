@@ -11,7 +11,7 @@ ADRs em `docs/adr/`. O Claude Code traduz; o Python nunca chama o LLM (ADR-0001)
 
 - Esteira (ADR-0003): `preparar → limpar → [traduzir] → conferir → montar`. Livro em inglês é traduzido para pt-BR; livro em português só é preparado para o ouvido.
 - A limpeza nunca apaga em silêncio: toda remoção fica em `limpeza.json`, com o ID do segmento de origem.
-- Entrada: EPUB, quase sempre. PDF fica fora do escopo até aparecer um caso real.
+- Entrada: EPUB. PDF entra pelo comando `importar-pdf` (ADR-0004), só para ouvir: sem fidelidade visual, sem OCR, e a biblioteca de PDF só em `adaptadores/`.
 - Motor: o Claude Code na sessão, pela assinatura, com um subagente por capítulo. O limite de uso conta.
 - Notas de rodapé: o marcador sai do meio da frase e o texto da nota vai para o fim do capítulo.
 - Saída: um EPUB **só com a tradução**. O modo bilíngue é proibido, porque o TTS lê as duas línguas.

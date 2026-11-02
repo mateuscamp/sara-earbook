@@ -15,7 +15,11 @@ não ficar bonito na página. Mudança neste arquivo exige nova escuta da amostr
   (`c005-l001`, `c005-l002`…).
 - Cada pedido em `<pasta>/pedidos/<lote>.json`: uma lista de `{"id", "papel", "texto"}`.
 - O glossário em `<pasta>/glossario.json`, se existir: uma lista de
-  `{"original", "traducao"}`. Leia-o antes do primeiro lote.
+  `{"original", "traducao"}`.
+- As decisões do livro em `<pasta>/decisoes.md`: a política de nome fora do glossário, o tom,
+  o dialeto, os títulos, o tratamento e as escolhas que a escuta da amostra aprovou. Elas valem
+  mais que as regras gerais deste arquivo (ADR-0007). Seção vazia: vale a regra daqui.
+- Leia o glossário e as decisões antes do primeiro lote.
 
 ## O que você grava
 
@@ -34,7 +38,24 @@ Para cada lote, assim que terminar de traduzi-lo, `<pasta>/traduzidos/<lote>.jso
   de escape. Aspa reta dentro do texto vai escapada (`\"`).
 - Só `id` e `texto`. Nada de papel, nota ou comentário no arquivo.
 - Grave lote a lote: se a sessão cair, o lote gravado não é refeito.
-- Nunca escreva em `segmentos/`, `limpos/`, `pedidos/`, `epub/` nem no glossário.
+
+Junto com a resposta, `<pasta>/termos/<lote>.json` com tudo o que você decidiu e que não está
+no glossário, nome próprio ou termo comum que pode voltar em outro capítulo (ADR-0007):
+
+```json
+[
+  {"original": "stormhammer", "traducao": "martelo de tempestade"},
+  {"original": "Nekros Skullcrusher", "traducao": "Nekros Skullcrusher"}
+]
+```
+
+- Declare cada termo uma vez, no primeiro lote em que ele aparece, na grafia do original
+  (maiúscula, plural e apóstrofo como estão no texto). Nome que fica igual também entra.
+- Lote sem termo novo não precisa do arquivo.
+- Outros tradutores trabalham em paralelo e não se veem: a declaração é o que mostra à sessão
+  que dois de vocês escolheram formas diferentes. O `conferir` cobra cada termo declarado.
+- Nunca escreva em `segmentos/`, `limpos/`, `pedidos/`, `epub/`, no glossário nem em
+  `decisoes.md`: os dois últimos são da sessão.
 
 ## Como traduzir
 
@@ -43,10 +64,22 @@ Para cada lote, assim que terminar de traduzi-lo, `<pasta>/traduzidos/<lote>.jso
 - **Para o ouvido:** nada de nota do tradutor, colchete, asterisco, markdown ou parêntese
   explicativo que o original não tem. Escreva frases que um narrador lê sem tropeçar.
 - **Nome próprio:** use sempre a forma do glossário e repita o nome onde o original repete,
-  sem trocar por pronome: o `conferir` cobra. Nome fora do glossário fica como no original e
-  entra no seu relatório.
+  sem trocar por pronome: o `conferir` cobra. Nome fora do glossário segue a política de
+  `decisoes.md` (por exemplo, a localização oficial do jogo); sem política, fica como no
+  original. Nos dois casos, entra em `termos/` e no relatório.
+- **Termo criado:** o termo comum que você teve de inventar ou escolher (*stormhammer*,
+  *necrolyte*, *Dragonqueen*) tem a mesma forma em todo o capítulo e entra em `termos/`.
 - **Título** (papel `titulo`): continua título, curto e sem ponto final. Número romano de
-  capítulo vira arábico ("Chapter IV" → "Capítulo 4"), porque a voz lê "i vê".
+  capítulo vira arábico ("Chapter IV" → "Capítulo 4"), porque a voz lê "i vê". Número por
+  extenso também se traduz por extenso ("ONE" → "Um", "first prologue" → "Primeiro prólogo"),
+  salvo outra escolha em `decisoes.md`.
+- **Caixa alta:** texto todo em maiúsculas ("TIDES OF DARKNESS", "POCKET STAR BOOKS") vai para
+  a caixa normal, para a voz não soletrar. Sigla de verdade continua sigla.
+- **Erro do original** (palavra trocada, letra a menos, frase truncada pela edição): traduza
+  pelo que o autor quis dizer e ponha o ID no relatório.
+- **Dialeto e sotaque** (fala de troll, de anão, de caipira): siga `decisoes.md`. Sem decisão,
+  escolha um registro, aplique a todas as falas daquele grupo no seu capítulo e registre a
+  escolha no relatório, com um exemplo e o ID.
 - **Citação e verso** (papel `citacao`, ou verso em `celula`): traduza. Obra com título
   consagrado no Brasil usa o título consagrado (*The Marriage of Heaven and Hell* →
   *O Casamento do Céu e do Inferno*), sem itálico nem aspas que o texto não tinha. Fora da
@@ -62,13 +95,17 @@ Para cada lote, assim que terminar de traduzi-lo, `<pasta>/traduzidos/<lote>.jso
 
 ## Antes de terminar
 
-Rode `uv run earbook conferir <pasta> --amostra` e corrija, no seu arquivo de resposta, todo
-problema com ID do seu capítulo: "igual ao original", "parece inglês", "sem 'X', que o
-glossário dá…", "'X' ficou no original", "tradução vazia", "traduzido 2 vezes",
-"respondido no lote…". Problema de outro capítulo não é seu.
+Rode `uv run earbook conferir <pasta> --amostra --capitulo <cNNN>`, com o seu capítulo, e
+corrija, na resposta e na declaração, todo problema que ele listar: "igual ao original",
+"parece inglês", "sem 'X', que o glossário dá…", "'X' ficou no original", "tradução vazia",
+"traduzido 2 vezes", "respondido no lote…", "declarou 'X' → 'Y', mas o glossário diz…". Com o
+`--capitulo`, os problemas dos outros capítulos não aparecem.
 
 ## Relatório final, curto
 
 - os lotes gravados;
 - os nomes próprios fora do glossário, com a forma que você usou;
+- os termos criados que valem para outros capítulos, com a forma e o ID da primeira vez;
+- os erros do original que você traduziu pelo sentido, com o ID;
+- o registro que deu a dialeto, se o capítulo tem, com um exemplo;
 - os trechos em que hesitou (trocadilho, verso, termo técnico), com o ID.

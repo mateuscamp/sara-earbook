@@ -107,3 +107,9 @@ def conferir_textos(segmentos: Iterable[Segmento]) -> tuple[Problema, ...]:
             motivo = f"texto com caractere que o XML não aceita: {codigos}"
             problemas.append(Problema(segmento.id, motivo))
     return tuple(problemas)
+
+
+def do_capitulo(problemas: Iterable[Problema], capitulo: str) -> tuple[Problema, ...]:
+    """Só os problemas do capítulo e dos lotes dele: o tradutor em paralelo não vê os dos
+    outros, nem os do glossário, que são da sessão (ADR-0007)."""
+    return tuple(p for p in problemas if p.id == capitulo or p.id.startswith(f"{capitulo}-"))

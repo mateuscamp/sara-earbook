@@ -103,6 +103,7 @@ def test_preparar_grava_os_segmentos_limpos_e_o_registro_da_limpeza(tmp_path: Pa
         ],
         "aparos": [],
         "juncoes": [],
+        "capitulares": [],
     }
     assert _ler(pasta / "limpeza.json") == _json(registro)
     assert "Livro de Teste 2" in _ler(pasta / "segmentos" / "c001.json")
@@ -134,6 +135,7 @@ def test_preparar_apara_cabecalho_colado_e_junta_o_paragrafo_partido(tmp_path: P
             {"id": "c001-s0001", "motivo": f"{solto} colado no fim", "texto": "Livro de Teste 8"}
         ],
         "juncoes": [{"id": "c001-s0002", "em": "c001-s0001"}],
+        "capitulares": [],
     }
     assert _ler(pasta / "limpeza.json") == _json(registro)
 
@@ -163,6 +165,21 @@ def test_preparar_marca_capitular_perdida_com_a_pista_da_letra_solta(tmp_path: P
     pista = {"id": "c001-s0002", "posicao": texto.index(" A ") + 1, "letra": "A"}
     suspeita = {"id": "c001-s0002", "motivo": MOTIVO_DA_CAPITULAR, "texto": texto, "pista": pista}
     assert _json({"suspeitas": [suspeita]})[2:-3] in _ler(pasta / "limpeza.json")
+
+
+def test_preparar_devolve_a_capitular_e_registra_de_onde_ela_saiu(tmp_path: Path) -> None:
+    # ADR-0007: "are" existe no livro, então o "A" que abre o parágrafo seguinte é a capitular.
+    corpo = "<h1>EIGHT</h1><p>re we ready?</p><p>A Lothar nodded. They are ready.</p>"
+    epub = montar_epub(tmp_path / "livro.epub", {"a.xhtml": corpo})
+    pasta = tmp_path / "trabalho"
+    _ = preparar(epub, pasta)
+    devolvida = {"id": "c001-s0002", "origem": "c001-s0003", "posicao": 0, "letra": "A"}
+    limpeza = _ler(pasta / "limpeza.json")
+    assert _json({"capitulares": [devolvida]})[2:-3] in limpeza
+    assert '"suspeitas": []' in limpeza
+    limpos = _ler(pasta / "limpos" / "c001.json")
+    assert '"Are we ready?"' in limpos
+    assert '"Lothar nodded. They are ready."' in limpos
 
 
 def test_preparar_le_xhtml_repetido_no_spine_uma_vez_so_e_relata(tmp_path: Path) -> None:

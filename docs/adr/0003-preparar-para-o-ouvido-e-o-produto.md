@@ -105,6 +105,8 @@ Ficaram de fora, sem marca: o endereço da editora no Tides ("A Division of Simo
 
 **Aceito conscientemente:** a capitular deslocada é corrigida pelo agente a partir da pista, não pelo Python. A pista é a primeira maiúscula sozinha por perto, e num livro com "A" no começo de frase ela pode apontar a letra errada. Revisitar, e talvez tornar a correção determinística, se o agente acertar quase todas nos livros de `livros/` (no Tides, a pista acerta 24 de 24).
 
+**Revisto pelo ADR-0007 (2026-11-02):** o agente acertou as 25 no Tides, e a correção passou a ser do `limpar`, quando o próprio livro prova a palavra reconstruída. A suspeita sem prova continua como aqui.
+
 Limites registrados pela auditoria de 2026-11-01, sem caso nos livros medidos:
 - A2: depois de uma linha curta que não é título (verso, entrada de índice, cabeçalho que ficou como suspeita), o motivo diz "capitular" quando o certo seria juntar ou tirar.
 - A5: a capitular depois de uma epígrafe em `<blockquote>`, de um título em `<p>` com pontuação (`Chapter One: The Dark Portal`) ou de um `<hr>` não é marcada.

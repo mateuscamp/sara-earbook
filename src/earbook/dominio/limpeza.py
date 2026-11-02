@@ -8,8 +8,9 @@ from collections import defaultdict
 from collections.abc import Sequence
 from dataclasses import dataclass, replace
 
+from earbook.dominio.capitular import CapitularDevolvida, devolver_uma, leituras
 from earbook.dominio.direitos import nas_pontas, pagina_de_direitos
-from earbook.dominio.segmento import Papel, Segmento
+from earbook.dominio.segmento import ABRE_PARAGRAFO, Papel, Segmento
 
 # "Tides of Darkness 4" ou "12 Aaron Rosenberg": frase e número de página, sozinhos na linha.
 _FRASE_E_NUMERO = re.compile(r"^(?P<frase>\D.*?)\s+(?P<numero>\d{1,4})$")
@@ -24,7 +25,7 @@ TAMANHO_MINIMO_DA_FRASE = 3
 # Com dois números diferentes ainda pode ser texto do livro; com três, é numeração de página.
 NUMEROS_DIFERENTES_MINIMOS = 3
 # Parágrafo que continua: a primeira letra, depois de aspas e travessões, é minúscula.
-_PRIMEIRA_LETRA = re.compile(r"^[\u201c\u2018\"'\u2014\u2013\-\s]*(?P<letra>\w)")
+_PRIMEIRA_LETRA = re.compile(rf"^{ABRE_PARAGRAFO}(?P<letra>\w)")
 # Termina frase. Aspas e apóstrofo não estão aqui: a fala que fecha aspas com vírgula segue
 # em "he answered" na página seguinte, e o possessivo "warriors" + apóstrofo segue em "reach".
 _FIM_DE_FRASE = tuple(".!?…:;")
@@ -101,6 +102,7 @@ class LivroLimpo:
     suspeitas: tuple[Suspeita, ...] = ()
     aparos: tuple[Aparo, ...] = ()
     juncoes: tuple[Juncao, ...] = ()
+    capitulares: tuple[CapitularDevolvida, ...] = ()
 
 
 def limpar_para_o_ouvido(
@@ -119,7 +121,8 @@ def limpar_para_o_ouvido(
     repetidas = _frases_de_cabecalho([s for _, segmentos in capitulos for s in segmentos])
     frases = _frases_do_livro(repetidas, titulo, autor)
     juntado = _juntar_paragrafos_partidos(_aparar_cabecalhos_colados(sem_cabecalho, frases))
-    return _marcar_capitulares_perdidas(juntado)
+    # ADR-0007: sem a letra solta, uma continuação em minúscula pode aparecer ("he" + "demanded.").
+    return _juntar_paragrafos_partidos(_devolver_capitulares(_marcar_capitulares_perdidas(juntado)))
 
 
 def tirar_paginas_de_direitos(
@@ -168,8 +171,9 @@ def _aparar_cabecalhos_colados(livro: LivroLimpo, frases: set[str]) -> LivroLimp
 
 
 def _juntar_paragrafos_partidos(livro: LivroLimpo) -> LivroLimpo:
-    juncoes: list[Juncao] = []
+    juncoes: list[Juncao] = list(livro.juncoes)
     suspeitas: list[Suspeita] = list(livro.suspeitas)
+    ja_marcados = {s.id for s in livro.suspeitas}
     capitulos: list[CapituloLimpo] = []
     for capitulo in livro.capitulos:
         saida: list[Segmento] = []
@@ -179,8 +183,9 @@ def _juntar_paragrafos_partidos(livro: LivroLimpo) -> LivroLimpo:
                 saida.append(segmento)
             elif _linha_curta(anterior.texto) or _linha_curta(segmento.texto):
                 # Linha curta antes: o seguinte perdeu a capitular, e quem marca é o passo
-                # da capitular. Linha curta depois: o seguinte é o título, marcado aqui.
-                if _linha_curta(segmento.texto):
+                # da capitular. Linha curta depois: o seguinte é o título, marcado aqui uma
+                # vez só, porque a junção roda de novo depois da capitular (ADR-0007).
+                if _linha_curta(segmento.texto) and segmento.id not in ja_marcados:
                     suspeitas.append(Suspeita(segmento.id, MOTIVO_DA_LINHA_CURTA, segmento.texto))
                 saida.append(segmento)
             else:
@@ -226,6 +231,36 @@ def _marcar_capitulares_perdidas(livro: LivroLimpo) -> LivroLimpo:
             pista = _pista_da_letra_solta(segmentos[i : i + PARAGRAFOS_DA_PISTA])
             novas.append(Suspeita(segmento.id, MOTIVO_DA_CAPITULAR, segmento.texto, pista))
     return replace(livro, suspeitas=livro.suspeitas + tuple(novas))
+
+
+def _devolver_capitulares(livro: LivroLimpo) -> LivroLimpo:
+    """A letra da pista volta para o começo da palavra quando o livro prova a leitura (ADR-0007).
+
+    A letra que é palavra ("A dark") imita o artigo de verdade ("saga A long story"); ela só
+    volta quando a maioria das capitulares com pista do livro já voltou como palavra colada:
+    é a prova de que esta conversão desloca a capitular (no Tides, 23 de 24).
+    """
+    textos = {s.id: s.texto for capitulo in livro.capitulos for s in capitulo.segmentos}
+    propostas = leituras(livro.suspeitas, textos)
+    devolvidas: list[CapitularDevolvida] = []
+    for suspeita, leitura in (p for p in propostas if p[1].colada):
+        devolvidas += devolver_uma(suspeita, leitura, textos, devolvidas)
+    # Lote B da revisão: só a colada devolvida prova; a que não entrou não conta.
+    if 2 * len(devolvidas) > sum(s.pista is not None for s in livro.suspeitas):
+        for suspeita, leitura in (p for p in propostas if not p[1].colada):
+            devolvidas += devolver_uma(suspeita, leitura, textos, devolvidas)
+    corrigidos = {d.id for d in devolvidas}
+    capitulos = tuple(
+        replace(c, segmentos=tuple(replace(s, texto=textos[s.id]) for s in c.segmentos))
+        for c in livro.capitulos
+    )
+    suspeitas = tuple(s for s in livro.suspeitas if s.id not in corrigidos)
+    return replace(
+        livro,
+        capitulos=capitulos,
+        suspeitas=suspeitas,
+        capitulares=tuple(sorted(devolvidas, key=lambda d: d.id)),
+    )
 
 
 def _pista_da_letra_solta(segmentos: Sequence[Segmento]) -> Pista | None:

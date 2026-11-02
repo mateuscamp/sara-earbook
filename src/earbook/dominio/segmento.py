@@ -15,6 +15,12 @@ from enum import StrEnum
 # O XML 1.0 não aceita controle fora de tab e quebra de linha, nem surrogate solto. O texto
 # vem de PDF e, depois, da tradução; sem a checagem, o lxml recusa sem dizer o segmento.
 FORA_DO_XML = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f\ud800-\udfff\ufffe\uffff]")
+# Uma palavra, com o apóstrofo de dentro, reto ou tipográfico ("Gul'dan"): a conta da
+# conferência da tradução e a prova da capitular (ADR-0006, ADR-0007).
+PALAVRA = re.compile(r"[^\W\d_]+(?:['\u2019][^\W\d_]+)*")
+# O que pode abrir o parágrafo antes da primeira letra: aspas, travessões e espaço. A marcação
+# e a devolução da capitular usam o mesmo, ou discordam de onde a palavra começa (ADR-0007).
+ABRE_PARAGRAFO = r"[\u201c\u2018\"'\u2014\u2013\-\s]*"
 
 
 class Papel(StrEnum):

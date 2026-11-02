@@ -344,7 +344,7 @@ contagens do ADR-0003 e as da tabela do "Contexto", e a pasta nova é idêntica 
 (`warcraft.earbook`), arquivo por arquivo. O `traduzir` exportou 49 lotes em 0,3 s: 6 capítulos,
 o maior lote com 2.000 palavras, e o `c007-l009` (o sumário do fim) com 56.
 
-**Capitular deslocada: corrigida na tradução, pelo brief do tradutor.** O ADR-0003 diz que quem
+**Capitular deslocada: corrigida na tradução, pelo brief do tradutor.** (Vale só para livro preparado antes do ADR-0007, que passou a correção para o `limpar`.) O ADR-0003 diz que quem
 corrige as duas pontas é o Claude Code, a partir da pista, e esta decisão diz que o agente nunca
 grava em `limpos/`. Nenhum comando corrige `limpos/`, e a "tradução velha" acima citava como
 exemplo uma correção que não tem caminho. A correção fica em `traduzidos/`: a sessão principal
@@ -570,7 +570,7 @@ paradas, só na parte nova) e espera o Mateus.
   a traduzir; a falha é visível, porque o `conferir` acusa tudo sem tradução.
 - As instruções do tradutor nomeiam `pedidos/` e `traduzidos/`, as pastas que a CLI imprime:
   o agente conhece esse pedaço do layout, e só esse.
-- A capitular deslocada é corrigida só na tradução, pelo brief do tradutor (ver "Amostra do
+- Até o ADR-0007, a capitular deslocada era corrigida só na tradução, pelo brief do tradutor (ver "Amostra do
   Tides"). O `conferir` não sabe se ela foi corrigida, o `--original` a lê fora do lugar e o
   livro em português fica sem correção.
 

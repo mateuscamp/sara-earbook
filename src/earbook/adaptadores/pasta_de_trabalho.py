@@ -4,7 +4,7 @@
 livro.json            metadados, capítulos e texto fora de segmento
 segmentos/cNNN.json   segmentos de cada capítulo como vieram do EPUB (a origem)
 limpos/cNNN.json      os mesmos, sem o que a limpeza tirou: é o que segue na esteira
-limpeza.json          remoções, suspeitas, aparos e junções da limpeza, com o motivo (ADR-0003)
+limpeza.json          remoções, suspeitas, aparos, junções e capitulares devolvidas (ADR-0003, 0007)
 epub/                 EPUB extraído, com o XHTML marcado por `data-earbook`
 
 A tradução (ADR-0006):
@@ -12,10 +12,13 @@ pedidos/cNNN-lNNN.json     o Python grava o que traduzir no lote: [{id, papel, t
 traduzidos/cNNN-lNNN.json  o agente grava a resposta do lote de mesmo nome: [{id, texto}]
 glossario.json             o agente grava os nomes próprios: [{original, traducao}]
 nomes.json                 o Python grava os candidatos a nome fora do glossário
+termos/cNNN-lNNN.json      o agente grava o que decidiu fora do glossário: [{original, traducao}]
+decisoes.md                as decisões do livro: o Python cria o modelo, a sessão escreve (ADR-0007)
 """
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import posixpath
@@ -24,7 +27,7 @@ import tempfile
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
-from earbook.dominio.glossario import CandidatoANome, EntradaDoGlossario
+from earbook.dominio.glossario import CandidatoANome, EntradaDoGlossario, TermosDoLote
 from earbook.dominio.limpeza import CapituloLimpo, LivroLimpo
 from earbook.dominio.segmento import Papel, Segmento
 from earbook.dominio.trabalho import CapituloPreparado, LivroPreparado
@@ -86,6 +89,7 @@ def gravar_limpeza(pasta: Path, limpeza: LivroLimpo) -> None:
         "suspeitas": [asdict(s) for s in limpeza.suspeitas],
         "aparos": [asdict(a) for a in limpeza.aparos],
         "juncoes": [asdict(j) for j in limpeza.juncoes],
+        "capitulares": [asdict(c) for c in limpeza.capitulares],
     }
     _gravar_json(pasta / "limpeza.json", registro)
 
@@ -171,9 +175,10 @@ def ler_idioma(pasta: Path) -> str:
 
 
 def criar_pastas_da_traducao(pasta: Path) -> None:
-    """`pedidos/` e `traduzidos/`, onde o agente grava a resposta; não apaga nada."""
+    """`pedidos/`, `traduzidos/` e `termos/`, onde o agente grava; não apaga nada."""
     pasta_dos_pedidos(pasta).mkdir(exist_ok=True)
     pasta_das_respostas(pasta).mkdir(exist_ok=True)
+    pasta_dos_termos(pasta).mkdir(exist_ok=True)
 
 
 def pasta_dos_pedidos(pasta: Path) -> Path:
@@ -195,6 +200,36 @@ def caminho_da_resposta(pasta: Path, lote: str) -> Path:
 
 def caminho_do_glossario(pasta: Path) -> Path:
     return pasta / "glossario.json"
+
+
+def pasta_dos_termos(pasta: Path) -> Path:
+    return pasta / "termos"
+
+
+def caminho_dos_termos(pasta: Path, lote: str) -> Path:
+    """O que o tradutor decidiu fora do glossário no lote (ADR-0007)."""
+    return pasta_dos_termos(pasta) / f"{lote}.json"
+
+
+def caminho_das_decisoes(pasta: Path) -> Path:
+    """As decisões do livro, em Markdown: a sessão escreve, o tradutor lê (ADR-0007)."""
+    return pasta / "decisoes.md"
+
+
+def gravar_decisoes_se_faltar(pasta: Path, modelo: str) -> None:
+    """Grava o modelo uma vez só: o arquivo que existe é da sessão e nunca é reescrito."""
+    caminho = caminho_das_decisoes(pasta)
+    _recusar_link(caminho)
+    with contextlib.suppress(FileExistsError), caminho.open("x", encoding="utf-8") as arquivo:
+        _ = arquivo.write(modelo)
+
+
+def ler_termos(pasta: Path) -> tuple[TermosDoLote, ...]:
+    """Escritos pelo agente, como a resposta: nome de lote e cada campo validados."""
+    return tuple(
+        TermosDoLote(lote, tuple(_entrada(r, caminho) for r in registros))
+        for lote, caminho, registros in _lotes(pasta_dos_termos(pasta))
+    )
 
 
 def caminho_dos_candidatos(pasta: Path) -> Path:
@@ -235,10 +270,11 @@ def ler_glossario(pasta: Path) -> tuple[EntradaDoGlossario, ...]:
     if not caminho.exists():
         return ()
     registros = [_objeto(item, caminho) for item in _lista(_ler_json(caminho), caminho)]
-    return tuple(
-        EntradaDoGlossario(_nome(r, "original", caminho), _nome(r, "traducao", caminho))
-        for r in registros
-    )
+    return tuple(_entrada(r, caminho) for r in registros)
+
+
+def _entrada(item: dict[str, Json], caminho: Path) -> EntradaDoGlossario:
+    return EntradaDoGlossario(_nome(item, "original", caminho), _nome(item, "traducao", caminho))
 
 
 def gravar_candidatos(pasta: Path, candidatos: tuple[CandidatoANome, ...]) -> None:

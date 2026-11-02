@@ -34,6 +34,14 @@ class EntradaDoGlossario:
 
 
 @dataclass(frozen=True)
+class TermosDoLote:
+    """O que o tradutor decidiu fora do glossário num lote: nome ou termo comum (ADR-0007)."""
+
+    lote: str
+    termos: tuple[EntradaDoGlossario, ...]
+
+
+@dataclass(frozen=True)
 class CandidatoANome:
     nome: str
     vezes: int

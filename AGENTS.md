@@ -15,6 +15,8 @@ ADRs em `docs/adr/`. O Claude Code traduz; o Python nunca chama o LLM (ADR-0001)
 - Esteira (ADR-0003): `preparar → limpar → [traduzir] → conferir → montar`. O `montar` troca o texto no EPUB original e recusa o livro que o `conferir` reprova (ADR-0005). Livro em inglês é traduzido para pt-BR; livro em português só é preparado para o ouvido.
 - Tradução (ADR-0006): o `traduzir` exporta pedidos por lote (~2 mil palavras); o subagente `tradutor` (`.claude/agents/tradutor.md`) grava a resposta de cada lote; o `conferir` cobra cada ID, o texto que ficou em inglês e o glossário, e o `montar` declara pt-BR. Nomes do Tides: a localização oficial pt-BR da Blizzard.
 - A limpeza nunca apaga em silêncio: toda remoção fica em `limpeza.json`, com o ID do segmento de origem.
+- Capitular deslocada (ADR-0007): o `limpar` devolve a letra quando o próprio livro prova a palavra, e registra em `capitulares`; a que o livro não prova fica suspeita. Nunca vai no brief do tradutor.
+- Termo e decisão do livro (ADR-0007): o tradutor declara em `termos/<lote>.json` o que decidiu fora do glossário, e o `conferir` cobra. O que a amostra decidiu mora em `decisoes.md`, que todo tradutor lê.
 - Entrada: EPUB. PDF entra pelo comando `importar-pdf` (ADR-0004), só para ouvir: sem fidelidade visual, sem OCR, e a biblioteca de PDF só em `adaptadores/`.
 - Motor: o Claude Code na sessão, pela assinatura, com um subagente por capítulo. O limite de uso conta.
 - Notas de rodapé: o marcador sai do meio da frase e o texto da nota vai para o fim do capítulo.
@@ -49,7 +51,7 @@ Saída de medição vai para `livros/trabalho/`, nunca para `/tmp` nem para o sc
 - Uso: `uv run earbook preparar livro.epub` → `livro.earbook/`.
 - PDF: `uv run earbook importar-pdf livro.pdf --idioma pt-BR [--titulo T] [--autor A]` → `livro.epub`, que segue para o `preparar`. Título e autor vêm do metadado do PDF quando não são dados.
 - Tradução: `uv run earbook traduzir livro.earbook [--palavras 2000]` → `pedidos/` e `nomes.json`, e diz os lotes pendentes. Depois: o glossário a partir de `nomes.json`, um subagente `tradutor` por capítulo (capítulo menor que um lote vai junto com outros) e o `conferir`. Antes de um livro inteiro, mostre ao Mateus o custo estimado (lotes e segmentos) e peça o sim.
-- Fim da esteira: `uv run earbook conferir livro.earbook` e `uv run earbook montar livro.earbook` → `livro.pronto.epub`. No livro que se traduz, `--amostra` monta só o traduzido (`livro.amostra.epub`) e `--original` monta o texto limpo no idioma do original (`livro.original.epub`), que nunca vai para `livros/prontos/`.
+- Fim da esteira: `uv run earbook conferir livro.earbook [--capitulo cNNN]` e `uv run earbook montar livro.earbook` → `livro.pronto.epub`. Roteiro de escuta: `uv run earbook minuto livro.earbook <ID>...`. No livro que se traduz, `--amostra` monta só o traduzido (`livro.amostra.epub`) e `--original` monta o texto limpo no idioma do original (`livro.original.epub`), que nunca vai para `livros/prontos/`.
 
 ## Livro novo (pedido do Mateus, 2026-11-02)
 
@@ -57,8 +59,8 @@ O Mateus diz o caminho do livro; a sessão o leva até `livros/prontos/`. O orig
 1. PDF: `importar-pdf <pdf> --idioma <pt-BR|en> --epub livros/trabalho/<nome>.epub`. EPUB: direto ao passo 2.
 2. `preparar <epub> --pasta livros/trabalho/<nome>.earbook`. Leia o resumo: segmento suspeito fica no texto e é lido.
 3. PDF novo é onde mora a surpresa (cada diagramação é uma). Antes de seguir, peça a escuta de um trecho: o livro montado, se for pt-BR; o `montar --original`, se for en, porque defeito de diagramação traduzido se paga duas vezes.
-4. Em inglês: `traduzir`, glossário a partir de `nomes.json`, amostra (`conferir --amostra`, `montar --amostra`), roteiro de escuta e o sim do Mateus. Conceito aprovado na escuta entra no glossário antes do resto. O resto: um `tradutor` por capítulo, em paralelo.
-5. `conferir`, `montar --epub livros/prontos/<nome>.pronto.epub` (o padrão grava ao lado da pasta, em `livros/trabalho/`), epubcheck e `livros/trabalho/roteiro-de-escuta-<nome>.md`.
+4. Em inglês: a skill `traduzir-livro` (`.claude/skills/traduzir-livro/SKILL.md`) leva do `traduzir` ao livro pronto: glossário, amostra e escuta, `decisoes.md`, custo, tradutores em paralelo, rodada de correção, `montar --epub livros/prontos/<nome>.pronto.epub`, epubcheck e roteiro de escuta.
+5. Em português: `conferir`, `montar --epub livros/prontos/<nome>.pronto.epub` (o padrão grava ao lado da pasta, em `livros/trabalho/`), epubcheck e `livros/trabalho/roteiro-de-escuta-<nome>.md`.
 - Defeito de código achado num livro: pare e relate. A correção é uma sessão filha, com o processo deste arquivo.
 - Conversão sem tradução roda na sessão principal; tradução de livro inteiro, numa filha.
 - Custo de referência (ADR-0006, Huxley inteiro): ~8 tokens de saída por palavra e ~850 palavras por minuto por subagente; as 16 mil palavras gastaram menos de 1% da semana.
@@ -72,7 +74,7 @@ Verificadas por ferramenta (import-linter e `tests/test_arquitetura.py`):
 - Arquivo ≤ 400 linhas; função ≤ 20 linhas (teto 40); primeira linha de todo `.py` é o SPDX.
 
 Verificadas só em revisão (`code-audit`):
-- O agente grava só `traduzidos/` e `glossario.json`; nunca `segmentos/`, `limpos/` nem `pedidos/` (ADR-0006). Pedido gravado nunca é reescrito.
+- O agente grava só `traduzidos/`, `termos/`, `glossario.json` e `decisoes.md`; nunca `segmentos/`, `limpos/` nem `pedidos/` (ADR-0006, ADR-0007). O tradutor não grava `glossario.json` nem `decisoes.md`, que são da sessão. Pedido gravado nunca é reescrito. O Python cria `decisoes.md` uma vez e nunca o lê.
 - Só `adaptadores/pasta_de_trabalho.py` conhece o layout da pasta de trabalho, e todo JSON lido dela é validado campo a campo (o tipo `Json`; a única supressão é a do `json.loads`).
 - EPUB é entrada não confiável: XML só pelo `PARSER_SEGURO` de `adaptadores/xml_seguro.py`; nenhum caminho sai da pasta de trabalho.
 - PDF também é entrada não confiável (pode vir de site de terceiros): toda falha do pdfminer vira `PdfInvalidoError` com o nome do arquivo, menos falta de memória, que passa como veio. O arquivo abre fora do `try`: inexistente ou sem permissão chega como `OSError`; um erro de disco no meio da leitura sai como "não é um PDF válido", com a causa no `from`. O `try` cobre só a biblioteca, nunca a nossa conversão. O que vem do pdfminer com tipo incerto (nome de fonte) é validado no adaptador. O PDF é lido uma página por vez.
@@ -123,10 +125,12 @@ src/earbook/
                 pela posição), blocos.py (parágrafo, título, código e nota do PDF),
                 capitulos.py (capítulo e nível do título), conferencia.py (o conferir), direitos.py (página de direitos autorais),
                 metadados.py (título e autor do PDF), traducao.py (lote, pedido, resposta, modo),
-                glossario.py (candidatos a nome e cobrança), conferencia_da_traducao.py
+                glossario.py (candidatos a nome, termos declarados), conferencia_da_traducao.py,
+                capitular.py (a capitular devolvida), escuta.py (o minuto de cada segmento)
   adaptadores/  xml_seguro.py (parser), pacote_epub.py (zip + OPF), xhtml.py, pasta_de_trabalho.py,
                 pdf.py (pdfminer), epub_simples.py (grava o EPUB do PDF)
-  comandos/     preparar.py, importar_pdf.py, traduzir.py, montar.py (conferir e montar), cli.py
+  comandos/     preparar.py, importar_pdf.py, traduzir.py, montar.py (conferir e montar), roteiro.py
+                (minuto), cli.py
 tests/          test_<módulo>.py, test_arquitetura.py, livro_de_teste.py (EPUB), pdf_de_teste.py (PDF),
                 linhas_de_teste.py (linhas do PDF já lidas, para os testes de blocos)
 ```

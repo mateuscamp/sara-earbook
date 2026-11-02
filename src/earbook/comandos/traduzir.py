@@ -24,6 +24,25 @@ from earbook.dominio.traducao import (
     precisa_traduzir,
 )
 
+# ADR-0007: o que a amostra decidiu mora aqui, e não no brief de cada tradutor.
+MODELO_DAS_DECISOES = """# Decisões do livro
+
+A sessão escreve, depois da escuta da amostra; todo tradutor lê antes do primeiro lote
+(ADR-0007). Seção vazia: vale a regra do `tradutor.md`.
+
+## Nome fora do glossário
+
+## Tom e registro
+
+## Dialeto
+
+## Títulos e caixa
+
+## Tratamento
+
+## Escolhas da amostra
+"""
+
 
 class TraducaoDesnecessariaError(ValueError):
     pass
@@ -54,6 +73,10 @@ class Exportacao:
     """O modelo do caminho da resposta, com `<lote>` no lugar do nome do lote."""
     glossario: Path
     nomes: Path
+    decisoes: Path
+    """O arquivo das decisões do livro, que todo tradutor lê (ADR-0007)."""
+    palavras_pendentes: Mapping[str, int]
+    """Por capítulo, as palavras ainda sem tradução: a conta da divisão e do custo."""
 
 
 def traduzir(pasta: Path, palavras: int = PALAVRAS_POR_LOTE) -> Exportacao:
@@ -67,6 +90,7 @@ def traduzir(pasta: Path, palavras: int = PALAVRAS_POR_LOTE) -> Exportacao:
     novos = _pedir(pasta, limpos, pedidos, [r.lote for r in respostas], palavras)
     candidatos = _gravar_candidatos(pasta, limpos)
     estado = _estado(limpos, [*pedidos, *novos], respostas)
+    trabalho.gravar_decisoes_se_faltar(pasta, MODELO_DAS_DECISOES)
     return Exportacao(
         len(novos),
         estado,
@@ -75,7 +99,19 @@ def traduzir(pasta: Path, palavras: int = PALAVRAS_POR_LOTE) -> Exportacao:
         trabalho.caminho_da_resposta(pasta, "<lote>"),
         trabalho.caminho_do_glossario(pasta),
         trabalho.caminho_dos_candidatos(pasta),
+        trabalho.caminho_das_decisoes(pasta),
+        _palavras_pendentes(limpos, respostas),
     )
+
+
+def _palavras_pendentes(
+    limpos: Mapping[str, Sequence[Segmento]], respostas: Sequence[Resposta]
+) -> dict[str, int]:
+    traduzidos = {t.id for resposta in respostas for t in resposta.traduzidos}
+    return {
+        capitulo: sum(len(s.texto.split()) for s in segmentos if s.id not in traduzidos)
+        for capitulo, segmentos in limpos.items()
+    }
 
 
 def _gravar_candidatos(pasta: Path, limpos: Mapping[str, Sequence[Segmento]]) -> int:

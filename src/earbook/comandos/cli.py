@@ -15,6 +15,7 @@ from pathlib import Path
 from earbook.comandos import montar as montagem
 from earbook.comandos.importar_pdf import Importacao, epub_padrao, importar_pdf
 from earbook.comandos.preparar import Preparo, pasta_padrao, preparar
+from earbook.comandos.roteiro import minutos
 from earbook.comandos.traduzir import Exportacao, traduzir
 from earbook.dominio.blocos import TipoDeBloco
 from earbook.dominio.limpeza import LivroLimpo
@@ -42,6 +43,8 @@ class _Opcoes(argparse.Namespace):
     trabalho: Path = Path()
     palavras: int = PALAVRAS_POR_LOTE
     modo: Modo | None = None
+    capitulo: str | None = None
+    ids: list[str] | None = None
 
 
 def principal(argumentos: list[str] | None = None) -> int:
@@ -89,7 +92,10 @@ def _preparar(opcoes: _Opcoes) -> tuple[str, int]:
 def _conferir(opcoes: _Opcoes) -> tuple[str, int]:
     """Código 1 quando há problema: o `montar` recusaria o livro (ADR-0005)."""
     pasta = opcoes.trabalho
-    problemas = montagem.conferir_pasta(pasta, opcoes.modo)
+    problemas = montagem.conferir_pasta(pasta, opcoes.modo, opcoes.capitulo)
+    if not problemas and opcoes.capitulo is not None:
+        # Lote A da revisão: "pode montar" escondia o resto do livro, que não foi conferido.
+        return f"{pasta}: nada a corrigir no capítulo {opcoes.capitulo}.", 0
     if not problemas:
         return f"{pasta}: nada faltando, sobrando ou repetido; pode montar.", 0
     linhas = [f"{pasta}: {len(problemas)} problemas; o montar recusaria o livro."]
@@ -113,6 +119,17 @@ def _montar(opcoes: _Opcoes) -> tuple[str, int]:
     return resumo + _resumo_da_amostra(feito), 0
 
 
+def _minuto(opcoes: _Opcoes) -> tuple[str, int]:
+    linhas = [
+        (
+            f"{p.id}: minuto {p.minuto_no_livro} do livro; minuto {p.minuto_no_capitulo}"
+            f" do capítulo {p.capitulo}"
+        )
+        for p in minutos(opcoes.trabalho, opcoes.ids or [])
+    ]
+    return "\n".join(linhas), 0
+
+
 def _resumo_da_amostra(feito: montagem.Montagem) -> str:
     partes: list[str] = []
     if feito.fora:
@@ -130,6 +147,7 @@ _COMANDOS: dict[str, Callable[[_Opcoes], tuple[str, int]]] = {
     "traduzir": _traduzir,
     "conferir": _conferir,
     "montar": _montar,
+    "minuto": _minuto,
 }
 
 
@@ -161,6 +179,7 @@ def _analisador() -> argparse.ArgumentParser:
     )
     conferencia = comandos.add_parser("conferir", help="confere se nada some antes de montar")
     _ = conferencia.add_argument("trabalho", type=Path, help="a pasta .earbook")
+    _ = conferencia.add_argument("--capitulo", help="só os problemas deste capítulo (cNNN)")
     _modos(conferencia)
     montagem_ = comandos.add_parser("montar", help="pasta de trabalho → EPUB para ouvir")
     _ = montagem_.add_argument("trabalho", type=Path, help="a pasta .earbook")
@@ -168,6 +187,9 @@ def _analisador() -> argparse.ArgumentParser:
     _ = montagem_.add_argument(
         "--epub", dest="saida", type=Path, help="padrão: ao lado da pasta, com .pronto.epub"
     )
+    minuto = comandos.add_parser("minuto", help="em que minuto da escuta cai cada segmento")
+    _ = minuto.add_argument("trabalho", type=Path, help="a pasta .earbook")
+    _ = minuto.add_argument("ids", nargs="+", help="IDs de segmento (cNNN-sNNNN)")
     return analisador
 
 
@@ -207,6 +229,7 @@ def _resumo_da_traducao(exportacao: Exportacao, pasta: Path) -> str:
             f"Glossário: {exportacao.glossario} ({exportacao.candidatos} candidatos a nome"
             f" em {exportacao.nomes})."
         ),
+        f"Decisões do livro, que todo tradutor lê: {exportacao.decisoes}",
         f"Depois: earbook conferir {pasta}",
     ]
     return "\n".join(linhas)
@@ -215,7 +238,10 @@ def _resumo_da_traducao(exportacao: Exportacao, pasta: Path) -> str:
 def _linhas_dos_capitulos(exportacao: Exportacao) -> list[str]:
     linhas: list[str] = []
     for c in exportacao.capitulos:
-        pendentes = f"; pendentes: {', '.join(c.pendentes)}" if c.pendentes else ""
+        pendentes = ""
+        if c.pendentes:
+            palavras = exportacao.palavras_pendentes[c.capitulo]
+            pendentes = f"; pendentes: {', '.join(c.pendentes)} ({palavras} palavras)"
         linhas.append(f"  {c.capitulo}: {c.traduzidos} de {c.segmentos}{pendentes}")
     return linhas
 
@@ -272,6 +298,13 @@ def _linhas_da_limpeza(limpeza: LivroLimpo, pasta: Path) -> list[str]:
         linhas.append(
             f"{juncoes} {plural} na quebra de página {'juntado' if juncoes == 1 else 'juntados'}."
         )
+    if capitulares := len(limpeza.capitulares):
+        plural = (
+            "capitular deslocada devolvida"
+            if capitulares == 1
+            else "capitulares deslocadas devolvidas"
+        )
+        linhas.append(f"{capitulares} {plural} ao começo do capítulo.")
     if limpeza.suspeitas:
         suspeitas = len(limpeza.suspeitas)
         linhas.append(f"{suspeitas} segmentos suspeitos ficaram no texto (decidir no registro).")

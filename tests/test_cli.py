@@ -53,6 +53,15 @@ def test_preparar_resume_a_limpeza_agrupada_por_motivo(
     assert "  possível cabeçalho de página 'Dia': não está no título nem no autor: 3" in saida
 
 
+def test_preparar_conta_as_capitulares_devolvidas(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    corpo = "<h1>EIGHT</h1><p>re we ready?</p><p>A Lothar nodded. They are ready.</p>"
+    epub = montar_epub(tmp_path / "livro.epub", {"a.xhtml": corpo})
+    assert principal(["preparar", str(epub)]) == 0
+    assert "1 capitular deslocada devolvida ao começo do capítulo." in capsys.readouterr().out
+
+
 def test_preparar_conta_aparos_e_juncoes(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

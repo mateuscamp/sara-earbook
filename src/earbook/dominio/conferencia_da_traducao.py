@@ -14,9 +14,10 @@ from earbook.dominio.glossario import (
     ULTIMA_PALAVRA,
     ConferenciaDeNomes,
     EntradaDoGlossario,
+    TermosDoLote,
 )
 from earbook.dominio.limpeza import CapituloLimpo
-from earbook.dominio.segmento import Papel, Segmento
+from earbook.dominio.segmento import PALAVRA, Papel, Segmento
 from earbook.dominio.traducao import Pedido, Resposta, Traduzido
 
 # Medido em 2026-11-01 (ADR-0006): o texto em inglês do Huxley e do Tides tem mediana de 37%
@@ -31,7 +32,6 @@ PALAVRAS_FUNCIONAIS_INGLESAS = frozenset({
 })  # fmt: skip
 PALAVRAS_PARA_JULGAR_O_INGLES = 8
 PROPORCAO_DE_INGLES = 0.2
-_PALAVRA = re.compile(r"[^\W\d_]+(?:['\u2019][^\W\d_]+)*")
 _URL = re.compile(r"\S*(?:https?://|www\.)\S*")
 _FIM_DE_FRASE = re.compile('[.!?\u2026]["\u201d\u2019)]*\\s+')
 # T\u00edtulo de obra em Title Case: palavras com mai\u00fascula, com "of", "the"\u2026 entre elas.
@@ -63,6 +63,50 @@ def conferir_traducao(
         problemas += _sem_traducao(capitulos, respostas)
     problemas += _glossario_repetido(nomes)
     return tuple(sorted(problemas, key=lambda problema: problema.id))
+
+
+def conferir_termos(
+    termos: Sequence[TermosDoLote], glossario: Sequence[EntradaDoGlossario], *, amostra: bool
+) -> list[Problema]:
+    """O termo que o tradutor decidiu tem de estar no glossário, com a mesma forma (ADR-0007).
+
+    Fora do glossário, o problema é da sessão, que escolhe a forma entre as declaradas; na
+    amostra ele espera a escuta. Com outra forma, é do lote, que corrige a resposta.
+    """
+    formas = {entrada.original: entrada.traducao for entrada in glossario}
+    fora: dict[str, list[str]] = {}
+    problemas: list[Problema] = []
+    for declarados in termos:
+        for termo in declarados.termos:
+            if (forma := formas.get(termo.original)) is None:
+                fora.setdefault(termo.original, []).append(
+                    f"'{termo.traducao}' ({declarados.lote})"
+                )
+            elif forma != termo.traducao:
+                problemas.append(_outra_forma(declarados.lote, termo, forma))
+    return problemas if amostra else problemas + _fora_do_glossario(fora)
+
+
+def _outra_forma(lote: str, termo: EntradaDoGlossario, forma: str) -> Problema:
+    motivo = (
+        f"declarou '{termo.original}' → '{termo.traducao}', mas o glossário diz"
+        f" '{forma}': corrija a resposta e a declaração"
+    )
+    return Problema(lote, motivo)
+
+
+def _fora_do_glossario(fora: dict[str, list[str]]) -> list[Problema]:
+    """Um problema por termo, com todas as formas declaradas e os lotes."""
+    return [
+        Problema(
+            "glossário",
+            (
+                f"'{original}' fora do glossário, declarado como {' e '.join(formas)}:"
+                " escolha a forma e acrescente"
+            ),
+        )
+        for original, formas in fora.items()
+    ]
 
 
 def _glossario_repetido(nomes: ConferenciaDeNomes) -> list[Problema]:
@@ -217,7 +261,7 @@ def _inglesas(palavras: list[str]) -> int:
 
 def _palavras(texto: str) -> list[str]:
     """As palavras em minúsculas, sem URL: o link tem "the" e "of" e não é lido como frase."""
-    return [achado.group().casefold() for achado in _PALAVRA.finditer(_URL.sub(" ", texto))]
+    return [achado.group().casefold() for achado in PALAVRA.finditer(_URL.sub(" ", texto))]
 
 
 def _sem_traducao(

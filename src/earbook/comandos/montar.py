@@ -18,8 +18,9 @@ from earbook.dominio.conferencia import (
     Problema,
     conferir,
     conferir_textos,
+    do_capitulo,
 )
-from earbook.dominio.conferencia_da_traducao import conferir_traducao
+from earbook.dominio.conferencia_da_traducao import conferir_termos, conferir_traducao
 from earbook.dominio.limpeza import CapituloLimpo
 from earbook.dominio.segmento import Segmento, notas_para_o_fim
 from earbook.dominio.trabalho import CapituloPreparado
@@ -79,9 +80,26 @@ def epub_padrao(pasta: Path, modo: Modo | None = None) -> Path:
     return pasta.with_suffix(_SUFIXOS[modo])
 
 
-def conferir_pasta(pasta: Path, modo: Modo | None = None) -> tuple[Problema, ...]:
-    """Os problemas que impedem o `montar`; vazio quando nada some, sobra ou se repete."""
-    return _conferir(pasta, _ler_livro(pasta, modo))
+class CapituloDesconhecidoError(ValueError):
+    pass
+
+
+def conferir_pasta(
+    pasta: Path, modo: Modo | None = None, capitulo: str | None = None
+) -> tuple[Problema, ...]:
+    """Os problemas que impedem o `montar`; vazio quando nada some, sobra ou se repete.
+
+    Com `capitulo`, só os dele e dos lotes dele (ADR-0007). O capítulo que o livro não tem é
+    recusado: o filtro vazio diria que está tudo certo (lote A da revisão).
+    """
+    livro = _ler_livro(pasta, modo)
+    problemas = _conferir(pasta, livro)
+    if capitulo is None:
+        return problemas
+    if capitulo not in (ids := [c.id for c in livro.capitulos]):
+        mensagem = f"{pasta}: o livro não tem o capítulo {capitulo!r}; tem {', '.join(ids)}"
+        raise CapituloDesconhecidoError(mensagem)
+    return do_capitulo(problemas, capitulo)
 
 
 def montar(pasta: Path, destino: Path, modo: Modo | None = None) -> Montagem:
@@ -151,13 +169,16 @@ def _conferir(pasta: Path, livro: _Livro) -> tuple[Problema, ...]:
 def _conferir_traducao(pasta: Path, livro: _Livro) -> tuple[Problema, ...]:
     if livro.modo is Modo.ORIGINAL:
         return ()
-    return conferir_traducao(
+    amostra = livro.modo is Modo.AMOSTRA
+    glossario = trabalho.ler_glossario(pasta)
+    traducao = conferir_traducao(
         [CapituloLimpo(capitulo, lista) for capitulo, lista in livro.limpos.items()],
         trabalho.ler_pedidos(pasta),
         livro.respostas,
-        trabalho.ler_glossario(pasta),
-        amostra=livro.modo is Modo.AMOSTRA,
+        glossario,
+        amostra=amostra,
     )
+    return (*traducao, *conferir_termos(trabalho.ler_termos(pasta), glossario, amostra=amostra))
 
 
 def _para_conferir(

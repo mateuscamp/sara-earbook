@@ -49,6 +49,18 @@ Saída de medição vai para `livros/trabalho/`, nunca para `/tmp` nem para o sc
 - Tradução: `uv run earbook traduzir livro.earbook [--palavras 2000]` → `pedidos/` e `nomes.json`, e diz os lotes pendentes. Depois: o glossário a partir de `nomes.json`, um subagente `tradutor` por capítulo (capítulo menor que um lote vai junto com outros) e o `conferir`. Antes de um livro inteiro, mostre ao Mateus o custo estimado (lotes e segmentos) e peça o sim.
 - Fim da esteira: `uv run earbook conferir livro.earbook` e `uv run earbook montar livro.earbook` → `livro.pronto.epub`. No livro que se traduz, `--amostra` monta só o traduzido (`livro.amostra.epub`) e `--original` monta o texto limpo no idioma do original (`livro.original.epub`), que nunca vai para `livros/prontos/`.
 
+## Livro novo (pedido do Mateus, 2026-11-02)
+
+O Mateus diz o caminho do livro; a sessão o leva até `livros/prontos/`. O original fica onde está.
+1. PDF: `importar-pdf <pdf> --idioma <pt-BR|en> --epub livros/trabalho/<nome>.epub`. EPUB: direto ao passo 2.
+2. `preparar <epub> --pasta livros/trabalho/<nome>.earbook`. Leia o resumo: segmento suspeito fica no texto e é lido.
+3. PDF novo é onde mora a surpresa (cada diagramação é uma). Antes de seguir, peça a escuta de um trecho: o livro montado, se for pt-BR; o `montar --original`, se for en, porque defeito de diagramação traduzido se paga duas vezes.
+4. Em inglês: `traduzir`, glossário a partir de `nomes.json`, amostra (`conferir --amostra`, `montar --amostra`), roteiro de escuta e o sim do Mateus. Conceito aprovado na escuta entra no glossário antes do resto. O resto: um `tradutor` por capítulo, em paralelo.
+5. `conferir`, `montar --epub livros/prontos/<nome>.pronto.epub` (o padrão grava ao lado da pasta, em `livros/trabalho/`), epubcheck e `livros/trabalho/roteiro-de-escuta-<nome>.md`.
+- Defeito de código achado num livro: pare e relate. A correção é uma sessão filha, com o processo deste arquivo.
+- Conversão sem tradução roda na sessão principal; tradução de livro inteiro, numa filha.
+- Custo de referência (ADR-0006, Huxley inteiro): ~8 tokens de saída por palavra e ~850 palavras por minuto por subagente; as 16 mil palavras gastaram menos de 1% da semana.
+
 ## Fronteiras (ADR-0001)
 
 Verificadas por ferramenta (import-linter e `tests/test_arquitetura.py`):

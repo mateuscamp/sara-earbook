@@ -5,6 +5,9 @@ leria e não é do livro (cabeçalho de página, parágrafo partido, capitular d
 quando o livro é em inglês, traduz para pt-BR. PDF com camada de texto entra pelo comando
 `importar-pdf` ([ADR-0004](docs/adr/0004-pdf-entra-como-comando-importar-pdf.md)).
 
+O repositório se chama sara-earbook desde 2026-11-02; o pacote e o comando continuam
+`earbook`.
+
 O Claude Code comanda o trabalho: monta o glossário, traduz e revisa. O CLI
 `earbook` faz o que é mecânico e verificável: abre o EPUB, quebra o texto em
 segmentos, confere a tradução e remonta o livro. A decisão está em

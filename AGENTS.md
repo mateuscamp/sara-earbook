@@ -2,6 +2,8 @@
 
 Preparar livros para **ouvir** no ElevenReader e, quando o livro é em inglês, traduzi-lo
 para pt-BR. Até 2026-11-01 o projeto se chamava ai-book; os ADRs 0001 a 0004 usam o nome antigo.
+Desde 2026-11-02 o repositório e a pasta se chamam sara-earbook (os projetos de IA do Mateus
+ficaram sob o nome Sara); o pacote e o comando continuam `earbook`.
 O produto final é áudio, não página: o critério de qualidade é o que soa bem,
 não o que fica bonito na tela.
 

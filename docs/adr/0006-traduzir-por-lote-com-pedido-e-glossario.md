@@ -444,6 +444,100 @@ a 850 palavras por minuto). Faltam 43 lotes, 1.587 segmentos e 83.498 palavras.
 - **Pensamento sem aspas:** ficou "Maldito seja ele! Gul’dan pensou".
 - **Medidas:** ficaram em pés, e *threescore* virou "sessenta".
 
+**Escuta da amostra (2026-11-02).** O Mateus ouviu no ElevenReader as 9 paradas do roteiro, e
+tudo passou. Ele decidiu que os títulos de capítulo ficam como no original ("Um", "Dois"…) e que
+o sumário do fim e o endereço da editora ficam no texto.
+
+Antes do resto, o glossário passou de 136 para 146 entradas. Entraram as escolhas da amostra que
+voltam em outros capítulos: *warlock* → "bruxo" (74 vezes, em 4 capítulos), *ogre mage* →
+"ogro-mago", *titan* → "titã", *greatsword* → "espadão" e *gryphon* → "grifo". Entraram também os
+plurais delas e *death knight* → "cavaleiro da morte", a classe do jogo. Com o glossário novo, a
+amostra continua passando no `conferir --amostra`. O livro inteiro espera o sim do Mateus ao
+custo.
+
+### O Tides inteiro (2026-11-02)
+
+O Mateus disse sim ao custo ("Sim, traduzir"). Os 43 lotes que faltavam foram para 4 subagentes
+`tradutor` em paralelo, um por capítulo (Opus, o modelo da sessão). Cada brief trazia as
+capitulares e as frases partidas do capítulo, lidas de `limpeza.json` e dos pedidos: foram 22
+capitulares e 23 frases partidas.
+
+| Capítulo | Lotes | Palavras | Tempo | Saída (por palavra) | Cache lido | Contexto máximo |
+|---|---|---|---|---|---|---|
+| `c004` (resto) | 9 | 17.491 | 16,7 min | 126.839 (7,3) | 1.846.082 | 210.154 |
+| `c005` | 11 | 20.713 | 13,0 min | 85.758 (4,1) | 3.191.853 | 173.936 |
+| `c006` | 15 | 29.488 | 25,5 min | 197.907 (6,7) | 3.582.005 | 317.191 |
+| `c007` (resto) | 8 | 15.806 | 16,9 min | 122.767 (7,8) | 3.156.869 | 202.042 |
+| **Total** | 43 | 83.498 | 26,6 min de relógio | 533.271 (6,4) | 11.776.809 | — |
+
+**Real contra a estimativa.** A estimativa errou para cima, e o erro foi de medida:
+- **Saída:** 533 mil tokens, contra 680 a 840 mil (6,4 por palavra, contra 8,1 a 10,1).
+- **Cache lido:** 11,8 milhões, contra 13 a 18 milhões.
+- **Tempo:** 25,5 minutos para o maior capítulo, contra 35 a 44. Somados em série, os quatro
+  dariam 72 minutos, contra 1 h 40 min a 2 h 05 min: cerca de 1.160 palavras por minuto por
+  subagente.
+- **Contexto do `c006`:** 317 mil, pouco acima dos 250 a 300 mil previstos.
+- **Medidor semanal:** de 67% para 68%.
+
+A amostra é a pior régua de custo: ela concentra as decisões (nomes, capitulares, registro), e o
+capítulo longo dilui a leitura do glossário e das instruções. O `c005`, sem trecho difícil no
+começo, ficou em 4,1 tokens por palavra. Com isso o Tides inteiro, amostra incluída, moveu o
+medidor em no máximo 2 pontos (66% antes da amostra, 68% depois do livro, com o resto da sessão
+no meio), e o "Aceito conscientemente" abaixo não precisa ser revisitado por ele.
+
+**Glossário, de 146 para 158 entradas.** Os tradutores devolveram nomes fora do glossário, e
+entraram:
+- **Formas oficiais confirmadas na web:** Montanhas Cristarrubra (*Redridge Mountains*, zona 44
+  do Wowhead pt), Lamaçal Negro (*Black Morass*), Ferro Negro (*Dark Iron*) e Olho Morto
+  (*Deadeye*).
+- **Formas do brief:** Estepes Ardentes (*Burning Steppes*) e General Patrulheira (*Ranger
+  General*).
+- **Uma forma só para *stormhammer*:** "martelo de tempestade", a do `c006` e do `c007`. O
+  `c005` tinha escrito "da tempestade".
+- **Formas oficiais que o `c006` usou de memória, sem conferir na web:** Floresta do Canto Eterno,
+  Amparo da Luz, Vale da Lua Negra e Asaclara.
+
+O `conferir` cobrou as entradas novas em 9 segmentos: 5 do `c005` e 4 do `c007`. Os mesmos
+tradutores corrigiram tudo numa rodada, em 16 e 26 segundos.
+
+**Conferência e montagem.**
+- **`conferir`:** 0 segmento faltando, 0 em inglês e 0 nome fora do glossário.
+- **`montar --epub livros/prontos/tides.pronto.epub`:** 1,3 s, 7 capítulos e 1.720 segmentos. O
+  OPF declara `pt-BR`.
+- **epubcheck:** os mesmos 9 erros RSC-005 do original.
+- **Releitura pelo `preparar`:** 1.720 segmentos, 31 junções e 1 suspeita.
+  - As junções são as frases partidas: com a continuação traduzida em minúscula, a regra as
+    junta. No livro montado, cada uma continua em dois parágrafos.
+  - A suspeita é um parágrafo só com "Os", que antes era "The", seguido de "irmãos Mão Negra…".
+- **Capitulares:** nenhuma maiúscula solta no texto traduzido. A única é o "V" de "um V
+  gigantesco", que é do texto.
+
+**O que os tradutores devolveram como dúvida**, sem que o `conferir` acusasse nada:
+- **Dialeto:** o original escreve em dialeto a fala dos trolls ("you be wantin'") e a dos anões
+  (*ye*, *dinna*). Os trolls ganharam concordância quebrada ("Nós não conversa com petisco"); os
+  anões, um registro popular leve ("a gente", "pra"). Os dois vão para a escuta.
+- **Defeito do EPUB de origem:** `c004-s0481` é uma cópia truncada do começo de `c004-s0482`.
+  Como segmento de entrada é segmento de saída, a voz lê a frase duas vezes. Tirá-la é mudança
+  na limpeza.
+- **Erros do original, traduzidos pelo que o autor quis dizer:**
+  - *invaluable* no sentido de "sem valor" (`c004-s0286`);
+  - *comented*;
+  - *Alter of Storms*;
+  - "well was I was gone";
+  - "Turalyon’ hammer";
+  - "Pikemen were defending by swordsman".
+- **Nomes que ficaram em inglês, sem forma oficial achada:** Nekros Skullcrusher, a tribo
+  Witherbark e Rakmar Sharpfang, uma vez cada, mais os nomes gaélicos dos anões.
+- **Termos criados por um tradutor só:** "Rainha Dragão" (*Dragonqueen*), "necrólitos",
+  "thane-chefe" e "Urluk Mata-Nuvens".
+- **"Sir" e "Lorde":** "Sir" ficou. "Lorde" sai em minúscula no meio da frase em quase todo o
+  livro, e o `c005` às vezes usa maiúscula. "Paladino" também varia de maiúscula entre
+  capítulos. Nenhuma das duas diferenças se ouve.
+- **Clímax:** "your world" virou "o mundo de vocês", para não soar "o mundo dele".
+
+A escuta do livro inteiro tem roteiro próprio (`livros/trabalho/roteiro-de-escuta-tides.md`, 9
+paradas, só na parte nova) e espera o Mateus.
+
 ## Consequências
 
 **Ganha:**
@@ -501,4 +595,5 @@ lote; o agente nunca escreve em `limpos/` nem em `pedidos/`.
 ## Notas
 
 Autor: Mateus, com o Claude Code · Criado em: 2026-11-01 · Aprovado em: 2026-11-01 ·
-Atualizado em: 2026-11-02 (escuta da amostra e medição do livro inteiro; amostra do Tides)
+Atualizado em: 2026-11-02 (escuta da amostra e medição do livro inteiro; amostra do Tides; o
+Tides inteiro)

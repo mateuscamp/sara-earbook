@@ -48,8 +48,9 @@ def test_subtitulo_em_negrito_de_duas_linhas_vira_um_titulo_so() -> None:
 
 
 def test_negrito_menor_que_o_corpo_nao_vira_titulo() -> None:
-    # Hard Parts: os rótulos dentro das figuras vêm em semibold de 9 pt, com corpo de 10,5,
-    # acima de 0,85 do corpo. Subtítulo nunca é menor que o corpo nos livros medidos.
+    # Hard Parts: o cabeçalho de tabela ("Instances", p. 160) e o rodapé de seção vêm em
+    # semibold de 9 pt, com corpo de 10,5, acima de 0,85 do corpo. Subtítulo nunca é menor que
+    # o corpo nos livros medidos.
     pagina = [*texto_corrido(0.1), em_negrito(linha("Instances", 0.3, 174, tamanho=9))]
     assert resumo(montar(pagina))[-1:] == [("paragrafo", "Instances")]
 

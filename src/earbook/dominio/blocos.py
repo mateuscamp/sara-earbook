@@ -7,6 +7,8 @@ As regras vêm da medição no Competente (pt-BR) e no Hard Parts (en):
 - título é fonte de 1,2 vez o corpo ou mais, ou linha toda em negrito do tamanho do corpo para
   cima (subtítulo do Competente); código é linha toda monoespaçada; nota é fonte menor que
   0,85 do corpo;
+- o verbete (linha toda em negrito menor que o corpo) abre parágrafo depois de frase fechada, e
+  a linha comum seguinte abre outro: o termo do glossário sai fora da definição (Competente);
 - a palavra partida no fim da linha volta inteira, a não ser que o livro escreva a mesma
   palavra com hífen em outro lugar (`non-productive`, `anti-pattern`).
 """
@@ -31,7 +33,8 @@ RECUO_MINIMO = 3.0
 nenhuma linha de corpo entre 1 e 3."""
 DIFERENCA_DE_TAMANHO = 0.5
 # O subtítulo em negrito vai do corpo para cima, com esta folga: o cabeçalho de tabela do Hard
-# Parts tem 10 pt, com corpo de 10,5; o rótulo de figura, 9 pt (ADR-0004).
+# Parts tem 10 pt, com corpo de 10,5; o cabeçalho de tabela menor e o rodapé de seção, 9 pt
+# (ADR-0004).
 FOLGA_DO_SUBTITULO = 0.5
 # Linhas a menos disso de topo estão na mesma altura (células de tabela no Hard Parts: 0,001).
 MESMA_ALTURA = 0.004
@@ -111,6 +114,8 @@ class _Aberto:
     x_do_corpo: float | None = None
     tabela: bool = False
     """Recebeu célula na mesma altura: é linha de tabela, e a próxima altura abre outra."""
+    negrito: bool = False
+    """Parágrafo aberto por linha toda em negrito: é verbete, e a 1ª linha comum abre outro."""
 
 
 def montar_blocos(paginas: Sequence[Pagina]) -> LivroMontado:
@@ -165,8 +170,9 @@ def _tipo(linha: Linha, corpo: float, *, negrito_destaca: bool) -> TipoDeBloco:
     if linha.tamanho < corpo * RAZAO_DA_NOTA:
         return TipoDeBloco.NOTA
     # O subtítulo em negrito tem o tamanho do corpo ou mais (Competente: 10,5 e 12 pt, com
-    # corpo de 10,5). O negrito menor é rótulo de figura, célula ou verbete (Hard Parts: 9 pt).
-    # ADR-0004, "Subtítulo em negrito do tamanho do corpo", com os limites.
+    # corpo de 10,5). O negrito menor fica parágrafo: é verbete do glossário (Competente: 9,5
+    # pt), que o `_quebra` separa da definição, ou cabeçalho de tabela e rodapé de seção (Hard
+    # Parts: 9 pt). ADR-0004, "Subtítulo em negrito do tamanho do corpo", com os limites.
     if negrito_destaca and linha.negrito and linha.tamanho >= corpo - FOLGA_DO_SUBTITULO:
         return TipoDeBloco.TITULO
     return TipoDeBloco.PARAGRAFO
@@ -242,8 +248,15 @@ class _Montador:
             or self._quebra(aberto, linha, anterior)
         ):
             self._fechar()
+            negrito = tipo is TipoDeBloco.PARAGRAFO and self._verbete(linha)
             self._aberto = _Aberto(
-                tipo, pagina, linha.tamanho, [linha.texto], linha.x, tabela=de_tabela
+                tipo,
+                pagina,
+                linha.tamanho,
+                [linha.texto],
+                linha.x,
+                tabela=de_tabela,
+                negrito=negrito,
             )
         else:
             self._continuar(aberto, linha)
@@ -258,7 +271,10 @@ class _Montador:
             return self._quebra_o_titulo(aberto, linha, anterior)
         if aberto.tipo is not TipoDeBloco.PARAGRAFO:
             return anterior is None and aberto.tipo is TipoDeBloco.NOTA
-        if aberto.tabela or self._mudou_o_recuo(aberto, linha):
+        # O termo do glossário acaba onde a letra deixa de ser negrito (Competente p. 479:
+        # "Tokenizador A parte do modelo…"). ADR-0004, "Verbete em negrito abaixo do corpo".
+        fim_do_verbete = aberto.negrito and not self._verbete(linha)
+        if aberto.tabela or fim_do_verbete or self._mudou_o_recuo(aberto, linha):
             return True
         # Hard Parts p. 45: itens a 1,32 entrelinha um do outro passavam abaixo do limiar.
         if _ITEM_DE_LISTA.match(linha.texto):
@@ -285,22 +301,29 @@ class _Montador:
         entrelinha = self._medidas.entrelinha
         return bool(entrelinha) and linha.topo - anterior.topo >= entrelinha * RAZAO_DO_ESPACO
 
-    @staticmethod
-    def _mudou_o_recuo(aberto: _Aberto, linha: Linha) -> bool:
+    def _mudou_o_recuo(self, aberto: _Aberto, linha: Linha) -> bool:
         # Recuo só separa parágrafo se a linha de cima fechou a frase. Senão é item de lista
         # com recuo deslocado (x 58 e depois 70) ou texto que contorna figura (x 114 e
         # depois 72, Hard Parts p. 60), e a frase continua.
         if not aberto.partes[-1].rstrip().endswith(_FECHA_PARA_O_RECUO):
             return False
         if aberto.x_do_corpo is None:
-            # Voltar à margem é a segunda linha de um parágrafo de primeira linha recuada.
-            return linha.x >= aberto.x_da_primeira + RECUO_MINIMO
+            # Voltar à margem é a 2ª linha do parágrafo de 1ª linha recuada; o verbete depois de
+            # linha comum, não (Competente p. 475: "Prompt" tem definição de uma linha só).
+            verbete_novo = self._verbete(linha) and not aberto.negrito
+            return verbete_novo or linha.x >= aberto.x_da_primeira + RECUO_MINIMO
+        # Na margem do parágrafo, até o verbete segue: é o título da obra em negrito no meio
+        # da referência ("(EMNLP 2024)." e "Proceedings of…", Competente p. 493).
         return abs(linha.x - aberto.x_do_corpo) >= RECUO_MINIMO
 
     @staticmethod
     def _comeca_frase_na_pagina_nova(aberto: _Aberto, linha: Linha) -> bool:
         """Sem recuo, só o fim de frase seguido de maiúscula separa parágrafo na virada."""
         return aberto.partes[-1].endswith(_FIM_DE_FRASE) and linha.texto[:1].isupper()
+
+    def _verbete(self, linha: Linha) -> bool:
+        """A linha de parágrafo toda em negrito, num livro de corpo regular: é verbete."""
+        return self._medidas.negrito_destaca and linha.negrito
 
     def _continuar(self, aberto: _Aberto, linha: Linha) -> None:
         if aberto.x_do_corpo is None:
@@ -367,8 +390,10 @@ class _Montador:
         posicao = len(self._prontos) if self._posicao_do_aberto is None else self._posicao_do_aberto
         self._prontos.insert(posicao, bloco)
         self._posicao_do_aberto = None
-        if aberto.tipo is TipoDeBloco.PARAGRAFO and not aberto.tabela:
+        if aberto.tipo is TipoDeBloco.PARAGRAFO and not aberto.tabela and not aberto.negrito:
             terminou = bloco.texto.rstrip().endswith(_FECHA_PARA_O_RECUO)
             self._interrompido = None if terminou else (aberto, posicao)
-        elif aberto.tipo is TipoDeBloco.TITULO or aberto.tabela:
+        elif aberto.tipo in {TipoDeBloco.PARAGRAFO, TipoDeBloco.TITULO}:
+            # Tabela e verbete fecham a retomada, como o título: o verbete não fecha frase, e
+            # a definição não cola nele nem no parágrafo de antes dele.
             self._interrompido = None

@@ -104,9 +104,9 @@ Além do que já cobra (ADR-0005), por capítulo:
 - **nenhum a mais, nenhum repetido, IDs batendo:** tradução de ID que não está em `limpos/`
   do capítulo; ID traduzido em dois lotes; resposta sem pedido; ID respondido num lote que não
   o pediu;
-- **tradução velha:** o texto do pedido difere do texto de `limpos/` hoje (o agente corrigiu a
-  capitular depois de exportar). Corrige-se apagando o pedido e a resposta e rodando
-  `traduzir` de novo;
+- **tradução velha:** o texto do pedido difere do texto de `limpos/` hoje (o `limpar` mudou
+  depois de exportar; a capitular não se corrige em `limpos/`, ver "Amostra do Tides").
+  Corrige-se apagando o pedido e a resposta e rodando `traduzir` de novo;
 - **escuta:** tradução vazia; caractere que o XML não aceita; texto igual ao original com
   palavra funcional inglesa (`Table of Contents`); trecho que parece inglês, com 8 palavras ou
   mais e 20% delas palavras funcionais inglesas, URLs fora da conta. O trecho é o segmento
@@ -333,6 +333,117 @@ roteiro próprio (9 paradas, só na parte nova) e espera o Mateus.
 - a aspa de fechamento solta no fim da nota de Slotkin saiu (s0134). No original, a última
   citação já fecha em "failed.’", e a aspa do fim não tem abertura.
 
+### Amostra do Tides (2026-11-02)
+
+O Mateus escolheu traduzir o Tides, o segundo livro de medição, começando pela amostra.
+
+**Preparar de novo.** Com o código de hoje, o `preparar` deu 2.275 segmentos. Saíram 265 (258
+cabeçalhos de página e 7 linhas da página de direitos autorais), com 165 aparos, 290 junções e 26
+suspeitas: 25 capitulares, 24 delas com pista, e 1 título. Ficam 1.720 segmentos mantidos. São as
+contagens do ADR-0003 e as da tabela do "Contexto", e a pasta nova é idêntica à de 2026-11-01
+(`warcraft.earbook`), arquivo por arquivo. O `traduzir` exportou 49 lotes em 0,3 s: 6 capítulos,
+o maior lote com 2.000 palavras, e o `c007-l009` (o sumário do fim) com 56.
+
+**Capitular deslocada: corrigida na tradução, pelo brief do tradutor.** O ADR-0003 diz que quem
+corrige as duas pontas é o Claude Code, a partir da pista, e esta decisão diz que o agente nunca
+grava em `limpos/`. Nenhum comando corrige `limpos/`, e a "tradução velha" acima citava como
+exemplo uma correção que não tem caminho. A correção fica em `traduzidos/`: a sessão principal
+lê as suspeitas do capítulo em `limpeza.json` e põe no brief de cada `tradutor` o ID, a palavra
+inteira e onde está a letra solta. O tradutor traduz a frase reconstruída e descarta a letra.
+- **Por que assim:** não muda código, `tradutor.md` nem regra, a amostra mede o resultado na
+  escuta, e o pedido continua igual a `limpos/`, sem tradução velha.
+- **Na amostra:** foram 3 capitulares, e as 3 saíram certas, sem nenhuma maiúscula solta no
+  texto traduzido. O caso mais traiçoeiro é o "A" de *A dark figure*, que estava em "From his
+  vantage A point" e parecia artigo.
+- **No livro inteiro:** a 25ª capitular (`c007-s0381`, "t will be", com o "I" solto em "near
+  the I cliff's edge") não tem pista e precisa ir no brief à mão.
+- **O que se perde:** o `montar --original` continua com a letra fora do lugar. O livro em
+  português não tem caminho nenhum, porque não passa pelo tradutor: a correção determinística
+  que o ADR-0003 deixa para revisitar resolveria os dois casos.
+
+**Glossário.** De 173 candidatos saíram 136 entradas: 74 nomes que ficam como estão e 62
+traduzidos. Depois dele sobram 56 candidatos, que são combinações de nomes que já estão no
+glossário ("King Terenas", "Orgrim Doomhammer") ou palavras comuns com maiúscula ("Majesty",
+"Champion", "Paladin", "Father"), deixadas ao tradutor.
+- **Fontes:** o título das páginas do Wowhead em português e as notícias da Blizzard pt-BR,
+  registradas no campo `nota`. O Wowhead passou a responder 403 depois de umas 40 consultas.
+- **De memória, por isso:** "Pântano das Mágoas" (*Swamp of Sorrows*) ficou de memória.
+- **Pela forma do jogo, mesmo divergindo do livro:** Sylvanas → Sylvana, Proudmoore → Proudmore,
+  Graymane → Greymane e *Shadow Council* → "Concílio das Sombras".
+- **Escolhas do Mateus, onde as fontes divergem ou faltam:**
+  - *Rend* e *Maim* → "Laceral" e "Mútilo", a forma oficial;
+  - *Black Tooth Grin* → "Riso Dente Negro", pelo sentido, como os outros clãs;
+  - *Silver Hand* → "Punho de Prata", a forma oficial, e não "Mão de Prata";
+  - *Demon Soul* → "Alma Demoníaca", sem fonte pt-BR.
+- **Limite:** "Trovão Furioso" (*Stormreaver*) só foi achado em nome de item. O glossário cobra
+  maiúscula, por isso *warchief* e *Warchief* têm duas entradas, "chefe guerreiro" e "Chefe
+  Guerreiro".
+
+**Amostra.** Foram 6 lotes, 133 segmentos e 5.944 palavras (6,6% do livro): o rosto, a página
+da editora, a dedicatória, os dois prólogos, o começo do capítulo 1 e o sumário do fim
+(`c002-l001`, `c003-l001`, `c004-l001` a `c004-l003` e `c007-l009`). Entram 3 capitulares, 1
+frase partida pelo cabeçalho de página e 34 nomes do glossário. Num subagente `tradutor` só
+(Opus, o modelo da sessão):
+
+| | Amostra do Huxley | Resto do Huxley | Amostra do Tides |
+|---|---|---|---|
+| Lotes, segmentos, palavras | 5, 38, 3.869 | 8, 104, 12.607 | 6, 133, 5.944 |
+| Tempo | 5,5 min | 14,9 min | 8,8 min (676 palavras por minuto) |
+| Respostas do modelo / chamadas de ferramenta | 12 / 13 | 29 / 28 | 16 / 18 |
+| Contexto no fim | 125.104 | 164.558 | 110.212 |
+| Tokens de saída | 36.395 (9,4 por palavra) | 101.497 (8,1 por palavra) | 60.062 (10,1 por palavra) |
+| Cache lido / cache criado | 907.771 / 123.653 | 2.791.619 / 226.432 | 934.492 / 106.334 |
+| Medidor semanal da assinatura | 59% → 59% | 64% → 64% | 66% → 66% |
+
+O Tides gasta mais saída por palavra que o Huxley (10,1 contra 8,1 a 9,4). É a amostra com mais
+coisa a decidir: nomes, capitulares e o registro das falas. A tradução tem 6.158 palavras, 3,6% a
+mais que o original.
+
+**Conferência e montagem.** O `conferir --amostra` passou já na primeira rodada do tradutor, sem
+correção. O `montar --amostra` levou 0,3 s: 133 segmentos e 1.587 de fora. O OPF declara `pt-BR`
+no `dc:language`, e a folha de rosto, `xml:lang="pt-BR"`. O epubcheck deu os mesmos 9 erros do
+original, todos RSC-005: `img` sem `alt`, `img` fora de bloco, `name` em `<a>` e um `id` inválido
+no `toc.ncx`. Relida pelo `preparar`, a amostra tem os mesmos 133 segmentos, e uma junção mostra
+a frase partida: "…Eles soltaram" + "de repente os braços de Gul’dan". Com a continuação
+traduzida em minúscula, a regra junta as duas metades. No livro montado elas continuam em dois
+parágrafos, e o roteiro pergunta se a voz pausa no meio. Fica no texto, fora de segmento, o
+"Tides of Darkness" do sumário do fim, que é lido em inglês.
+
+**Estimativa do livro inteiro**, pela régua medida (8,1 a 10,1 tokens de saída por palavra e 676
+a 850 palavras por minuto). Faltam 43 lotes, 1.587 segmentos e 83.498 palavras.
+- **Saída e cache:** de 680 a 840 mil tokens de saída e de 13 a 18 milhões de cache lido.
+- **Em série:** de 1 h 40 min a 2 h 05 min.
+- **Em paralelo, um tradutor por capítulo:** são 4 subagentes, com 17.491, 20.713, 29.488 e
+  15.806 palavras. O tempo é o do maior, o `c006`: de 35 a 44 minutos, com contexto final na
+  casa dos 250 a 300 mil.
+- **Medidor semanal:** nenhuma das três medições o moveu, e ele anda de 1 em 1%. O teto é de 1%
+  para cada ~12 mil palavras, o que dá menos de ~7% da semana.
+
+**O que o tradutor devolveu como dúvida**, sem que o `conferir` acusasse nada:
+- **Registro das falas dos orcs:** o original é formal e não tem fala quebrada, e a tradução
+  também. Ele usou "você" com pronome oblíquo ("Eu o reconheço como chefe guerreiro da Horda").
+- **Nome composto como sujeito:** "Martelo da Perdição" e "Mão Negra" vão sem artigo e
+  concordam no masculino ("Mão Negra está morto"). O plural de clã é "os Trovão Furioso". Para
+  o ouvido, ele acrescentou "clã" em "líder do clã Rocha Negra". Em `c004-s0099`, o segmento é
+  só "Martelo da Perdição.", que tanto pode ser o orc quanto a arma, como no original.
+- **Termos de Warcraft sem fonte conferida:** "bruxo" (*warlock*, o nome da classe no jogo),
+  "ogro-mago", "titã", "Cavaleiro Campeão", "espadão" (*greatsword*). "Magus", o título de
+  Medivh, ficou "o Magus".
+- **Títulos de capítulo:** "first prologue" e "ONE" viraram "Primeiro prólogo" e "Um". O
+  roteiro pergunta se "Um" soa como título; se não soar, o resto pode usar "Capítulo 1", e isso
+  se decide antes de traduzi-lo.
+- **Página da editora:** "Pocket Star Books" e "Simon & Schuster" ficaram como no original, e
+  "POCKET STAR BOOKS" foi para caixa normal. O endereço ("1230 Avenue of the Americas, New
+  York, NY" e "10020") também ficou como está. Ele é sobra da página de direitos que a limpeza
+  não reconhece (ADR-0003).
+- **Lista de cidades:** ganhou vírgulas, para a voz pausar.
+- **Fim do livro:** "New York City", na biografia, virou "Nova York".
+- **Erros do original, traduzidos pelo que o autor quis dizer:** *refuges* virou "refugiados"
+  e *speed their process* virou "aceleraria a marcha".
+- **Nome no lugar do pronome:** em `c004-s0059`, "ele" ficava ambíguo, e ele escreveu "Lothar".
+- **Pensamento sem aspas:** ficou "Maldito seja ele! Gul’dan pensou".
+- **Medidas:** ficaram em pés, e *threescore* virou "sessenta".
+
 ## Consequências
 
 **Ganha:**
@@ -365,6 +476,9 @@ roteiro próprio (9 paradas, só na parte nova) e espera o Mateus.
   a traduzir; a falha é visível, porque o `conferir` acusa tudo sem tradução.
 - As instruções do tradutor nomeiam `pedidos/` e `traduzidos/`, as pastas que a CLI imprime:
   o agente conhece esse pedaço do layout, e só esse.
+- A capitular deslocada é corrigida só na tradução, pelo brief do tradutor (ver "Amostra do
+  Tides"). O `conferir` não sabe se ela foi corrigida, o `--original` a lê fora do lugar e o
+  livro em português fica sem correção.
 
 **Aceito conscientemente:** o custo por livro é medido por um livro só, o Huxley inteiro
 (2026-11-02, em "Escuta da amostra e o livro inteiro"). Revisitar o tamanho do lote e o modelo se
@@ -387,4 +501,4 @@ lote; o agente nunca escreve em `limpos/` nem em `pedidos/`.
 ## Notas
 
 Autor: Mateus, com o Claude Code · Criado em: 2026-11-01 · Aprovado em: 2026-11-01 ·
-Atualizado em: 2026-11-02 (escuta da amostra e medição do livro inteiro)
+Atualizado em: 2026-11-02 (escuta da amostra e medição do livro inteiro; amostra do Tides)

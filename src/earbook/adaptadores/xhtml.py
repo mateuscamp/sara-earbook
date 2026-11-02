@@ -17,30 +17,23 @@ from urllib.parse import unquote
 
 from lxml import etree
 
+from earbook.adaptadores.papel_do_bloco import (
+    BLOCOS,
+    OPS,
+    nome_local,
+    papel_do_bloco,
+    raiz_do_indice,
+)
 from earbook.adaptadores.xml_seguro import PARSER_SEGURO, Elemento
-from earbook.dominio.segmento import Papel, Segmento, id_do_segmento, normalizar_espacos
+from earbook.dominio.segmento import Segmento, id_do_segmento, normalizar_espacos
 from earbook.dominio.traducao import TrocaDeIdioma
 
 XHTML = "http://www.w3.org/1999/xhtml"
-OPS = "http://www.idpf.org/2007/ops"
 ATRIBUTO_DO_ID = "data-earbook"
 XML_LANG = "{http://www.w3.org/XML/1998/namespace}lang"
 # O livro montado é sempre em pt-BR: em português de origem ou traduzido (ADR-0003).
 TITULO_DAS_NOTAS = "Notas"
 
-TITULOS = frozenset({"h1", "h2", "h3", "h4", "h5", "h6"})
-ITENS = frozenset({"li", "dt", "dd"})
-CELULAS = frozenset({"td", "th"})
-BLOCOS = TITULOS | frozenset(
-    {
-        "p", "div", "li", "blockquote", "section", "article", "aside", "header",
-        "footer", "nav", "main", "figure", "figcaption", "dt", "dd", "td", "th",
-        "caption", "pre", "address", "table", "tr", "thead", "tbody", "tfoot",
-        "ul", "ol", "dl", "hr",
-    }
-)  # fmt: skip
-TIPOS_DE_NOTA = frozenset({"footnote", "endnote", "rearnote", "note"})
-PAPEIS_ARIA_DE_NOTA = frozenset({"doc-footnote", "doc-endnote"})
 # Texto de chamada de nota sem epub:type: "1", "[2]", "(3)", "*", "†", "a".
 _CHAMADA_CURTA = re.compile(r"^[\[(]?(\d{1,3}|[*†‡§¶]+|[a-z])[\])]?$")
 _ENTIDADE = re.compile(rb"&([A-Za-z][A-Za-z0-9]{1,31});")
@@ -74,7 +67,7 @@ def segmentar_xhtml(conteudo: bytes, capitulo: str, caminho: str) -> CapituloSeg
             continue
         segmento = Segmento(
             id=id_do_segmento(capitulo, len(segmentos) + 1),
-            papel=_papel(folha, alvos),
+            papel=papel_do_bloco(folha, alvos),
             texto=texto,
             notas=tuple(notas),
         )
@@ -143,12 +136,12 @@ def _trocar_idioma(raiz: Elemento, troca: TrocaDeIdioma) -> None:
     """O trecho marcado com outra língua (`xml:lang="fr"`) fica: é escolha do autor."""
     for elemento in raiz.iter():
         for atributo in ("lang", XML_LANG):
-            if _nome(elemento) and (valor := elemento.get(atributo)) is not None:
+            if nome_local(elemento) and (valor := elemento.get(atributo)) is not None:
                 elemento.set(atributo, troca.trocar(valor))
 
 
 def _no_sumario(elemento: Elemento) -> bool:
-    return any(_nome(ancestral) == "nav" for ancestral in elemento.iterancestors())
+    return any(nome_local(ancestral) == "nav" for ancestral in elemento.iterancestors())
 
 
 def _trocar_texto_do_link(elemento: Elemento, texto: str | None) -> None:
@@ -159,7 +152,7 @@ def _trocar_texto_do_link(elemento: Elemento, texto: str | None) -> None:
     """
     if texto is None:
         return
-    links = [d for d in elemento.iterdescendants() if _nome(d) in {"a", "span"}]
+    links = [d for d in elemento.iterdescendants() if nome_local(d) in {"a", "span"}]
     alvo = links[0] if links else elemento
     for filho in list(alvo):
         alvo.remove(filho)
@@ -272,13 +265,6 @@ def _recusar_entidade_sem_valor(corpo: Elemento, caminho: str) -> None:
         raise XhtmlInvalidoError(mensagem)
 
 
-def _nome(elemento: Elemento) -> str:
-    """Nome local do elemento; comentário e instrução de processamento viram ''."""
-    if not isinstance(elemento.tag, str):
-        return ""
-    return etree.QName(elemento).localname
-
-
 def _eh_chamada_de_nota(link: Elemento) -> bool:
     if "#" not in link.get("href", ""):
         return False
@@ -289,8 +275,8 @@ def _eh_chamada_de_nota(link: Elemento) -> bool:
     if not _CHAMADA_CURTA.match(normalizar_espacos("".join(link.itertext()))):
         return False
     pai = link.getparent()
-    dentro_de_sup = pai is not None and _nome(pai) == "sup"
-    return dentro_de_sup or any(_nome(filho) == "sup" for filho in link)
+    dentro_de_sup = pai is not None and nome_local(pai) == "sup"
+    return dentro_de_sup or any(nome_local(filho) == "sup" for filho in link)
 
 
 def _destino(href: str, caminho: str) -> str:
@@ -308,14 +294,26 @@ def _alvos_locais(chamadas: set[Elemento], caminho: str) -> set[str]:
     return {d.removeprefix(prefixo) for d in destinos if d.startswith(prefixo)}
 
 
-def _folhas(corpo: Elemento) -> Iterator[Elemento]:
-    for elemento in corpo.iterdescendants():
-        if _nome(elemento) in BLOCOS and not _tem_bloco_dentro(elemento):
-            yield elemento
+def _folhas(elemento: Elemento) -> Iterator[Elemento]:
+    """As folhas na ordem do documento; não desce numa folha, que já leva o texto de dentro."""
+    for filho in elemento:
+        if _eh_folha(filho):
+            yield filho
+        else:
+            yield from _folhas(filho)
+
+
+def _eh_folha(elemento: Elemento) -> bool:
+    """Bloco sem bloco dentro, ou o índice remissivo inteiro, que é um segmento só: entrada por
+    entrada, o termo pai e as vírgulas entre os links ficavam fora de segmento e eram lidos no
+    livro montado (ADR-0008)."""
+    if raiz_do_indice(elemento):
+        return True
+    return nome_local(elemento) in BLOCOS and not _tem_bloco_dentro(elemento)
 
 
 def _tem_bloco_dentro(elemento: Elemento) -> bool:
-    return any(_nome(d) in BLOCOS for d in elemento.iterdescendants())
+    return any(nome_local(d) in BLOCOS for d in elemento.iterdescendants())
 
 
 def _texto_e_notas(folha: Elemento, chamadas: set[Elemento], caminho: str) -> tuple[str, list[str]]:
@@ -327,56 +325,31 @@ def _texto_e_notas(folha: Elemento, chamadas: set[Elemento], caminho: str) -> tu
 def _pedacos_de_texto(
     elemento: Elemento, chamadas: set[Elemento], caminho: str, notas: list[str]
 ) -> Iterator[str]:
-    """Texto do elemento sem as chamadas de nota; `<br/>` vira espaço."""
-    if elemento.text and _nome(elemento):
+    """Texto do elemento sem as chamadas de nota; `<br/>` vira espaço, e o bloco de dentro (só
+    o índice tem) fica entre espaços, para a entrada não colar na seguinte (ADR-0008)."""
+    if elemento.text and nome_local(elemento):
         yield elemento.text
     for filho in elemento:
         if filho in chamadas:
             notas.append(_destino(filho.get("href", ""), caminho))
-        elif _nome(filho) == "br":
+        elif nome_local(filho) == "br":
             yield " "
-        elif _nome(filho):
+        elif nome_local(filho) in BLOCOS:
+            yield from (" ", *_pedacos_de_texto(filho, chamadas, caminho, notas), " ")
+        elif nome_local(filho):
             yield from _pedacos_de_texto(filho, chamadas, caminho, notas)
         if filho.tail:
             yield filho.tail
 
 
-def _papel(folha: Elemento, alvos_locais: set[str]) -> Papel:
-    """Nota vence tudo; depois título; depois o contêiner (A3 da auditoria: só parágrafo
-    com parágrafo se junta na limpeza, então item, célula e citação precisam de papel próprio).
-    """
-    ancestrais = (folha, *folha.iterancestors())
-    if any(_eh_corpo_de_nota(elemento, alvos_locais) for elemento in ancestrais):
-        return Papel.NOTA
-    nome = _nome(folha)
-    if nome in TITULOS:
-        return Papel.TITULO
-    if nome in ITENS:
-        return Papel.ITEM
-    if nome in CELULAS:
-        return Papel.CELULA
-    if any(_nome(elemento) == "blockquote" for elemento in ancestrais):
-        return Papel.CITACAO
-    return Papel.PARAGRAFO
-
-
-def _eh_corpo_de_nota(elemento: Elemento, alvos_locais: set[str]) -> bool:
-    tipos = set(elemento.get(f"{{{OPS}}}type", "").split())
-    return (
-        bool(tipos & TIPOS_DE_NOTA)
-        or elemento.get("role") in PAPEIS_ARIA_DE_NOTA
-        or elemento.get("id") in alvos_locais
-    )
-
-
 def _texto_fora(elemento: Elemento, chamadas: set[Elemento]) -> Iterator[str]:
     """Texto que não caiu em nenhuma folha, como em `<div>solto<p>x</p></div>`."""
-    if _nome(elemento) in BLOCOS and not _tem_bloco_dentro(elemento):
+    if _eh_folha(elemento):
         return
     if elemento.text and elemento.text.strip():
         yield normalizar_espacos(elemento.text)
     for filho in elemento:
-        if _nome(filho) and filho not in chamadas:
+        if nome_local(filho) and filho not in chamadas:
             yield from _texto_fora(filho, chamadas)
         if filho.tail and filho.tail.strip():
             yield normalizar_espacos(filho.tail)

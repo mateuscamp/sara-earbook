@@ -4,26 +4,20 @@
 from __future__ import annotations
 
 import re
-from collections import defaultdict
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
 
+from earbook.dominio.cabecalho import (
+    frase_repetida,
+    frases_de_cabecalho,
+    frases_do_cabecalho,
+    frases_do_livro,
+)
 from earbook.dominio.capitular import CapitularDevolvida, devolver_uma, leituras
 from earbook.dominio.direitos import nas_pontas, pagina_de_direitos
+from earbook.dominio.fora_do_audio import MOTIVO_DO_PAPEL, marcas_dagua, pelo_papel
 from earbook.dominio.segmento import ABRE_PARAGRAFO, Papel, Segmento
 
-# "Tides of Darkness 4" ou "12 Aaron Rosenberg": frase e número de página, sozinhos na linha.
-_FRASE_E_NUMERO = re.compile(r"^(?P<frase>\D.*?)\s+(?P<numero>\d{1,4})$")
-_NUMERO_E_FRASE = re.compile(r"^(?P<numero>\d{1,4})\s+(?P<frase>\D.*?)$")
-# "Chapter 2" também muda de número, mas é título que o ouvinte quer escutar. Compara a frase
-# inteira: por prefixo, "Cap." nunca casava e "Book of Dust" ficava isento (A1 da auditoria).
-_ROTULO_DE_CAPITULO = re.compile(
-    r"chapter|cap[ií]tulo|cap\.|part|parte|book|livro|section|se[cç][aã]o", re.IGNORECASE
-)
-# Abaixo disso, a frase casaria com pedaço solto do título ("of", "a").
-TAMANHO_MINIMO_DA_FRASE = 3
-# Com dois números diferentes ainda pode ser texto do livro; com três, é numeração de página.
-NUMEROS_DIFERENTES_MINIMOS = 3
 # Parágrafo que continua: a primeira letra, depois de aspas e travessões, é minúscula.
 _PRIMEIRA_LETRA = re.compile(rf"^{ABRE_PARAGRAFO}(?P<letra>\w)")
 # Termina frase. Aspas e apóstrofo não estão aqui: a fala que fecha aspas com vírgula segue
@@ -110,19 +104,50 @@ def limpar_para_o_ouvido(
     titulo: str,
     autor: str,
 ) -> LivroLimpo:
-    """A limpeza inteira, na ordem: cabeçalho solto, cabeçalho colado, parágrafo partido.
+    """A limpeza inteira, na ordem: direitos, marca d'água, cabeçalho solto, cabeçalho colado,
+    parágrafo partido, capitular e, por último, código e índice.
 
     A ordem importa: o cabeçalho, solto ou colado, fica exatamente onde o parágrafo se
     partiu, e só some do meio depois que as duas metades ficam lado a lado.
     """
-    sem_direitos, direitos = tirar_paginas_de_direitos(capitulos)
-    sem_cabecalho = tirar_cabecalhos_de_pagina(sem_direitos, titulo, autor)
-    sem_cabecalho = replace(sem_cabecalho, remocoes=(*direitos, *sem_cabecalho.remocoes))
-    repetidas = _frases_de_cabecalho([s for _, segmentos in capitulos for s in segmentos])
-    frases = _frases_do_livro(repetidas, titulo, autor)
+    sem_cabecalho = _tirar_paginas_marcas_e_cabecalhos(capitulos, titulo, autor)
+    frases = frases_do_cabecalho(capitulos, titulo, autor)
     juntado = _juntar_paragrafos_partidos(_aparar_cabecalhos_colados(sem_cabecalho, frases))
     # ADR-0007: sem a letra solta, uma continuação em minúscula pode aparecer ("he" + "demanded.").
-    return _juntar_paragrafos_partidos(_devolver_capitulares(_marcar_capitulares_perdidas(juntado)))
+    juntado = _juntar_paragrafos_partidos(
+        _devolver_capitulares(_marcar_capitulares_perdidas(juntado))
+    )
+    # ADR-0008: código e índice saem por último: até aqui, separam os parágrafos em volta deles.
+    return _tirar_pelo_papel(juntado)
+
+
+def _tirar_paginas_marcas_e_cabecalhos(
+    capitulos: Sequence[tuple[str, Sequence[Segmento]]], titulo: str, autor: str
+) -> LivroLimpo:
+    """A página de direitos, a marca d'água e o cabeçalho solto. A marca sai antes da junção, como
+    o cabeçalho, para as metades do parágrafo partido se juntarem (ADR-0008)."""
+    sem_direitos, direitos = tirar_paginas_de_direitos(capitulos)
+    sem_marca, marcas = _tirar(sem_direitos, marcas_dagua(sem_direitos))
+    livro = tirar_cabecalhos_de_pagina(sem_marca, titulo, autor)
+    return replace(livro, remocoes=(*direitos, *marcas, *livro.remocoes))
+
+
+def _tirar(
+    capitulos: Sequence[tuple[str, Sequence[Segmento]]], saem: Mapping[str, str]
+) -> tuple[list[tuple[str, list[Segmento]]], list[Remocao]]:
+    """Tira os IDs de `saem`, cada um com o seu motivo: nada sai sem registro (ADR-0003)."""
+    restantes = [(c, [s for s in segmentos if s.id not in saem]) for c, segmentos in capitulos]
+    remocoes = [
+        Remocao(s.id, saem[s.id], s.texto) for _, segs in capitulos for s in segs if s.id in saem
+    ]
+    return restantes, remocoes
+
+
+def _tirar_pelo_papel(livro: LivroLimpo) -> LivroLimpo:
+    capitulos = [(capitulo.capitulo, capitulo.segmentos) for capitulo in livro.capitulos]
+    restantes, remocoes = _tirar(capitulos, pelo_papel(capitulos))
+    limpos = tuple(CapituloLimpo(capitulo, tuple(segmentos)) for capitulo, segmentos in restantes)
+    return replace(livro, capitulos=limpos, remocoes=(*livro.remocoes, *remocoes))
 
 
 def tirar_paginas_de_direitos(
@@ -133,16 +158,14 @@ def tirar_paginas_de_direitos(
 
     Cada remoção fica registrada, como toda remoção da limpeza (ADR-0003).
     """
-    restantes: list[tuple[str, list[Segmento]]] = []
-    remocoes: list[Remocao] = []
     na_ponta = nas_pontas(sum(len(segmentos) for _, segmentos in capitulos))
+    saem: dict[str, str] = {}
     inicio = 0
-    for capitulo, segmentos in capitulos:
-        saem = pagina_de_direitos(segmentos, lambda i, base=inicio: na_ponta(base + i))
+    for _, segmentos in capitulos:
+        motivos = pagina_de_direitos(segmentos, lambda i, base=inicio: na_ponta(base + i))
+        saem |= {segmentos[i].id: motivo for i, motivo in motivos.items()}
         inicio += len(segmentos)
-        remocoes += [Remocao(segmentos[i].id, saem[i], segmentos[i].texto) for i in sorted(saem)]
-        restantes.append((capitulo, [s for i, s in enumerate(segmentos) if i not in saem]))
-    return restantes, remocoes
+    return _tirar(capitulos, saem)
 
 
 def _aparar_cabecalhos_colados(livro: LivroLimpo, frases: set[str]) -> LivroLimpo:
@@ -264,8 +287,9 @@ def _devolver_capitulares(livro: LivroLimpo) -> LivroLimpo:
 
 
 def _pista_da_letra_solta(segmentos: Sequence[Segmento]) -> Pista | None:
-    """A primeira maiúscula sozinha, fora o "I": no Tides, 24 das 25 capitulares estavam assim."""
-    for segmento in segmentos:
+    """A primeira maiúscula sozinha, fora o "I": no Tides, 24 das 25 capitulares estavam assim.
+    A do código e a do índice não são capitular (A1 da code-audit do ADR-0008)."""
+    for segmento in (s for s in segmentos if s.papel not in MOTIVO_DO_PAPEL):
         achado = _LETRA_SOLTA.search(segmento.texto)
         if achado is not None:
             return Pista(segmento.id, achado.start("letra"), achado["letra"])
@@ -309,15 +333,15 @@ def tirar_cabecalhos_de_pagina(
     "Dia 2", "Dia 3" num diário) fica no texto como suspeita, para o agente decidir (H1 da
     auditoria). `tirar_cabecalhos_de_pagina([("c001", segmentos)], titulo, autor)`.
     """
-    repetidas = _frases_de_cabecalho([s for _, segmentos in capitulos for s in segmentos])
-    do_livro = _frases_do_livro(repetidas, titulo, autor)
+    repetidas = frases_de_cabecalho([s for _, segmentos in capitulos for s in segmentos])
+    do_livro = frases_do_livro(repetidas, titulo, autor)
     limpos: list[CapituloLimpo] = []
     remocoes: list[Remocao] = []
     suspeitas: list[Suspeita] = []
     for capitulo, segmentos in capitulos:
         mantidos: list[Segmento] = []
         for segmento in segmentos:
-            frase = _frase_repetida(segmento, repetidas)
+            frase = frase_repetida(segmento, repetidas)
             if frase is not None and frase.casefold() in do_livro:
                 motivo = f"cabeçalho de página {frase!r}"
                 remocoes.append(Remocao(segmento.id, motivo, segmento.texto))
@@ -328,43 +352,3 @@ def tirar_cabecalhos_de_pagina(
             mantidos.append(segmento)
         limpos.append(CapituloLimpo(capitulo, tuple(mantidos)))
     return LivroLimpo(tuple(limpos), tuple(remocoes), tuple(suspeitas))
-
-
-def _frases_do_livro(repetidas: set[str], titulo: str, autor: str) -> set[str]:
-    """As frases repetidas que estão no título ou no autor: essas saem do áudio (H1)."""
-    return {f for f in repetidas if _esta_no_titulo_ou_no_autor(f, titulo, autor)}
-
-
-def _esta_no_titulo_ou_no_autor(frase: str, titulo: str, autor: str) -> bool:
-    """`frase` em casefold, como palavras inteiras: "Dark" não está em "Tides of Darkness"."""
-    if len(frase) < TAMANHO_MINIMO_DA_FRASE:
-        return False
-    palavras = re.compile(rf"(?<!\w){re.escape(frase)}(?!\w)")
-    return any(palavras.search(texto.casefold()) for texto in (titulo, autor))
-
-
-def _frase_repetida(segmento: Segmento, repetidas: set[str]) -> str | None:
-    cabecalho = _cabecalho(segmento)
-    if cabecalho is None or cabecalho[0].casefold() not in repetidas:
-        return None
-    return cabecalho[0]
-
-
-def _cabecalho(segmento: Segmento) -> tuple[str, str] | None:
-    """(frase, número) de um parágrafo com cara de cabeçalho; None para o resto."""
-    if segmento.papel is not Papel.PARAGRAFO:
-        return None
-    achado = _FRASE_E_NUMERO.match(segmento.texto) or _NUMERO_E_FRASE.match(segmento.texto)
-    if achado is None or _ROTULO_DE_CAPITULO.fullmatch(achado["frase"]):
-        return None
-    return achado["frase"], achado["numero"]
-
-
-def _frases_de_cabecalho(segmentos: Sequence[Segmento]) -> set[str]:
-    """Frases, em casefold, que aparecem com pelo menos três números de página diferentes."""
-    numeros: defaultdict[str, set[str]] = defaultdict(set)
-    for segmento in segmentos:
-        cabecalho = _cabecalho(segmento)
-        if cabecalho is not None:
-            numeros[cabecalho[0].casefold()].add(cabecalho[1])
-    return {f for f, nums in numeros.items() if len(nums) >= NUMEROS_DIFERENTES_MINIMOS}

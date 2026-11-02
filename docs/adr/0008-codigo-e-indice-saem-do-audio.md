@@ -1,0 +1,289 @@
+# 0008 — O `limpar` tira do áudio o bloco de código, o índice remissivo e a marca d'água
+
+**Status:** Aceito
+**Data:** 2026-11-02
+**Driver ★:** qualidade da escuta no ElevenReader (ADR-0001)
+
+**Bottom line:** o `preparar` dá papel próprio ao bloco de código e ao índice remissivo, quando
+a marcação do EPUB diz o que eles são, e o `limpar` os tira do texto, registrados em
+`limpeza.json`. O Gherkin fica no texto, como parágrafo, porque é feito para ser lido por gente.
+O `limpar` tira também o parágrafo idêntico que se repete em metade ou mais dos arquivos do
+spine (a marca d'água "OceanofPDF.com"). Inverte se a escuta mostrar que o ouvinte se perde sem o
+código ("depois da linha 7"), ou se um livro medido perder um texto que não é código, índice nem
+marca d'água.
+
+## Contexto
+
+Quantum atual: 1 (CLI local + pasta de trabalho em arquivos). Continua 1.
+
+O próximo livro da tradução é *Learning Domain-Driven Design* (Vlad Khononov, O'Reilly, EPUB).
+O `preparar` no HEAD b3904d2 deu 321 capítulos (um por arquivo do spine), 4.246 segmentos,
+6 remoções (direitos), 1 junção, 696 trechos fora de segmento e 81.708 palavras em `limpos/`.
+Dois defeitos iriam para o áudio e para a tradução:
+
+| Defeito | Medido no DDD | O que causa |
+|---|---|---|
+| **Bloco de código vira parágrafo** | 65 `<pre>`, todos com `data-code-language` ou `data-type="programlisting"` e `<code>` dentro: 51 `csharp`, 9 `json`, 1 `sql`, 1 `javascript`, 1 `gherkin` e 2 sem linguagem (dados: `LeadId: 12 FirstNames: …`). São 2.853 palavras, numa linha só (`c178-s0005`: "public class Player { public Guid Id { get; set; } … }") | a voz lê chave e ponto e vírgula; na tradução, o código fica igual ao original e o `conferir` o acusa de "igual ao original" ou "parece inglês" |
+| **Índice remissivo lido e traduzido** | `c318` ("Index") e `c319` ("L"): 973 segmentos e 5.252 palavras, mais os 696 trechos fora de segmento, todos desses dois arquivos (o termo pai de uma entrada com subentradas, e as vírgulas e hífens entre os links) | uns 33 minutos de "accidental complexity, case study of applying DDD, The real problem…"; 973 segmentos traduzidos para nada. O índice está em "O que atrapalha o ouvido" no `AGENTS.md` |
+| **Marca d'água no fim de todo arquivo** | "OceanofPDF.com", parágrafo com link, último segmento de cada um dos 321 arquivos do spine (o `c001` só tem ela) | a voz diz "OceanofPDF ponto com" a cada poucos minutos, 321 vezes. Não tem número de página, então a regra do cabeçalho corrente (ADR-0003) não a vê |
+
+O que a prosa faz com o código: os 65 blocos vêm depois de um parágrafo que termina em ":" e
+anuncia o código ("see the following test", "For example:"). Em 19 dos 65, o parágrafo seguinte
+fala das linhas ("after line 7 but before line 9") ou do "previous example".
+
+O Gherkin (`c044-s0007`, 44 palavras) é um teste escrito em inglês estruturado: "Scenario: Notify
+the agent about a new support case / Given Vincent Jules submits a new support case… / When the
+ticket is assigned to Mr. Wolf / Then the agent receives a notification…". A prosa de antes diz
+para que ele está ali: "Domain experts can read the tests and verify the system's expected
+behavior. For example, see the following test". O C# não se lê; o Gherkin foi feito para isso.
+
+O código em linha (`<code>` dentro de `<p>`) é outra coisa: 129 elementos, 132 palavras, em 18
+arquivos, quase todos nomes de classe e de método (`AppendEvent`, `Ticket`) no meio da frase.
+Fica de fora desta decisão: tirá-los quebraria a frase.
+
+O que o EPUB marca no índice: `<section data-type="index" epub:type="index">` nos dois arquivos,
+com `<div data-type="index">`, `indexdiv`, `index-term` e `index:locator` dentro. O `epub:type`
+é o vocabulário de semântica estrutural do EPUB 3 (a especificação de índices do EPUB pede
+`index` num `<body>` ou num `<section>`); o `data-type` é o HTMLBook da O'Reilly; o
+`role="doc-index"` é o DPUB-ARIA.
+
+Os outros livros medidos:
+
+| Livro | `<pre>` | Marca de índice | O que acontece |
+|---|---|---|---|
+| Huxley, *The Doors of Perception* (EPUB) | 0 | 0 | nada muda. O arquivo `OEBPS/index.xhtml` é a folha de rosto |
+| Rosenberg, *Tides of Darkness* (EPUB) | 0 | 0 | nada muda. Os arquivos se chamam `index_split_003.html`… |
+| *Competente o Suficiente* (PDF, pt-BR) | 8, do `importar-pdf`, sem `<code>` | 0 | nada muda. São comandos curtos (`tmutil localsnapshot`, `sudo timeshift --create …`), e a parada "código" do roteiro de escuta foi aprovada pelo Mateus (ADR-0004) |
+| *Software Architecture: The Hard Parts* (PDF, en) | 79, do `importar-pdf`, sem `<code>` | 0 | nada muda. A fonte monoespaçada marca também prosa: os carimbos da saga ("Wednesday, November 3, 13:00"), as convenções tipográficas do prefácio ("Constant width") e um pedaço de palavra ("tion"). O índice (`c022`, título "Index", 47 segmentos, 6.198 palavras em duas colunas intercaladas) continua lido, porque o EPUB do `importar-pdf` não o marca |
+
+O nome do arquivo e o título não servem de regra no EPUB: o Huxley e o Tides têm "index" no nome
+do arquivo sem ter índice, e "Índice", em português, é muitas vezes o sumário.
+
+O que se repete entre arquivos do spine, medido nos sete livros de `livros/trabalho/` (o mesmo
+texto em mais de um arquivo; a fração é sobre os arquivos com algum segmento):
+
+| Livro | Arquivos com texto | O que mais se repete | Parágrafo que mais se repete, fora a marca |
+|---|---|---|---|
+| *Learning DDD* | 321 | "OceanofPDF.com", parágrafo, em 321 (100%) | "Anticorruption layer" e "Open-host service", em 6 (2%, como item e parágrafo) |
+| *Huxley* | 4 | "The Doors of Perception", título, em 3 (75%) | nenhum |
+| *Tides* | 6 | "POCKET STAR BOOKS", título, em 2 (33%) | "re we ready?”", em 2 (33%: a abertura repetida do livro) |
+| *Competente* | 23 | 12 títulos de capítulo, em 2 (9%: o sumário e o capítulo) | nenhum |
+| *Hard Parts* | 22 | "Trade-Offs", título, em 9 (41%) | "Component Namespace Responsibility", em 2 (9%) |
+| *Dalgalarrondo* | 43 | "Questões de revisão", título, em 28 (65%) | "Em caso positivo", em 3 (7%) |
+| *Warcraft* | 6 | igual ao Tides | igual ao Tides |
+
+O título se repete de propósito ("Conclusion", "Exercises", "Questões de revisão") e chega a 65%
+dos arquivos. Nenhum parágrafo de verdade passa de 6 arquivos nem de 33%.
+
+## Drivers
+
+| ★ | Característica | Como se mede |
+|---|---|---|
+| ★ | Escuta | 0 bloco de código, 0 entrada de índice e 0 "OceanofPDF.com" no texto lido do DDD; o Gherkin lido como frase |
+| | Nada some em silêncio (ADR-0003) | cada bloco e cada índice tirado fica em `limpeza.json`, com o ID e o texto; o `conferir` cobra origem = mantidos + removidos + juntados |
+| | Nada a mais some | Huxley, Tides, Competente e Hard Parts com `limpos/` idêntico ao de antes |
+| | Custo da tradução | as palavras que vão para a tradução do DDD caem de 81.708 para ~73.650 (−10%) |
+
+## Alternativas consideradas
+
+### 1. O que o bloco de código vira
+
+| Opção | Ganha | Perde | Por que não |
+|---|---|---|---|
+| **A. Sai do texto, registrado em `limpeza.json`** | a voz não lê código; nada novo no `traduzir`, no `conferir` nem no `montar`: o removido já sai do livro montado (ADR-0005) | o livro montado perde o código também na tela; em 19 de 65 casos a prosa seguinte fala de "line 7", que o ouvinte não tem | — |
+| B. Fica no livro, fora da tradução e da cobrança | o livro na tela continua com o código | a voz lê chave e ponto e vírgula, que é o defeito; um estado novo de segmento ("mantido sem tradução") no `traduzir`, no `conferir` e no `montar` | falha no ★ e custa um caminho novo em três comandos |
+| C. Troca por um aviso falado ("Trecho de código omitido.") | o ouvinte sabe que havia código | inventa texto que o livro não tem; o `montar` passa a escrever frase própria; e os 65 blocos já são anunciados pela prosa de antes, que termina em ":" | o anúncio já existe; fica para a escuta decidir (ver Consequências) |
+| D. Lê o Gherkin como os outros e tira tudo | uma regra só | o único exemplo de "o especialista do domínio lê o teste" some do capítulo que fala disso | o Gherkin é prosa estruturada, feito para ser lido |
+
+### 2. Como o índice sai
+
+| Opção | Ganha | Perde | Por que não |
+|---|---|---|---|
+| A. Cada entrada vira segmento com papel `indice` e sai | segue o bloco-folha de sempre | o termo pai de entrada com subentradas e as vírgulas entre os links não são segmento: ficam no livro montado e são lidos (os 696 trechos) | não resolve |
+| **B. O elemento marcado como índice, o mais externo, vira um segmento só, que sai** | o índice sai inteiro, com o título "Index", os termos pais e a pontuação, por um ID só; o `montar` já tira o elemento removido | o registro em `limpeza.json` guarda um texto de ~3 mil palavras por arquivo; é o único segmento com bloco dentro | — |
+| C. Pelo título ("Index") ou pelo nome do arquivo | pega também o EPUB sem marcação | "index" no nome de arquivo do Huxley e do Tides; "Índice" é sumário em português | tira texto que não é índice |
+| D. O segmentador pula o índice | nenhum registro grande | sumiria sem registro, e o `montar`, que não sabe dele, o deixaria no livro | contradiz o ADR-0003 |
+
+### 3. Como a marca d'água sai
+
+| Opção | Ganha | Perde | Por que não |
+|---|---|---|---|
+| A. Pelo nome do site ("OceanofPDF", "epubBooks"…) | certeiro no caso conhecido | uma lista que nunca termina; o site seguinte passa | não é regra |
+| B. Pela posição (último segmento do arquivo) | pega a marca no rodapé | a marca no topo ou no meio passa; o último parágrafo de verdade de um capítulo curto pode coincidir em 2 arquivos | a posição não acrescenta nada à repetição, na medição |
+| **C. O mesmo parágrafo em metade ou mais dos arquivos do spine, e em 10 ou mais** | não depende do site nem da posição; a folga da medição é grande (100% contra no máximo 33%) | um livro de poucos arquivos (menos de 10) não é coberto; um refrão de verdade, idêntico em metade dos capítulos, sairia (registrado) | — |
+
+## Decisão
+
+### 1. Bloco de código
+
+- O `preparar` dá papel `codigo` ao `<pre>` que se declara código: com `data-code-language`, com
+  `data-type="programlisting"` ou com `<code>` dentro. O `<pre>` dentro de uma nota de rodapé
+  continua nota, porque a nota vence tudo, como hoje.
+- O `limpar` tira todo segmento `codigo`, com o motivo "código-fonte", no fim da limpeza: assim
+  o bloco de código continua separando os dois parágrafos em volta dele, e a junção não cola o
+  parágrafo de antes, que não fechou a frase, no de depois.
+- **O Gherkin fica**: o `<pre>` com `data-code-language="gherkin"` continua `paragrafo`, como
+  hoje, e é traduzido como frase ("Cenário: … Dado que … Quando … Então …").
+- O `<pre>` sem marca de código fica `paragrafo`, como hoje. É o `<pre>` do `importar-pdf`, em
+  que a fonte monoespaçada marca também prosa (os carimbos da saga do Hard Parts), e é onde um
+  EPUB mal feito põe verso.
+
+### 2. Índice remissivo
+
+- O elemento de bloco marcado como índice (`index` no `epub:type`, `role="doc-index"` ou
+  `data-type="index"`) é um segmento só, de papel `indice`, com todo o texto de dentro; nada
+  dentro dele vira outro segmento nem trecho fora de segmento. Vale o mais externo: o
+  `<div data-type="index">` dentro do `<section epub:type="index">` não abre outro.
+- Com a marca no `<body>`, cada elemento filho dele é um segmento `indice`.
+- O link de índice (`<a epub:type="index">` no `landmarks` do `nav`) não é bloco e não conta.
+- O `limpar` tira todo segmento `indice`, com o motivo "índice remissivo", no mesmo passo do
+  código.
+
+### 3. Marca d'água
+
+- O `limpar` tira o parágrafo (papel `paragrafo`) cujo texto, idêntico, aparece em **metade ou
+  mais** dos arquivos do spine que têm algum segmento, e em **10 arquivos ou mais**. Sai cada
+  ocorrência, com o motivo "marca d'água: o mesmo parágrafo em N de M arquivos".
+- Por que não pega o texto que se repete de propósito:
+  - **título** nunca conta ("Conclusion", "Exercises", "Notes", "Questões de revisão", que chega a
+    65% no Dalgalarrondo): só o papel `paragrafo` entra;
+  - **epígrafe** e **citação** (`<blockquote>`) têm papel `citacao`, e item de lista, `item`;
+  - o **parágrafo de verdade** que mais se repete nos sete livros está em 6 arquivos (2% do DDD);
+    a maior fração é 33%, em 2 arquivos do Tides. A metade dá folga de 17 pontos, e os 10
+    arquivos impedem que um livro de 4 ou 6 arquivos (Huxley, Tides) perca o que aparece em 2 ou 3;
+  - o parágrafo **sem letra** ("* * *", a pausa de cena) fica: não é lido como palavra e marca a
+    pausa;
+  - o texto precisa ser **idêntico**: a frase parecida, com uma palavra diferente, não conta.
+- Roda logo depois da página de direitos e antes do cabeçalho de página: como o cabeçalho, a marca
+  pode estar no meio de um parágrafo partido, e as duas metades só se juntam depois que ela sai.
+
+### Fronteiras que mudam
+
+- `Papel` ganha `codigo` e `indice`. Os dois aparecem em `segmentos/` e nunca em `limpos/`.
+- O segmento de índice é o único com bloco dentro (o bloco-folha do ADR-0001 continua valendo
+  para o resto); o texto dos blocos de dentro se junta com espaço.
+- A classificação do bloco pela marcação sai de `adaptadores/xhtml.py`, que passaria das 400
+  linhas, para um módulo próprio do adaptador.
+
+### O PDF fica como está
+
+O índice do Hard Parts continua lido, e o código do `importar-pdf` também. Marcar no
+`importar-pdf` o capítulo de título "Index" ou "Índice remissivo" com
+`<section epub:type="index">` faria o `preparar` tirá-lo pela regra acima, mas é outra
+mudança, no `importar-pdf`, e fica proposta para depois (ver "Fora desta decisão").
+
+## Medição (2026-11-02, depois do código)
+
+O `preparar` rodou em pastas novas de `livros/trabalho/`, sem tocar nas medições anteriores.
+
+| Livro | Segmentos | Mantidos | Palavras mantidas | Fora de segmento | Remoções | Junções |
+|---|---|---|---|---|---|---|
+| *Learning DDD* antes (`ddd.earbook`) | 4.246 | 4.239 | 81.708 | 696 | 6 | 1 |
+| *Learning DDD* depois (`ddd-v2.earbook`) | 3.277 | 2.883 | 73.328 | 0 | 393: 321 marcas d'água, 64 códigos, 6 de direitos, 2 índices | 1 |
+
+- **DDD:** nenhum segmento mantido mudou de texto nem de papel; os 1.356 que saíram são exatamente
+  as 321 marcas, os 64 blocos de código e os 971 segmentos que o índice tinha (agora 2, um por
+  arquivo). As 6 remoções de direitos, a junção, as suspeitas (0) e as capitulares (0) são as
+  mesmas. O Gherkin (`c044-s0007`) ficou como parágrafo. O `conferir --original` passa, e o
+  `montar --original` (`livros/trabalho/ddd-v2.original.epub`), lido de novo pelo `preparar`, dá
+  0 trecho fora de segmento, 0 remoção e nenhum "OceanofPDF".
+- **epubcheck do DDD montado:** 3.425 erros, contra 11.963 do original; todo tipo de erro já vinha
+  do original, menos um: "body incompleto" em 307 arquivos. O EPUB é 2.0 (XHTML 1.1) e usa
+  `<section>` e `<figure>`, que o XHTML 1.1 não aceita; em 307 arquivos, o `<div>` da marca d'água
+  era o único bloco válido do `<body>`. Nenhum `<body>` ficou vazio: os dois arquivos do índice
+  ficam com as âncoras num `<div>` (ADR-0005), e a folha de rosto, com a capa.
+- **Huxley e Tides** (`huxley-adr0008`, `tides-adr0008`) e **Competente e Hard Parts**, pelo
+  `importar-pdf` e o `preparar` (`competente-adr0008`, `hard-parts-adr0008`): `segmentos/`,
+  `limpos/`, `limpeza.json` e `livro.json` idênticos aos da medição do ADR-0007 (fora a origem).
+
+### Correções da revisão (2026-11-02)
+
+A code-review e a code-audit não acharam bloqueador. O Mateus aprovou os dois lotes ("Os dois (A
+e B)"). Cada correção do lote A tem um teste de regressão, visto falhar na asserção antes dela:
+- **A1:** a pista da capitular olhava os 3 segmentos seguintes, inclusive o código. Num livro
+  sintético, "var x = N + 1;" perdia o "N", que ia para "ight fell…". O mecanismo vinha de antes
+  (o código era parágrafo), e agora o código e o índice não servem de pista. Vermelho:
+  `'var x = + 1;' != 'var x = N + 1;'`.
+- **A2:** com a marca de índice no `<body>`, só o filho de bloco virava índice, e um `<p>` dentro
+  de um `<span>` saía como parágrafo. Agora a raiz é o bloco mais externo dentro da marca,
+  qualquer que seja o elemento marcado. Vermelho: `('paragrafo', 'abstractness, 67') != ('indice', …)`.
+- **A3:** o Gherkin marcado pela classe (`language-gherkin` no `<code>`, a recomendação do HTML,
+  ou `sourceCode gherkin`, do pandoc) saía como código. A linguagem agora vem também da classe do
+  `<pre>` e do `<code>`. Vermelho: `('codigo', …) != ('paragrafo', …)`, nas duas formas.
+
+Lote B, refatoração com a suíte verde: as regras puras do cabeçalho de página saíram de
+`limpeza.py` para `dominio/cabecalho.py` (de 396 para 354 linhas); a remoção da página de
+direitos passou a usar o mesmo `_tirar` da marca d'água e do código; `marcas_dagua` e
+`limpar_para_o_ouvido` voltaram para 20 linhas ou menos.
+
+Fica registrado, sem correção: o Gherkin, como parágrafo, pode absorver um parágrafo seguinte que
+comece em minúscula (nenhum caso no DDD; ver Consequências).
+
+Remedido depois das correções, em pastas novas: o DDD (`ddd-v3.earbook`) saiu idêntico ao
+`ddd-v2.earbook` (`segmentos/`, `limpos/`, `limpeza.json` e `livro.json`), e Huxley, Tides,
+Competente e Hard Parts (`*-adr0008-revisado`), idênticos aos da medição do ADR-0007. O
+post-audit do intervalo inteiro não achou defeito novo. Resíduo que vem de antes, sem caso
+medido: a prova da palavra da capitular (ADR-0007) ainda conta as palavras do código e do índice.
+
+## Consequências
+
+**Ganha:**
+- O DDD perde do áudio 64 blocos de código (2.809 palavras), o índice inteiro (5.252 palavras e
+  os 696 trechos fora de segmento) e as 321 marcas d'água; a tradução cai para ~73.300 palavras,
+  e o `conferir` deixa de acusar código "igual ao original".
+- A regra é da marcação, não do livro: todo EPUB da O'Reilly (HTMLBook), todo EPUB 3 com
+  semântica estrutural e todo DPUB-ARIA cai nela.
+
+**Perde:**
+- O livro montado perde o código também na tela: quem quiser ver o código abre o original.
+- Em 19 dos 65 blocos, o parágrafo seguinte cita a linha do código ("after line 7"), e o
+  ouvinte não tem a linha.
+- O índice no EPUB sem marca (calibre de EPUB 2 antigo, PDF importado) continua lido.
+- O registro do índice em `limpeza.json` é grande (~3 mil palavras por arquivo).
+- O Gherkin vira uma linha só: "Given", "When" e "Then" sem pausa entre eles, a não ser a que o
+  tradutor puser. E, como `paragrafo`, um parágrafo em minúscula logo depois dele seria juntado
+  a ele (nenhum caso no DDD: o de depois começa em maiúscula).
+
+**Aceito conscientemente:**
+- O código sai sem aviso. Revisitar pela escuta: se o "depois da linha 7" confundir, a opção C
+  (um aviso curto no lugar do bloco) volta à mesa.
+- Só o Gherkin é linguagem de prosa. Revisitar quando um livro trouxer outra (Cucumber em outra
+  marca, SQL descrito como frase).
+- O código em linha (`<code>` no meio do parágrafo) fica.
+- A marca d'água num livro de menos de 10 arquivos, ou em menos da metade deles, fica. E um
+  parágrafo de verdade idêntico em metade dos capítulos (um refrão) sairia, registrado. Revisitar
+  se algum dos dois aparecer num livro medido.
+
+## Governança
+
+| O que verifica | Mecanismo | Onde roda | Falha quando |
+|---|---|---|---|
+| Código sai e fica registrado | teste com EPUB sintético: `<pre data-code-language="csharp">`, `<pre data-type="programlisting">` e `<pre><code>` saem com o motivo "código-fonte" | portão | o bloco fica no texto ou sai sem registro |
+| O que não é código fica | testes: Gherkin, `<pre>` sem marca e `<code>` em linha continuam no texto | portão | algum deles sai |
+| A junção não atravessa o código | teste: parágrafo sem ponto + código + parágrafo em minúscula continuam três | portão | os dois parágrafos se juntam |
+| Índice sai inteiro | testes: `epub:type="index"` no `<section>` e no `<body>`, `role="doc-index"`, `data-type="index"`; o livro montado não tem o termo pai nem as vírgulas | portão | sobra texto do índice no livro montado ou em `texto_fora_de_segmento` |
+| O link do `landmarks` não é índice | teste: `<a epub:type="index">` no `nav` fica | portão | o sumário perde o item |
+| Marca d'água sai, o repetido de propósito fica | testes: o parágrafo em metade dos arquivos sai, registrado; abaixo da metade, em menos de 10 arquivos, como título, como citação ou sem letra, fica | portão | a marca fica, ou sai texto que não é marca |
+| Nada a mais some | `preparar` no Huxley e no Tides, `importar-pdf` e `preparar` no Competente e no Hard Parts, comparados com o ADR-0003 e o ADR-0004 | a cada mudança na limpeza | `limpos/` diferente sem explicação |
+| Escuta ★ (manual) | o `montar --original` do DDD, num trecho com código e no fim do livro | depois desta mudança; responsável: Mateus | o ouvinte se perde onde o código saiu |
+
+Regras derivadas no `AGENTS.md`: em "O que atrapalha o ouvido", o índice remissivo e o bloco de
+código passam a feitos no `preparar` (quando o EPUB os marca), o Gherkin fica, e entra a marca
+d'água repetida em metade dos arquivos.
+
+## Fora desta decisão (medido no DDD, para o Mateus escolher a ordem)
+
+- **O índice do PDF:** o `importar-pdf` marcaria o capítulo de título "Index" ou "Índice
+  remissivo" com `epub:type="index"`. No Hard Parts, tira 6.198 palavras do áudio; nos outros
+  três PDFs medidos não há capítulo com esse título.
+- **Tabela e legenda:** 217 células com 221 palavras, uma por segmento; 133 legendas "Figure N-N."
+  e 3 "Table N-N.", com 1.228 palavras, lidas sem a imagem. Ficam para a escuta da amostra.
+- **Divisão dos tradutores:** o livro vem partido pelo calibre em 321 arquivos
+  (`part0007_split_000.html`…), com mediana de 178 palavras; 319 arquivos têm menos de um lote.
+
+## Notas
+
+Autor: Mateus, com o Claude Code · Criado em: 2026-11-02 · Aprovado em: 2026-11-02 (pelo Mateus,
+na sessão principal: "Aceitar com a marca", que acrescentou a marca d'água à proposta)
+O número 0008 estava reservado num rascunho para o `earbook adaptar`, que ainda não está no
+repositório: aquele ADR passa a ser o próximo número livre.

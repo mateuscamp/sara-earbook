@@ -16,6 +16,7 @@ ADRs em `docs/adr/`. O Claude Code traduz; o Python nunca chama o LLM (ADR-0001)
 - Tradução (ADR-0006): o `traduzir` exporta pedidos por lote (~2 mil palavras); o subagente `tradutor` (`.claude/agents/tradutor.md`) grava a resposta de cada lote; o `conferir` cobra cada ID, o texto que ficou em inglês e o glossário, e o `montar` declara pt-BR. Nomes do Tides: a localização oficial pt-BR da Blizzard.
 - A limpeza nunca apaga em silêncio: toda remoção fica em `limpeza.json`, com o ID do segmento de origem.
 - Capitular deslocada (ADR-0007): o `limpar` devolve a letra quando o próprio livro prova a palavra, e registra em `capitulares`; a que o livro não prova fica suspeita. Nunca vai no brief do tradutor.
+- Código, índice e marca d'água (ADR-0008): o `<pre>` que se declara código e o índice que o EPUB marca (`epub:type`, `role`, `data-type`; nunca pelo título nem pelo nome do arquivo) saem no `limpar`, registrados; o Gherkin fica, como parágrafo. Sai também o parágrafo idêntico em metade ou mais dos arquivos do spine, e em 10 ou mais ("OceanofPDF.com").
 - Termo e decisão do livro (ADR-0007): o tradutor declara em `termos/<lote>.json` o que decidiu fora do glossário, e o `conferir` cobra. O que a amostra decidiu mora em `decisoes.md`, que todo tradutor lê.
 - Entrada: EPUB. PDF entra pelo comando `importar-pdf` (ADR-0004), só para ouvir: sem fidelidade visual, sem OCR, e a biblioteca de PDF só em `adaptadores/`.
 - Motor: o Claude Code na sessão, pela assinatura, com um subagente por capítulo. O limite de uso conta.
@@ -84,7 +85,8 @@ Verificadas só em revisão (`code-audit`):
 
 - Marcador de nota no meio da frase ("...disse ele.12"). Feito no `preparar`.
 - Trecho lido duas vezes (`<p>` dentro de `<blockquote>`). Feito no `preparar`.
-- Número de página, cabeçalho repetido, sumário duplicado, índice remissivo.
+- Número de página, cabeçalho repetido, sumário duplicado.
+- Índice remissivo, bloco de código e marca d'água repetida: feitos no `preparar` quando o EPUB marca o índice e o código (ADR-0008). O índice e o código do PDF importado ainda são lidos.
 - Algarismo romano em título de capítulo ("Chapter IV").
 - Abreviação, URL, tabela e legenda de imagem.
 - Nome próprio traduzido de um jeito num capítulo e de outro no seguinte (precisa de glossário).
@@ -126,8 +128,10 @@ src/earbook/
                 capitulos.py (capítulo e nível do título), conferencia.py (o conferir), direitos.py (página de direitos autorais),
                 metadados.py (título e autor do PDF), traducao.py (lote, pedido, resposta, modo),
                 glossario.py (candidatos a nome, termos declarados), conferencia_da_traducao.py,
-                capitular.py (a capitular devolvida), escuta.py (o minuto de cada segmento)
-  adaptadores/  xml_seguro.py (parser), pacote_epub.py (zip + OPF), xhtml.py, pasta_de_trabalho.py,
+                capitular.py (a capitular devolvida), escuta.py (o minuto de cada segmento),
+                fora_do_audio.py (código, índice e marca d'água), cabecalho.py (cabeçalho de página)
+  adaptadores/  xml_seguro.py (parser), pacote_epub.py (zip + OPF), xhtml.py, papel_do_bloco.py (o papel
+                pela marcação), pasta_de_trabalho.py,
                 pdf.py (pdfminer), epub_simples.py (grava o EPUB do PDF)
   comandos/     preparar.py, importar_pdf.py, traduzir.py, montar.py (conferir e montar), roteiro.py
                 (minuto), cli.py

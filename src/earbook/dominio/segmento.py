@@ -30,6 +30,9 @@ class Papel(StrEnum):
     ITEM = "item"
     CELULA = "celula"
     CITACAO = "citacao"
+    # ADR-0008: estes dois existem em segmentos/ e nunca em limpos/; o limpar os tira.
+    CODIGO = "codigo"
+    INDICE = "indice"
 
 
 @dataclass(frozen=True)

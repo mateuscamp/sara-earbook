@@ -17,7 +17,8 @@ from pathlib import Path
 from typing import assert_never
 
 from earbook.adaptadores.pacote_epub import CONTAINER, DC, OPF, gravar_pacote
-from earbook.adaptadores.xhtml import OPS, XHTML
+from earbook.adaptadores.papel_do_bloco import OPS
+from earbook.adaptadores.xhtml import XHTML
 from earbook.dominio.blocos import Bloco, TipoDeBloco
 from earbook.dominio.segmento import FORA_DO_XML
 

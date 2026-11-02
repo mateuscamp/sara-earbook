@@ -46,19 +46,21 @@ def xhtml(corpo: str, doctype: str = "") -> bytes:
     ).encode()
 
 
-def opf(manifesto: str = "", spine: str = "", titulo: str = "Livro de Teste") -> bytes:
+def opf(
+    manifesto: str = "", spine: str = "", titulo: str = "Livro de Teste", idioma: str = "en"
+) -> bytes:
     return (
         '<?xml version="1.0" encoding="utf-8"?>\n'
         '<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="id">'
         '<metadata xmlns:dc="http://purl.org/dc/elements/1.1/">'
         f'<dc:identifier id="id">teste</dc:identifier><dc:title>{titulo}</dc:title>'
-        "<dc:creator>Fulano</dc:creator><dc:language>en</dc:language></metadata>"
+        f"<dc:creator>Fulano</dc:creator><dc:language>{idioma}</dc:language></metadata>"
         f"<manifest>{manifesto}</manifest><spine>{spine}</spine></package>"
     ).encode()
 
 
 def _opf_dos_capitulos(
-    arquivos: list[str], ordem_no_spine: list[str], estranho: Adulteracao
+    arquivos: list[str], ordem_no_spine: list[str], estranho: Adulteracao, idioma: str
 ) -> bytes:
     manifesto = "".join(
         (
@@ -67,7 +69,8 @@ def _opf_dos_capitulos(
         )
         for nome in arquivos
     )
-    return opf(manifesto, "".join(f'<itemref idref="{nome}"/>' for nome in ordem_no_spine))
+    spine = "".join(f'<itemref idref="{nome}"/>' for nome in ordem_no_spine)
+    return opf(manifesto, spine, idioma=idioma)
 
 
 def montar_epub(
@@ -75,6 +78,7 @@ def montar_epub(
     capitulos: dict[str, str],
     ordem_no_spine: list[str] | None = None,
     adulteracao: Adulteracao | None = None,
+    idioma: str = "en",
 ) -> Path:
     """`capitulos` mapeia nome do arquivo → corpo XHTML, na ordem do manifesto."""
     estranho = adulteracao or Adulteracao()
@@ -84,7 +88,7 @@ def montar_epub(
         zip_.writestr("META-INF/container.xml", _container(estranho.caminho_do_opf))
         zip_.writestr(
             "OEBPS/content.opf",
-            _opf_dos_capitulos(arquivos, ordem_no_spine or arquivos, estranho),
+            _opf_dos_capitulos(arquivos, ordem_no_spine or arquivos, estranho, idioma),
         )
         for nome, corpo in capitulos.items():
             zip_.writestr(f"OEBPS/{nome}", xhtml(corpo))

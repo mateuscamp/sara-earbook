@@ -28,7 +28,13 @@ CAPITULO_DOIS = "<p>Livro de Teste 6</p><h1>Dois</h1><p>Texto.</p>"
 
 @pytest.fixture
 def pasta(tmp_path: Path) -> Path:
-    epub = montar_epub(tmp_path / "livro.epub", {"a.xhtml": CAPITULO_UM, "b.xhtml": CAPITULO_DOIS})
+    # Em pt-BR: aqui o texto final é o de `limpos/`; o livro em inglês exige a tradução
+    # (ADR-0006), e o modo tradução é testado em test_montar_traducao.py.
+    epub = montar_epub(
+        tmp_path / "livro.epub",
+        {"a.xhtml": CAPITULO_UM, "b.xhtml": CAPITULO_DOIS},
+        idioma="pt-BR",
+    )
     pasta = tmp_path / "livro.earbook"
     _ = preparar(epub, pasta)
     return pasta
@@ -114,7 +120,9 @@ def test_arquivo_so_de_notas_deixa_cada_nota_no_lugar(tmp_path: Path) -> None:
         '<aside epub:type="endnote"><p>1. Nota um.</p></aside>'
         '<h2>Capítulo 2</h2><aside epub:type="endnote"><p>1. Nota dois.</p></aside>'
     )
-    epub = montar_epub(tmp_path / "livro.epub", {"a.xhtml": "<p>Texto.</p>", "n.xhtml": notas})
+    epub = montar_epub(
+        tmp_path / "livro.epub", {"a.xhtml": "<p>Texto.</p>", "n.xhtml": notas}, idioma="pt-BR"
+    )
     pasta = tmp_path / "livro.earbook"
     _ = preparar(epub, pasta)
     montagem = montar(pasta, tmp_path / "livro.pronto.epub")

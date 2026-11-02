@@ -15,9 +15,11 @@ from pathlib import Path
 from earbook.comandos import montar as montagem
 from earbook.comandos.importar_pdf import Importacao, epub_padrao, importar_pdf
 from earbook.comandos.preparar import Preparo, pasta_padrao, preparar
+from earbook.comandos.traduzir import Exportacao, traduzir
 from earbook.dominio.blocos import TipoDeBloco
 from earbook.dominio.limpeza import LivroLimpo
 from earbook.dominio.trabalho import LivroPreparado
+from earbook.dominio.traducao import PALAVRAS_POR_LOTE, Modo
 
 EXEMPLOS_DE_TEXTO_FORA = 5
 PROBLEMAS_LISTADOS = 50
@@ -38,6 +40,8 @@ class _Opcoes(argparse.Namespace):
     titulo: str | None = None
     autor: str | None = None
     trabalho: Path = Path()
+    palavras: int = PALAVRAS_POR_LOTE
+    modo: Modo | None = None
 
 
 def principal(argumentos: list[str] | None = None) -> int:
@@ -85,7 +89,7 @@ def _preparar(opcoes: _Opcoes) -> tuple[str, int]:
 def _conferir(opcoes: _Opcoes) -> tuple[str, int]:
     """Código 1 quando há problema: o `montar` recusaria o livro (ADR-0005)."""
     pasta = opcoes.trabalho
-    problemas = montagem.conferir_pasta(pasta)
+    problemas = montagem.conferir_pasta(pasta, opcoes.modo)
     if not problemas:
         return f"{pasta}: nada faltando, sobrando ou repetido; pode montar.", 0
     linhas = [f"{pasta}: {len(problemas)} problemas; o montar recusaria o livro."]
@@ -95,19 +99,35 @@ def _conferir(opcoes: _Opcoes) -> tuple[str, int]:
     return "\n".join(linhas), 1
 
 
+def _traduzir(opcoes: _Opcoes) -> tuple[str, int]:
+    return _resumo_da_traducao(traduzir(opcoes.trabalho, opcoes.palavras), opcoes.trabalho), 0
+
+
 def _montar(opcoes: _Opcoes) -> tuple[str, int]:
-    pasta = opcoes.trabalho
-    feito = montagem.montar(pasta, opcoes.saida or montagem.epub_padrao(pasta))
+    pasta, modo = opcoes.trabalho, opcoes.modo
+    feito = montagem.montar(pasta, opcoes.saida or montagem.epub_padrao(pasta, modo), modo)
     resumo = (
         f"Montado em {feito.epub}: {feito.capitulos} capítulos, {feito.segmentos} segmentos "
         f"({feito.notas} notas levadas para o fim do capítulo)."
     )
-    return resumo, 0
+    return resumo + _resumo_da_amostra(feito), 0
+
+
+def _resumo_da_amostra(feito: montagem.Montagem) -> str:
+    partes: list[str] = []
+    if feito.fora:
+        partes.append(f"{feito.fora} sem tradução ficaram de fora")
+    if feito.no_original == 1:
+        partes.append("1 item do sumário ficou no original")
+    elif feito.no_original:
+        partes.append(f"{feito.no_original} itens do sumário ficaram no original")
+    return f" Amostra: {'; '.join(partes)}." if partes else ""
 
 
 _COMANDOS: dict[str, Callable[[_Opcoes], tuple[str, int]]] = {
     "preparar": _preparar,
     "importar-pdf": _importar,
+    "traduzir": _traduzir,
     "conferir": _conferir,
     "montar": _montar,
 }
@@ -129,14 +149,75 @@ def _analisador() -> argparse.ArgumentParser:
         "--titulo", help="padrão: o do metadado do PDF ou o nome do arquivo"
     )
     _ = importacao.add_argument("--autor", help="padrão: o do metadado do PDF")
+    traducao = comandos.add_parser(
+        "traduzir", help="exporta em lotes o que o Claude Code traduz (ADR-0006)"
+    )
+    _ = traducao.add_argument("trabalho", type=Path, help="a pasta .earbook")
+    _ = traducao.add_argument(
+        "--palavras",
+        type=int,
+        default=PALAVRAS_POR_LOTE,
+        help=f"palavras por lote (padrão: {PALAVRAS_POR_LOTE})",
+    )
     conferencia = comandos.add_parser("conferir", help="confere se nada some antes de montar")
     _ = conferencia.add_argument("trabalho", type=Path, help="a pasta .earbook")
+    _modos(conferencia)
     montagem_ = comandos.add_parser("montar", help="pasta de trabalho → EPUB para ouvir")
     _ = montagem_.add_argument("trabalho", type=Path, help="a pasta .earbook")
+    _modos(montagem_)
     _ = montagem_.add_argument(
         "--epub", dest="saida", type=Path, help="padrão: ao lado da pasta, com .pronto.epub"
     )
     return analisador
+
+
+def _modos(comando: argparse.ArgumentParser) -> None:
+    """Só para o livro que precisa de tradução (ADR-0006)."""
+    modos = comando.add_mutually_exclusive_group()
+    _ = modos.add_argument(
+        "--amostra",
+        dest="modo",
+        action="store_const",
+        const=Modo.AMOSTRA,
+        help="só o que já foi traduzido; o resto fica de fora",
+    )
+    _ = modos.add_argument(
+        "--original",
+        dest="modo",
+        action="store_const",
+        const=Modo.ORIGINAL,
+        help="o texto limpo no idioma do original, para ouvir a limpeza",
+    )
+
+
+def _resumo_da_traducao(exportacao: Exportacao, pasta: Path) -> str:
+    """O que a sessão do Claude Code precisa para distribuir os lotes (ADR-0006)."""
+    capitulos = exportacao.capitulos
+    total = sum(c.segmentos for c in capitulos)
+    feitos = sum(c.traduzidos for c in capitulos)
+    linhas = [
+        f"{pasta}: {feitos} de {total} segmentos traduzidos, em {len(capitulos)} capítulos.",
+        f"{exportacao.novos} lotes novos pedidos em {exportacao.pedidos}.",
+        *_linhas_dos_capitulos(exportacao),
+        (
+            f'Resposta de cada lote: {exportacao.resposta}, lista de {{"id", "texto"}}'
+            " com os IDs do pedido."
+        ),
+        (
+            f"Glossário: {exportacao.glossario} ({exportacao.candidatos} candidatos a nome"
+            f" em {exportacao.nomes})."
+        ),
+        f"Depois: earbook conferir {pasta}",
+    ]
+    return "\n".join(linhas)
+
+
+def _linhas_dos_capitulos(exportacao: Exportacao) -> list[str]:
+    linhas: list[str] = []
+    for c in exportacao.capitulos:
+        pendentes = f"; pendentes: {', '.join(c.pendentes)}" if c.pendentes else ""
+        linhas.append(f"  {c.capitulo}: {c.traduzidos} de {c.segmentos}{pendentes}")
+    return linhas
 
 
 def _resumo_da_importacao(importacao: Importacao) -> str:

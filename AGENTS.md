@@ -11,6 +11,7 @@ ADRs em `docs/adr/`. O Claude Code traduz; o Python nunca chama o LLM (ADR-0001)
 ## Decisões (2026-10-31)
 
 - Esteira (ADR-0003): `preparar → limpar → [traduzir] → conferir → montar`. O `montar` troca o texto no EPUB original e recusa o livro que o `conferir` reprova (ADR-0005). Livro em inglês é traduzido para pt-BR; livro em português só é preparado para o ouvido.
+- Tradução (ADR-0006): o `traduzir` exporta pedidos por lote (~2 mil palavras); o subagente `tradutor` (`.claude/agents/tradutor.md`) grava a resposta de cada lote; o `conferir` cobra cada ID, o texto que ficou em inglês e o glossário, e o `montar` declara pt-BR. Nomes do Tides: a localização oficial pt-BR da Blizzard.
 - A limpeza nunca apaga em silêncio: toda remoção fica em `limpeza.json`, com o ID do segmento de origem.
 - Entrada: EPUB. PDF entra pelo comando `importar-pdf` (ADR-0004), só para ouvir: sem fidelidade visual, sem OCR, e a biblioteca de PDF só em `adaptadores/`.
 - Motor: o Claude Code na sessão, pela assinatura, com um subagente por capítulo. O limite de uso conta.
@@ -23,6 +24,7 @@ ADRs em `docs/adr/`. O Claude Code traduz; o Python nunca chama o LLM (ADR-0001)
 - A skill `arquitetura-ai-first` orienta toda decisão estrutural; fronteira nova exige ADR antes do código.
 - Ao fim de toda implementação de código, nesta ordem: a skill `code-review` e, depois dela, a skill `code-audit` (pedido do Mateus, 2026-11-01).
 - O asset se julga **ouvindo no ElevenReader**, não lendo lado a lado.
+- A sessão principal só orquestra (pedido do Mateus, 2026-11-01). Cada implementação roda numa sessão filha, com brief completo, e todo o processo deste arquivo vale nela. A filha usa esta mesma pasta, porque `livros/` e `.venv` ficam aqui, e roda uma por vez. Quando ela termina, o que importa volta para a principal: o commit, as medições, as decisões e os limites. Depois a filha é arquivada.
 
 ## Livros de medição (o original fica em `~/Documentos/livros/ingles/`)
 
@@ -35,6 +37,7 @@ Saída de medição vai para `livros/trabalho/`, nunca para `/tmp` nem para o sc
 - Huxley, *The Doors of Perception*: notas de rodapé e sumário. Serve de régua de tradução, porque existe edição brasileira (*As Portas da Percepção*).
 - Rosenberg, *Tides of Darkness*: convertido de PDF, com cabeçalho de página, parágrafo partido e capitular perdida. Muito nome próprio de lugar e personagem a preservar (glossário).
 - Mudou a limpeza ou a segmentação? Rode `earbook preparar` nos dois e compare as contagens com as do ADR-0003.
+- Mudou o `tradutor` ou a tradução? Traduza a amostra do Huxley (`montar --amostra`), compare com a medição do ADR-0006 e peça a escuta ao Mateus.
 - PDF: *Competente o Suficiente* (`~/Documentos/Akita/`, pt-BR) e *Software Architecture: The Hard Parts* (`~/Documentos/livros/arquitetura-ai-first/`, en). Mudou o `importar-pdf`? Rode `importar-pdf --epub livros/trabalho/<nome>.epub` e depois `preparar` nos dois e compare com a tabela de ponta a ponta do ADR-0004.
 
 ## Comandos
@@ -43,7 +46,8 @@ Saída de medição vai para `livros/trabalho/`, nunca para `/tmp` nem para o sc
 - Portão: `make check` (`scripts/portao.sh`: lock, formato, lint, supressão, tipos, fronteiras, testes, `uv audit`). O hook Stop roda o mesmo. Rodar antes de declarar qualquer tarefa concluída e mostrar a saída.
 - Uso: `uv run earbook preparar livro.epub` → `livro.earbook/`.
 - PDF: `uv run earbook importar-pdf livro.pdf --idioma pt-BR [--titulo T] [--autor A]` → `livro.epub`, que segue para o `preparar`. Título e autor vêm do metadado do PDF quando não são dados.
-- Fim da esteira: `uv run earbook conferir livro.earbook` e `uv run earbook montar livro.earbook` → `livro.pronto.epub`.
+- Tradução: `uv run earbook traduzir livro.earbook [--palavras 2000]` → `pedidos/` e `nomes.json`, e diz os lotes pendentes. Depois: o glossário a partir de `nomes.json`, um subagente `tradutor` por capítulo (capítulo menor que um lote vai junto com outros) e o `conferir`. Antes de um livro inteiro, mostre ao Mateus o custo estimado (lotes e segmentos) e peça o sim.
+- Fim da esteira: `uv run earbook conferir livro.earbook` e `uv run earbook montar livro.earbook` → `livro.pronto.epub`. No livro que se traduz, `--amostra` monta só o traduzido (`livro.amostra.epub`) e `--original` monta o texto limpo no idioma do original (`livro.original.epub`), que nunca vai para `livros/prontos/`.
 
 ## Fronteiras (ADR-0001)
 
@@ -54,6 +58,7 @@ Verificadas por ferramenta (import-linter e `tests/test_arquitetura.py`):
 - Arquivo ≤ 400 linhas; função ≤ 20 linhas (teto 40); primeira linha de todo `.py` é o SPDX.
 
 Verificadas só em revisão (`code-audit`):
+- O agente grava só `traduzidos/` e `glossario.json`; nunca `segmentos/`, `limpos/` nem `pedidos/` (ADR-0006). Pedido gravado nunca é reescrito.
 - Só `adaptadores/pasta_de_trabalho.py` conhece o layout da pasta de trabalho, e todo JSON lido dela é validado campo a campo (o tipo `Json`; a única supressão é a do `json.loads`).
 - EPUB é entrada não confiável: XML só pelo `PARSER_SEGURO` de `adaptadores/xml_seguro.py`; nenhum caminho sai da pasta de trabalho.
 - PDF também é entrada não confiável (pode vir de site de terceiros): toda falha do pdfminer vira `PdfInvalidoError` com o nome do arquivo, menos falta de memória, que passa como veio. O arquivo abre fora do `try`: inexistente ou sem permissão chega como `OSError`; um erro de disco no meio da leitura sai como "não é um PDF válido", com a causa no `from`. O `try` cobre só a biblioteca, nunca a nossa conversão. O que vem do pdfminer com tipo incerto (nome de fonte) é validado no adaptador. O PDF é lido uma página por vez.
@@ -103,10 +108,11 @@ src/earbook/
                 pagina.py (Pagina, Linha e letra espaçada do PDF), paginacao.py (cabeçalho do PDF
                 pela posição), blocos.py (parágrafo, título, código e nota do PDF),
                 capitulos.py (capítulo e nível do título), conferencia.py (o conferir), direitos.py (página de direitos autorais),
-                metadados.py (título e autor do PDF)
+                metadados.py (título e autor do PDF), traducao.py (lote, pedido, resposta, modo),
+                glossario.py (candidatos a nome e cobrança), conferencia_da_traducao.py
   adaptadores/  xml_seguro.py (parser), pacote_epub.py (zip + OPF), xhtml.py, pasta_de_trabalho.py,
                 pdf.py (pdfminer), epub_simples.py (grava o EPUB do PDF)
-  comandos/     preparar.py, importar_pdf.py, montar.py (conferir e montar), cli.py
+  comandos/     preparar.py, importar_pdf.py, traduzir.py, montar.py (conferir e montar), cli.py
 tests/          test_<módulo>.py, test_arquitetura.py, livro_de_teste.py (EPUB), pdf_de_teste.py (PDF),
                 linhas_de_teste.py (linhas do PDF já lidas, para os testes de blocos)
 ```

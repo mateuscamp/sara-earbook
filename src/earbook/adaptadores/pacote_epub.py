@@ -14,6 +14,7 @@ from lxml import etree
 
 from earbook.adaptadores.xml_seguro import PARSER_SEGURO, Elemento
 from earbook.dominio.trabalho import ItemIgnorado
+from earbook.dominio.traducao import TrocaDeIdioma
 
 CONTAINER = "urn:oasis:names:tc:opendocument:xmlns:container"
 OPF = "http://www.idpf.org/2007/opf"
@@ -140,6 +141,21 @@ def _caminho_dentro_do_epub(base: str, href: str, quem_aponta: str) -> str:
         mensagem = f"{quem_aponta} aponta para fora do EPUB: {href!r}"
         raise EpubInvalidoError(mensagem)
     return caminho
+
+
+def opf_em_outro_idioma(pasta: Path, troca: TrocaDeIdioma) -> tuple[str, bytes]:
+    """O caminho do OPF dentro de `pasta` (o EPUB extraído) e o OPF com o idioma trocado.
+
+    Muda o `dc:language` e o `dcterms:language` do idioma do original: com "en", o leitor
+    pode escolher a voz inglesa para ler o português (ADR-0006).
+    """
+    caminho = _caminho_do_opf(pasta)
+    opf = _xml(pasta / caminho)
+    for elemento in opf.iter(f"{{{DC}}}language", f"{{{OPF}}}meta"):
+        do_idioma = elemento.tag == f"{{{DC}}}language"
+        if (do_idioma or elemento.get("property") == "dcterms:language") and elemento.text:
+            elemento.text = troca.trocar(elemento.text.strip())
+    return caminho, etree.tostring(opf.getroottree(), xml_declaration=True, encoding="utf-8")
 
 
 def gravar_pacote(destino: Path, escrever: Callable[[zipfile.ZipFile], None]) -> None:

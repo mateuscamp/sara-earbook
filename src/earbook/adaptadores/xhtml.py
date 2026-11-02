@@ -19,10 +19,12 @@ from lxml import etree
 
 from earbook.adaptadores.xml_seguro import PARSER_SEGURO, Elemento
 from earbook.dominio.segmento import Papel, Segmento, id_do_segmento, normalizar_espacos
+from earbook.dominio.traducao import TrocaDeIdioma
 
 XHTML = "http://www.w3.org/1999/xhtml"
 OPS = "http://www.idpf.org/2007/ops"
 ATRIBUTO_DO_ID = "data-earbook"
+XML_LANG = "{http://www.w3.org/XML/1998/namespace}lang"
 # O livro montado é sempre em pt-BR: em português de origem ou traduzido (ADR-0003).
 TITULO_DAS_NOTAS = "Notas"
 
@@ -88,15 +90,30 @@ def ids_marcados(conteudo: bytes, caminho: str) -> tuple[str, ...]:
     return tuple(marca for e in corpo.iter() if (marca := e.get(ATRIBUTO_DO_ID)) is not None)
 
 
+def ids_no_sumario(conteudo: bytes, caminho: str) -> frozenset[str]:
+    """Os IDs marcados dentro do `<nav>`: na amostra, o sem tradução fica no original."""
+    corpo = _corpo(conteudo, caminho)
+    return frozenset(
+        marca
+        for e in corpo.iter()
+        if (marca := e.get(ATRIBUTO_DO_ID)) is not None and _no_sumario(e)
+    )
+
+
 def montar_xhtml(
-    conteudo: bytes, textos: Mapping[str, str], notas: Collection[str], caminho: str
+    conteudo: bytes,
+    textos: Mapping[str, str],
+    notas: Collection[str],
+    caminho: str,
+    idioma: TrocaDeIdioma | None = None,
 ) -> bytes:
     """O XHTML marcado com o texto final no lugar de cada segmento (ADR-0005).
 
     `textos` tem o texto final de cada ID mantido; o elemento de ID fora dele (removido ou
     juntado) sai. O ID em `notas` sai do lugar e entra no fim do capítulo, sob "Notas",
     como parágrafo comum. A marca `data-earbook` sai de todos. Todo `id` do capítulo
-    continua nele (ver `_ancoras_no_comeco`).
+    continua nele (ver `_ancoras_no_comeco`). Com `idioma`, o `lang` e o `xml:lang` do
+    idioma do original passam a ser o da tradução (ADR-0006).
     """
     corpo = _corpo(conteudo, caminho)
     no_fim: list[str] = []
@@ -117,7 +134,17 @@ def montar_xhtml(
     _guardar_ancoras(corpo, ultimo, pendentes)
     if no_fim:
         _acrescentar_notas(corpo, no_fim)
+    if idioma is not None:
+        _trocar_idioma(corpo.getroottree().getroot(), idioma)
     return etree.tostring(corpo.getroottree(), xml_declaration=True, encoding="utf-8")
+
+
+def _trocar_idioma(raiz: Elemento, troca: TrocaDeIdioma) -> None:
+    """O trecho marcado com outra língua (`xml:lang="fr"`) fica: é escolha do autor."""
+    for elemento in raiz.iter():
+        for atributo in ("lang", XML_LANG):
+            if _nome(elemento) and (valor := elemento.get(atributo)) is not None:
+                elemento.set(atributo, troca.trocar(valor))
 
 
 def _no_sumario(elemento: Elemento) -> bool:

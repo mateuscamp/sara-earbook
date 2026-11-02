@@ -259,6 +259,80 @@ Da pós-auditoria curta, sobre a rodada acima, cada uma com o teste visto falhar
 - **A5:** `nomes.json` era gravado através de link físico; todo JSON da pasta agora é gravado
   num temporário e trocado no lugar, sem tocar no alvo do link.
 
+### Escuta da amostra e o livro inteiro (2026-11-02)
+
+O Mateus ouviu `huxley.amostra.epub` no ElevenReader e aprovou as 8 paradas do roteiro ("amostra
+está perfeita"). Isso liberou o resto do livro, cujo custo ele já tinha aprovado.
+
+**Glossário**, de 27 para 42 entradas. Antes da tradução entraram os quatro conceitos aprovados
+na escuta, na grafia do original: *Mind at Large* → "Mente Ampla", *reducing valve* → "válvula
+redutora", *Suchness* → "Talidade" e *Dharma–Body* → "Corpo do Dharma". O *Dharma–Body* do
+original usa travessão curto (U+2013), não hífen. Entrou também *Plato* → "Platão". Dos nomes
+que a amostra devolveu, ele é o único que volta no resto. Adão, Euclides e os Irmãos Marx só
+aparecem na amostra, e o "Meister Eckhart" também: no resto o original diz só "Eckhart", que já
+estava no glossário. Com o glossário novo, a amostra continuou passando no `conferir --amostra`.
+Depois da tradução, entraram 10 formas que o tradutor devolveu e que ele usou do mesmo jeito em
+todas as ocorrências, cada uma em dois segmentos ou mais: *Not–self* → "Não-Eu" (com travessão
+curto no original), *Void* → "Vazio", *God* → "Deus", *Constable*, *Lyric Suite* → "Suíte
+Lírica", *Doors in the Wall* e *Door in the Wall* → "Portas no Muro" e "Porta no Muro" (pelo
+título brasileiro do conto de Wells), *World’s Biggest Drug Store* → "Maior Drogaria do Mundo",
+*Native Americans* → "nativos americanos" e *Peyotists* → "peiotistas". Com elas o `conferir`
+continuou limpo.
+
+**Tradução.** Os 8 lotes que faltavam (`c005-l003` a `c005-l010`) foram feitos num subagente
+`tradutor` só (Opus, o modelo da sessão), como manda o "um por capítulo". O contexto terminou
+em 165 mil tokens, longe do limite de 1 milhão, então não houve motivo para dividir.
+
+| | Amostra (2026-11-01) | Resto (2026-11-02) | Estimativa do resto |
+|---|---|---|---|
+| Lotes, segmentos, palavras | 5, 38, 3.869 | 8, 104, 12.607 | 8, 104, 12.607 |
+| Tempo | 5,5 min | 14,9 min | ~18 min |
+| Respostas do modelo / chamadas de ferramenta | 12 / 13 | 29 / 28 | — |
+| Contexto no fim (o "tokens" do aviso do subagente) | 125.104 | 164.558 | ~410 mil |
+| Tokens de saída | 36.395 (9,4 por palavra) | 101.497 (8,1 por palavra) | — |
+| Cache lido / cache criado | 907.771 / 123.653 | 2.791.619 / 226.432 | — |
+| Medidor semanal da assinatura | 59% → 59% | 64% → 64% | — |
+
+A estimativa errou de medida, não de escala. O número que o aviso do subagente dá é o tamanho
+do contexto no fim, e não a soma do que se gastou. A projeção linear da amostra (125 mil × 3,3 ≈
+410 mil) multiplicou um pico. O gasto que escala com o livro está na saída (~8 tokens por
+palavra) e no cache lido (~220 por palavra), somados da transcrição do subagente. O tempo foi de
+~850 palavras por minuto, contra 700 na amostra. Pela mesma régua, o Tides (89.442 palavras)
+fica em ~720 mil tokens de saída e ~1 h 45 min de subagente em série. Em paralelo, um subagente
+por capítulo, ele cai para o tempo do maior capítulo (c006, 29.488 palavras: ~35 min, com
+contexto final na casa dos 300 mil). Nenhuma das duas medições moveu o medidor semanal, que anda de
+1 em 1%: o resto do Huxley gastou menos de 1% da semana, e, pelo mesmo teto, o Tides fica abaixo
+de ~7%.
+
+**Conferência e montagem.** O `conferir` sem `--amostra` deu 0 segmento faltando, 0 em inglês e
+0 nome fora do glossário, já na primeira rodada do tradutor: nada precisou ser corrigido. O
+`montar --epub livros/prontos/huxley.pronto.epub` levou 0,26 s e montou 5 capítulos, 142
+segmentos e 7 notas no fim do capítulo. O OPF declara `pt-BR` no `dc:language` e no
+`dcterms:language`. O epubcheck deu o mesmo único erro do original (OPF-096, a capa sem link).
+Relido pelo `preparar`, o livro tem 144 segmentos: os 142 traduzidos, o `www.epubbooks.com` da
+folha de rosto e o título "Notas" que o `montar` cria (ADR-0005). A escuta do livro inteiro tem
+roteiro próprio (9 paradas, só na parte nova) e espera o Mateus.
+
+**O que o tradutor devolveu como dúvida**, sem que o `conferir` acusasse nada:
+- dois erros de digitação do original, traduzidos pelo que o autor quis dizer: "reducing value"
+  por *reducing valve* (s0040, que o glossário não cobra, porque o original não tem o termo) e
+  "band of geometry, Vermeer" por *branch… . Vermeer* (s0047);
+- *the Card in person*, alusão ao romance *The Card*, de Bennett, virou "o Figura em pessoa"
+  (s0043): o sentido passa, a referência ao livro se perde;
+- *Five and Ten* e *dime-store* viraram "loja de cinco e dez centavos" e "navio de bazar
+  barato" (s0056 a s0059). Ele manteve a referência americana em vez de "loja de 1,99";
+- a paródia de Pope traduzida com rima (s0115 e s0116), e o haicai de Shiki, literal e sem
+  métrica (s0091 a s0093);
+- o separador "* * * * *" (s0101) ficou como está. Se a voz ler "asterisco", o defeito é da
+  limpeza, e o livro em inglês tem o mesmo;
+- nas notas, "Vol. xcviii" virou "Vol. 98" e "No." virou "Número" (s0129 a s0132), para a voz
+  não soletrar. As instruções só dizem que o "Vol." fica: converter o número foi escolha dele,
+  como a regra do capítulo em romano;
+- a sigla "W.B.D.S." virou "M.D.M." (s0035), que a voz lê "eme dê eme", e "Mme Moitessier"
+  virou "Madame Moitessier" (s0039);
+- a aspa de fechamento solta no fim da nota de Slotkin saiu (s0134). No original, a última
+  citação já fecha em "failed.’", e a aspa do fim não tem abertura.
+
 ## Consequências
 
 **Ganha:**
@@ -292,8 +366,9 @@ Da pós-auditoria curta, sobre a rodada acima, cada uma com o teste visto falhar
 - As instruções do tradutor nomeiam `pedidos/` e `traduzidos/`, as pastas que a CLI imprime:
   o agente conhece esse pedaço do layout, e só esse.
 
-**Aceito conscientemente:** o custo por livro ainda é medido pela amostra do Huxley. Revisitar
-o tamanho do lote e o modelo se o Tides inteiro não couber em uma semana de uso (ADR-0001).
+**Aceito conscientemente:** o custo por livro é medido por um livro só, o Huxley inteiro
+(2026-11-02, em "Escuta da amostra e o livro inteiro"). Revisitar o tamanho do lote e o modelo se
+o Tides inteiro não couber em uma semana de uso (ADR-0001).
 
 ## Governança
 
@@ -311,4 +386,5 @@ lote; o agente nunca escreve em `limpos/` nem em `pedidos/`.
 
 ## Notas
 
-Autor: Mateus, com o Claude Code · Criado em: 2026-11-01 · Aprovado em: 2026-11-01
+Autor: Mateus, com o Claude Code · Criado em: 2026-11-01 · Aprovado em: 2026-11-01 ·
+Atualizado em: 2026-11-02 (escuta da amostra e medição do livro inteiro)

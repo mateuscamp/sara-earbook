@@ -74,6 +74,11 @@ class Vocabulario:
             self._palavras.update(palavras)
             self._pares.update(itertools.pairwise(palavras))
 
+    def tem(self, palavra: str) -> bool:
+        """`tem("identificar")` é True quando o livro escreve a palavra inteira em algum lugar:
+        a prova de que o hífen da quebra pode sair na junção (ADR-0003)."""
+        return _normal(palavra) in self._palavras
+
     def letra_e_palavra(self, letra: str) -> bool:
         """`letra_e_palavra("A")` é True quando o livro tem "a" sozinho, em minúscula."""
         return letra.lower() in self._letras_minusculas

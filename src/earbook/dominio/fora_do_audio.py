@@ -1,14 +1,16 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """O que sai inteiro do texto lido (ADR-0008): pelo papel, o bloco de código e o índice
-remissivo; pela repetição, a marca d'água. A limpeza registra cada um, com o motivo daqui.
+remissivo; pela repetição, a marca d'água e o destaque de margem. A limpeza registra cada um,
+com o motivo daqui.
 """
 
 from __future__ import annotations
 
+import re
 from collections import defaultdict
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 
-from earbook.dominio.segmento import PALAVRA, Papel, Segmento
+from earbook.dominio.segmento import PALAVRA, Papel, Segmento, primeira_letra
 
 MOTIVO_DO_PAPEL = {Papel.CODIGO: "código-fonte", Papel.INDICE: "índice remissivo"}
 # Medido nos sete livros de livros/trabalho/ (2026-11-02): a marca d'água "OceanofPDF.com" está
@@ -18,6 +20,19 @@ MOTIVO_DO_PAPEL = {Papel.CODIGO: "código-fonte", Papel.INDICE: "índice remissi
 FRACAO_MINIMA_DA_MARCA = 0.5
 # Num livro de poucos arquivos (o Huxley tem 4 com texto), 2 ou 3 iguais ainda são texto.
 ARQUIVOS_MINIMOS_DA_MARCA = 10
+# O destaque de margem (ADR-0008, "Destaque de margem repetido"). Medido no Dalgalarrondo: a
+# janela de 2 a 6 segmentos e o mínimo de 4 a 8 palavras tiram de 238 a 239 destaques, e nada
+# no Competente, no Hard Parts, no Huxley, no Tides nem no Learning DDD.
+JANELA_DO_DESTAQUE = 3
+PALAVRAS_DO_DESTAQUE = 6
+MOTIVO_DO_DESTAQUE = "destaque de margem: repete o texto vizinho"
+# Aspa ou parêntese depois do ponto ainda fecham a frase.
+_FECHA_FRASE = re.compile(r"[.!?\u2026][\u201d\u2019\"')]*$")
+# O hífen da quebra ("pri-" + "meiros") e o do composto ("divi-dem-se", contra "dividem-se" no
+# destaque) não contam na comparação.
+_HIFEN_NA_PALAVRA = re.compile(r"(?<=[^\W\d_])[-\u2010\u00ad]\s*(?=[^\W\d_])")
+# O número conta: o destaque com "3 a 25 segundos" não repete o texto com "5 a 30".
+_PALAVRA_OU_NUMERO = re.compile(rf"{PALAVRA.pattern}|\d+")
 
 
 def pelo_papel(capitulos: Sequence[tuple[str, Sequence[Segmento]]]) -> dict[str, str]:
@@ -64,3 +79,65 @@ def _arquivos_de_cada_paragrafo(
 
 def _pode_ser_marca(segmento: Segmento) -> bool:
     return segmento.papel is Papel.PARAGRAFO and PALAVRA.search(segmento.texto) is not None
+
+
+def destaques(
+    capitulos: Sequence[tuple[str, Sequence[Segmento]]],
+    no_meio_da_frase: Callable[[Segmento, Segmento], bool],
+) -> dict[str, str]:
+    """ID → motivo de cada destaque de margem: o parágrafo com forma de frase, de 6 palavras ou
+    mais, cujas palavras aparecem seguidas no texto dos parágrafos vizinhos (3 antes e 3
+    depois, no mesmo capítulo), juntados. Juntar os vizinhos pega o destaque que parte uma frase
+    ("…principais palcos" | destaque | "de nossas vidas…", Dalgalarrondo p. 250).
+
+    O destaque igual a um parágrafo inteiro do texto é um par de gêmeos: só sai a cópia que
+    `no_meio_da_frase(anterior, seguinte)`, a regra da junção, aponta. As duas referências
+    iguais e seguidas do Learning DDD ficam.
+    """
+    saem: dict[str, str] = {}
+    for _, segmentos in capitulos:
+        # A chave de cada segmento uma vez só, para o gêmeo (lote A da revisão).
+        chaves = [_chave(segmento.texto) for segmento in segmentos]
+        for i, segmento in enumerate(segmentos):
+            if _e_destaque(segmentos, chaves, i, no_meio_da_frase):
+                saem[segmento.id] = MOTIVO_DO_DESTAQUE
+    return saem
+
+
+def _e_destaque(
+    segmentos: Sequence[Segmento],
+    chaves: Sequence[str],
+    i: int,
+    no_meio_da_frase: Callable[[Segmento, Segmento], bool],
+) -> bool:
+    if not _parece_frase(segmentos[i]):
+        return False
+    janela = range(max(0, i - JANELA_DO_DESTAQUE), min(len(segmentos), i + JANELA_DO_DESTAQUE + 1))
+    vizinhos = [k for k in janela if k != i and segmentos[k].papel is Papel.PARAGRAFO]
+    # O texto dos vizinhos se junta antes da chave: o hífen da quebra fica no fim de um e o
+    # resto da palavra no começo do outro ("os pri-" + "meiros").
+    juntos = _chave(" ".join(segmentos[k].texto for k in vizinhos))
+    if f" {chaves[i]} " not in f" {juntos} ":
+        return False
+    if all(chaves[k] != chaves[i] for k in vizinhos):
+        return True
+    return 0 < i < len(segmentos) - 1 and no_meio_da_frase(segmentos[i - 1], segmentos[i + 1])
+
+
+def _parece_frase(segmento: Segmento) -> bool:
+    """Parágrafo que abre em maiúscula e fecha frase. O título que veio como parágrafo ("ATO
+    VOLITIVO OU ATO DE VONTADE"), a continuação em minúscula e a pergunta que termina em ":"
+    também repetem o vizinho, e ficam."""
+    return (
+        segmento.papel is Papel.PARAGRAFO
+        and primeira_letra(segmento.texto).isupper()
+        and _FECHA_FRASE.search(segmento.texto) is not None
+        and len(PALAVRA.findall(segmento.texto)) >= PALAVRAS_DO_DESTAQUE
+    )
+
+
+def _chave(texto: str) -> str:
+    """As palavras e os números, em minúscula e sem hífen dentro da palavra, separados por um
+    espaço: a pontuação e a citação entre parênteses não separam o destaque do texto."""
+    sem_hifen = _HIFEN_NA_PALAVRA.sub("", texto)
+    return " ".join(achado.group().casefold() for achado in _PALAVRA_OU_NUMERO.finditer(sem_hifen))

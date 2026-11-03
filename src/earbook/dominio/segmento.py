@@ -21,6 +21,7 @@ PALAVRA = re.compile(r"[^\W\d_]+(?:['\u2019][^\W\d_]+)*")
 # O que pode abrir o parágrafo antes da primeira letra: aspas, travessões e espaço. A marcação
 # e a devolução da capitular usam o mesmo, ou discordam de onde a palavra começa (ADR-0007).
 ABRE_PARAGRAFO = r"[\u201c\u2018\"'\u2014\u2013\-\s]*"
+_PRIMEIRA_LETRA = re.compile(rf"^{ABRE_PARAGRAFO}(?P<letra>\w)")
 
 
 class Papel(StrEnum):
@@ -57,6 +58,14 @@ def id_do_capitulo(posicao_no_spine: int) -> str:
 def id_do_segmento(capitulo: str, posicao: int) -> str:
     """`id_do_segmento("c003", 42)` → `"c003-s0042"`. A posição começa em 1."""
     return f"{capitulo}-s{posicao:04d}"
+
+
+def primeira_letra(texto: str) -> str:
+    """O primeiro caractere de palavra, depois de aspas, travessões e espaço; vazio se não há.
+    A junção pergunta se ele é minúsculo (o parágrafo continua, ADR-0003), e o destaque, se é
+    maiúsculo (o parágrafo abre frase, ADR-0008): uma regra só, para os dois concordarem."""
+    achado = _PRIMEIRA_LETRA.match(texto)
+    return achado["letra"] if achado else ""
 
 
 def normalizar_espacos(texto: str) -> str:

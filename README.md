@@ -14,7 +14,9 @@ A decisão está no [ADR-0001](docs/adr/0001-reescrever-com-claude-code-orquestr
 
 ## O que sai do áudio
 
-- O cabeçalho e o número de página. O parágrafo partido pela troca de página volta a ser um só.
+- O cabeçalho e o número de página. O parágrafo partido pela troca de página volta a ser um só,
+  e a palavra partida no fim dele volta sem o hífen quando o livro a escreve inteira em outro
+  lugar.
 - O marcador de nota no meio da frase ("…disse ele.12"). O texto da nota vai para o fim do
   capítulo, sob "Notas".
 - O trecho que seria lido duas vezes (`<p>` dentro de `<blockquote>`).
@@ -22,6 +24,9 @@ A decisão está no [ADR-0001](docs/adr/0001-reescrever-com-claude-code-orquestr
 - O bloco de código e o índice remissivo que o EPUB marca como tais. Sai também o parágrafo
   idêntico em metade ou mais dos arquivos do livro, como a marca d'água "OceanofPDF.com"
   ([ADR-0008](docs/adr/0008-codigo-e-indice-saem-do-audio.md)).
+- O destaque de margem que repete, palavra por palavra, uma frase do texto ao lado dele. A frase
+  que ele partia volta inteira ([ADR-0008](docs/adr/0008-codigo-e-indice-saem-do-audio.md)). O
+  destaque que resume ou reescreve a frase fica.
 - A capitular deslocada, que volta para a palavra quando o próprio livro prova que a palavra
   existe ([ADR-0007](docs/adr/0007-a-proxima-traducao-sem-trabalho-a-mao.md)). A letra que
   abre a frase antes de palavra em minúscula, como o artigo em "desejo. A resultante", fica
@@ -129,6 +134,8 @@ autor do metadado do PDF (ou os de `--titulo` e `--autor`). O que ele faz:
 - junta as linhas em parágrafos e devolve inteira a palavra partida no fim da linha;
 - lê a página em duas colunas coluna por coluna, pela calha entre elas, quando os dois lados
   são texto corrido. A tabela continua lida linha a linha;
+- separa do texto o destaque de margem, que fica numa coluna estreita ao lado dele e tem letra
+  de outro tamanho, para que o `preparar` o tire;
 - divide os capítulos pelo tamanho dos títulos.
 
 O EPUB serve para ouvir, não para ler na tela. Sai sem imagem e sem estilo, e cada linha de

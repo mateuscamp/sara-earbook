@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, replace
 
 from earbook.dominio.cabecalho import (
@@ -13,19 +13,20 @@ from earbook.dominio.cabecalho import (
     frases_do_cabecalho,
     frases_do_livro,
 )
-from earbook.dominio.capitular import CapitularDevolvida, devolver_uma, leituras
+from earbook.dominio.capitular import CapitularDevolvida, Vocabulario, devolver_uma, leituras
 from earbook.dominio.direitos import nas_pontas, pagina_de_direitos
-from earbook.dominio.fora_do_audio import MOTIVO_DO_PAPEL, marcas_dagua, pelo_papel
-from earbook.dominio.segmento import ABRE_PARAGRAFO, Papel, Segmento
+from earbook.dominio.fora_do_audio import MOTIVO_DO_PAPEL, destaques, marcas_dagua, pelo_papel
+from earbook.dominio.segmento import Papel, Segmento, primeira_letra
 
-# Parágrafo que continua: a primeira letra, depois de aspas e travessões, é minúscula.
-_PRIMEIRA_LETRA = re.compile(rf"^{ABRE_PARAGRAFO}(?P<letra>\w)")
 # Termina frase. Aspas e apóstrofo não estão aqui: a fala que fecha aspas com vírgula segue
 # em "he answered" na página seguinte, e o possessivo "warriors" + apóstrofo segue em "reach".
 _FIM_DE_FRASE = tuple(".!?…:;")
 # A1 da auditoria: "...trees" + travessão / travessão + "and found" é pausa de propósito.
 TRAVESSAO = "\u2014"
 _HIFEN_NO_FIM = re.compile(r"\w-$")
+# As metades da palavra que o hífen da quebra partiu: "identifi-" e "car e…" (ADR-0003).
+_METADE_ANTES_DO_HIFEN = re.compile(r"[^\W\d_]+(?=-$)")
+_METADE_DEPOIS_DO_HIFEN = re.compile(r"[^\W\d_]+")
 _PONTUACAO = re.compile(r"[.,;:!?…“”\"]")
 # "first prologue", "ONE", "acknowledgments": título de capítulo que veio como <p>.
 PALAVRAS_DA_LINHA_CURTA = 3
@@ -105,20 +106,26 @@ def limpar_para_o_ouvido(
     autor: str,
 ) -> LivroLimpo:
     """A limpeza inteira, na ordem: direitos, marca d'água, cabeçalho solto, cabeçalho colado,
-    parágrafo partido, capitular e, por último, código e índice.
+    destaque de margem, parágrafo partido, capitular e, por último, código e índice.
 
     A ordem importa: o cabeçalho, solto ou colado, fica exatamente onde o parágrafo se
     partiu, e só some do meio depois que as duas metades ficam lado a lado.
     """
     sem_cabecalho = _tirar_paginas_marcas_e_cabecalhos(capitulos, titulo, autor)
     frases = frases_do_cabecalho(capitulos, titulo, autor)
-    juntado = _juntar_paragrafos_partidos(_aparar_cabecalhos_colados(sem_cabecalho, frases))
+    aparado = _aparar_cabecalhos_colados(sem_cabecalho, frases)
+    # ADR-0003: o livro inteiro, com o destaque que vai sair, prova a palavra sem o hífen.
+    vocabulario = Vocabulario(s.texto for _, segmentos in capitulos for s in segmentos)
+    # ADR-0008: o destaque sai antes da junção, que emenda a frase partida por ele.
+    juntado = _juntar_paragrafos_partidos(
+        _tirar_do_livro(aparado, _destaques_de_margem), vocabulario
+    )
     # ADR-0007: sem a letra solta, uma continuação em minúscula pode aparecer ("he" + "demanded.").
     juntado = _juntar_paragrafos_partidos(
-        _devolver_capitulares(_marcar_capitulares_perdidas(juntado))
+        _devolver_capitulares(_marcar_capitulares_perdidas(juntado)), vocabulario
     )
     # ADR-0008: código e índice saem por último: até aqui, separam os parágrafos em volta deles.
-    return _tirar_pelo_papel(juntado)
+    return _tirar_do_livro(juntado, pelo_papel)
 
 
 def _tirar_paginas_marcas_e_cabecalhos(
@@ -143,9 +150,13 @@ def _tirar(
     return restantes, remocoes
 
 
-def _tirar_pelo_papel(livro: LivroLimpo) -> LivroLimpo:
+def _tirar_do_livro(
+    livro: LivroLimpo,
+    escolher: Callable[[Sequence[tuple[str, Sequence[Segmento]]]], Mapping[str, str]],
+) -> LivroLimpo:
+    """Tira do livro em limpeza os IDs que `escolher` aponta, cada um com o seu motivo."""
     capitulos = [(capitulo.capitulo, capitulo.segmentos) for capitulo in livro.capitulos]
-    restantes, remocoes = _tirar(capitulos, pelo_papel(capitulos))
+    restantes, remocoes = _tirar(capitulos, escolher(capitulos))
     limpos = tuple(CapituloLimpo(capitulo, tuple(segmentos)) for capitulo, segmentos in restantes)
     return replace(livro, capitulos=limpos, remocoes=(*livro.remocoes, *remocoes))
 
@@ -193,7 +204,7 @@ def _aparar_cabecalhos_colados(livro: LivroLimpo, frases: set[str]) -> LivroLimp
     return replace(livro, capitulos=tuple(capitulos), aparos=tuple(aparos))
 
 
-def _juntar_paragrafos_partidos(livro: LivroLimpo) -> LivroLimpo:
+def _juntar_paragrafos_partidos(livro: LivroLimpo, vocabulario: Vocabulario) -> LivroLimpo:
     juncoes: list[Juncao] = list(livro.juncoes)
     suspeitas: list[Suspeita] = list(livro.suspeitas)
     ja_marcados = {s.id for s in livro.suspeitas}
@@ -212,12 +223,17 @@ def _juntar_paragrafos_partidos(livro: LivroLimpo) -> LivroLimpo:
                     suspeitas.append(Suspeita(segmento.id, MOTIVO_DA_LINHA_CURTA, segmento.texto))
                 saida.append(segmento)
             else:
-                saida[-1] = _juntar(anterior, segmento)
+                saida[-1] = _juntar(anterior, segmento, vocabulario)
                 juncoes.append(Juncao(segmento.id, anterior.id))
         capitulos.append(CapituloLimpo(capitulo.capitulo, tuple(saida)))
     return replace(
         livro, capitulos=tuple(capitulos), suspeitas=tuple(suspeitas), juncoes=tuple(juncoes)
     )
+
+
+def _destaques_de_margem(capitulos: Sequence[tuple[str, Sequence[Segmento]]]) -> dict[str, str]:
+    """Do par de gêmeos, sai a cópia que parte a frase que a junção emenda (ADR-0008)."""
+    return destaques(capitulos, _parece_continuacao)
 
 
 def _parece_continuacao(anterior: Segmento, segmento: Segmento) -> bool:
@@ -230,9 +246,8 @@ def _parece_continuacao(anterior: Segmento, segmento: Segmento) -> bool:
 
 
 def _comeca_em_minuscula(texto: str) -> bool:
-    """A primeira letra, depois de aspas e travessões, é minúscula."""
-    primeira = _PRIMEIRA_LETRA.match(texto)
-    return primeira is not None and primeira["letra"].islower()
+    """Parágrafo que continua: a primeira letra, depois de aspas e travessões, é minúscula."""
+    return primeira_letra(texto).islower()
 
 
 def _marcar_capitulares_perdidas(livro: LivroLimpo) -> LivroLimpo:
@@ -314,11 +329,24 @@ def _linha_curta(texto: str) -> bool:
     return len(texto.split()) <= PALAVRAS_DA_LINHA_CURTA and not _PONTUACAO.search(texto)
 
 
-def _juntar(anterior: Segmento, segmento: Segmento) -> Segmento:
+def _juntar(anterior: Segmento, segmento: Segmento, vocabulario: Vocabulario) -> Segmento:
     # "sub-" + "commander": palavra hifenizada partida na quebra de página volta sem espaço.
     separador = "" if _HIFEN_NO_FIM.search(anterior.texto) else " "
-    texto = f"{anterior.texto}{separador}{segmento.texto}"
+    inicio = anterior.texto
+    if not separador and vocabulario.tem(_palavra_partida(anterior.texto, segmento.texto)):
+        # O hífen da quebra sai quando o livro escreve a palavra inteira ("identifi-" + "car",
+        # Dalgalarrondo); o composto que ele só escreve com hífen fica (ADR-0003).
+        inicio = anterior.texto[:-1]
+    texto = f"{inicio}{separador}{segmento.texto}"
     return replace(anterior, texto=texto, notas=anterior.notas + segmento.notas)
+
+
+def _palavra_partida(antes: str, depois: str) -> str:
+    """A palavra que as metades formam sem o hífen: "…observar, identifi-" e "car e…" dão
+    "identificar". Vazia quando falta uma das metades."""
+    metade = _METADE_ANTES_DO_HIFEN.search(antes)
+    resto = _METADE_DEPOIS_DO_HIFEN.match(depois)
+    return metade.group() + resto.group() if metade and resto else ""
 
 
 def tirar_cabecalhos_de_pagina(

@@ -8,9 +8,10 @@
 a marcação do EPUB diz o que eles são, e o `limpar` os tira do texto, registrados em
 `limpeza.json`. O Gherkin fica no texto, como parágrafo, porque é feito para ser lido por gente.
 O `limpar` tira também o parágrafo idêntico que se repete em metade ou mais dos arquivos do
-spine (a marca d'água "OceanofPDF.com"). Inverte se a escuta mostrar que o ouvinte se perde sem o
-código ("depois da linha 7"), ou se um livro medido perder um texto que não é código, índice nem
-marca d'água.
+spine (a marca d'água "OceanofPDF.com") e, desde 2026-11-03, o destaque de margem que repete,
+palavra por palavra, o texto vizinho (seção "Destaque de margem repetido"). Inverte se a escuta
+mostrar que o ouvinte se perde sem o código ("depois da linha 7"), ou se um livro medido perder
+um texto que não é código, índice, marca d'água nem destaque.
 
 ## Contexto
 
@@ -225,6 +226,134 @@ Competente e Hard Parts (`*-adr0008-revisado`), idênticos aos da medição do A
 post-audit do intervalo inteiro não achou defeito novo. Resíduo que vem de antes, sem caso
 medido: a prova da palavra da capitular (ADR-0007) ainda conta as palavras do código e do índice.
 
+## Destaque de margem repetido (2026-11-03)
+
+### Contexto
+
+O Mateus ouviu o Dalgalarrondo no ElevenReader e relatou: "O conceito de saúde de normalidade em
+psicopatologia é questão de grande controvérsia. Se repetiu esse trecho." No livro impresso, a
+frase está no texto e de novo na margem: é o destaque (*pull quote*). Ele tem 9 pt, numa coluna
+estreita (p. 31: x 46 a 123), ao lado do texto de 10 pt, e repete uma frase do texto que fica
+ao lado dele, às vezes resumida.
+
+O `limpar` não sabe da fonte nem da posição; o que ele vê é a repetição. Medido no HEAD
+`0038af9`, nas pastas `*-base-destaque` de `livros/trabalho/`:
+- **parágrafo próprio contido num parágrafo vizinho:** 65 a 78 no Dalgalarrondo, conforme a
+  normalização, e 2 no Competente (o subtítulo da folha de rosto e um pedaço de bibliografia);
+  nada no Hard Parts, no Huxley, no Tides nem no Learning DDD;
+- **o destaque colado:** a virada de coluna o emendava ao texto (ADR-0004, "Destaque de margem
+  na virada de coluna"), e 221 segmentos do Dalgalarrondo repetem dentro de si 8 palavras
+  seguidas. Com a quebra nova do `importar-pdf`, o destaque vira parágrafo próprio.
+- **o que também repete o vizinho e não é destaque:** o título que veio como parágrafo
+  ("Relações da psicopatologia com a psicologia geral", "ATO VOLITIVO OU ATO DE VONTADE"), o
+  cabeçalho de tabela repetido na página seguinte, a questão de revisão que começa igual à
+  anterior ("Como estabelecer um diagnóstico diferencial entre:"), a continuação em minúscula
+  do texto em que o destaque ficou colado, o pedaço de bibliografia que abre em algarismo e as
+  duas notas seguidas do Learning DDD que citam a mesma obra (`c095`, "Fowler, M. (2002)…").
+
+Nenhum dos três EPUBs marca destaque (`epub:type="pullquote"`, `role="doc-pullquote"` ou classe
+"pullquote"). Os 3 `<aside data-type="sidebar">` do Learning DDD são quadros com texto próprio,
+não repetido, e ficam.
+
+### Alternativas
+
+| Opção | Ganha | Perde | Por que não |
+|---|---|---|---|
+| **A. Palavras seguidas: o destaque repete, palavra por palavra, um trecho do texto vizinho** | sai só o que o texto já diz, na mesma ordem: nenhuma palavra do livro se perde | o destaque que resume (omite palavras) ou reescreve fica | — |
+| B. Palavras na mesma ordem, com folga de 1,5 vez para as omitidas | pega mais 16 destaques resumidos no Dalgalarrondo | no Learning DDD, tira a referência de outra obra: "Vernon, V., & Jaskula, T. (2021). Strategic Monoliths and Microservices…", ao lado de "…Implementing Strategic Monoliths and Microservices…" | perde texto que não está no vizinho |
+| C. Pela fonte e pela posição, no `importar-pdf` | pega o resumido e o reescrito | só serve ao PDF; a régua (9 pt numa coluna estreita) é de um livro; e nada fica em `limpeza.json` | quebra o "nada sai em silêncio" (ADR-0003) |
+| D. Pela marcação do EPUB (`pullquote`) | certeira quando existe | nenhum livro medido a tem | fica para quando aparecer (Fora desta decisão) |
+
+### Decisão
+
+O `limpar` tira o parágrafo (papel `paragrafo`) que:
+1. **tem forma de frase:** abre em maiúscula, depois de aspa e travessão, e fecha em `.`, `!`,
+   `?` ou `…`, com aspa ou parêntese depois. Isso recusa o título como parágrafo, o cabeçalho de
+   tabela, a questão que termina em ":", a continuação em minúscula e o pedaço que abre em
+   algarismo;
+2. **tem 6 palavras ou mais;**
+3. **repete o texto vizinho:** as palavras e os números dele, em minúscula e sem o hífen de
+   dentro da palavra, aparecem seguidos no texto dos parágrafos vizinhos (3 antes e 3 depois, no
+   mesmo capítulo), juntados. Juntar os vizinhos é o que pega o destaque que parte uma frase
+   ("…principais palcos" | destaque | "de nossas vidas…", p. 250) ou uma palavra ("os pri-" |
+   destaque | "meiros três minutos…"). O hífen não conta porque o texto ficou com
+   "divi-dem-se" (regra do composto, ADR-0004) e o destaque, com "dividem-se". O número conta:
+   "3 a 25 segundos" não repete "5 a 30 segundos";
+4. **gêmeo:** quando um vizinho tem exatamente as mesmas palavras, o texto é um parágrafo de uma
+   frase só e o destaque o repete inteiro. Aí só sai a cópia que está no meio da frase, pela
+   regra da junção: o parágrafo antes dela não fechou a frase, e o seguinte começa em minúscula
+   ("As ilusões ocor-" | destaque | "rem basicamente…"). As outras ficam, e as duas notas
+   iguais do Learning DDD também.
+
+Sai com o motivo "destaque de margem: repete o texto vizinho", depois do aparo do cabeçalho
+colado e antes da junção, como a marca d'água: as metades da frase que ele partia se emendam
+pela junção de sempre (ADR-0003). A regra é textual e vale para o EPUB também; medido, ela não
+tira nada dos três EPUBs.
+
+O Mateus aprovou. A pergunta foi "Aprova o destaque A + B, com os 8 pares e os 60 restantes
+indo para o 'adaptar'?", e a resposta, "Aprovar". O A é a quebra do `importar-pdf` (ADR-0004);
+o B, esta regra.
+
+### Medição (2026-11-03, depois do código)
+
+`importar-pdf` e `preparar` em pastas novas (`*-destaque`), contra o HEAD `0038af9`:
+
+| Livro | Destaques | O resto |
+|---|---|---|
+| *Dalgalarrondo* | **238**, com 5.558 palavras (3,3% do livro) | junções 19 → 193: 174 frases emendadas onde o destaque estava; suspeitas 3 → 9 (6 "capitular perdida?", nenhuma devolvida); segmentos que repetem 8 palavras dentro de si 221 → 18 |
+| *Competente*, *Hard Parts* | 0 | `segmentos/`, `limpos/`, `limpeza.json` e `livro.json` idênticos (fora a origem) |
+| *Huxley*, *Tides*, *Learning DDD* | 0 | idênticos: as traduções do Tides e do DDD não ficam velhas |
+
+- **Nenhuma palavra do texto se perde:** o Dalgalarrondo vai de 167.501 para 161.849 palavras.
+  A diferença são as 5.558 dos destaques mais 94 palavras que o destaque partia e que voltam a
+  ser uma (188 pedaços). Os 238 foram lidos um a um, e são todos frases-tema em destaque. Dois
+  deles (`c011-s0036`, `c023-s0079`) partiam o texto junto com um Quadro, que fica entre as
+  metades.
+- **Sensibilidade:** a janela de 2 a 6 segmentos e o mínimo de 4 a 8 palavras tiram de 238 a 239
+  no Dalgalarrondo e nada nos outros cinco.
+- **Gêmeos:** 5 saem por estarem no meio da frase. Ficam **8 pares** (`c014-s0038/39`,
+  `c021-s0007/08`, `c027-s0016/17`…): as duas cópias são lidas.
+- **As 6 suspeitas novas** não mudam o texto. Duas são o começo da frase que o destaque partia,
+  com até 3 palavras ("O fenômeno", "As ilusões ocor-"): a junção o trata como título e não
+  emenda, e fica uma pausa onde antes estava o destaque. As outras quatro vêm do subtítulo de
+  9 pt que a quebra nova soltou do texto (ADR-0004).
+
+### O que fica (vai para o `adaptar`)
+
+Uns 60 destaques continuam lidos no Dalgalarrondo: os 8 pares gêmeos; o destaque resumido
+("Semiologia psicopatológica é o estudo…" para "…é, por sua vez, o estudo…") e o reescrito
+("No pensamento prolixo, o paciente…" para "O paciente…"); uns 15 colados sem virada de coluna;
+e os que têm o texto partido por um Quadro. O `adaptar` reescreve com a cobrança de fidelidade do
+`conferir`, que garante que nada do texto se perde.
+
+### Correções da revisão (2026-11-03)
+
+A code-review e a code-audit não acharam bloqueador. O Mateus aprovou os três lotes ("A, B e C").
+
+- **A, refatoração com a suíte verde:** a chave de cada parágrafo é calculada uma vez por
+  capítulo; a dos vizinhos juntados continua por candidato, porque o hífen da quebra fica entre
+  dois segmentos. A primeira letra depois de aspas e travessões virou uma regra só
+  (`segmento.primeira_letra`), usada pela junção e pelo destaque. Os seis livros saíram
+  idênticos à rodada anterior, fora o hífen do lote B.
+- **B, o hífen da quebra:** a junção emendava a palavra que o destaque partia com o hífen no
+  meio ("identifi-car"). Agora o hífen sai quando o livro escreve a palavra inteira (ADR-0003,
+  "Hífen da quebra na junção"): 87 de 95 no Dalgalarrondo, e nada nos outros cinco.
+- **C, limites registrados,** sem caso nos seis livros medidos:
+  - **a cópia contida sai, mesmo quando é o texto:** se o texto é um parágrafo de uma frase e o
+    destaque o repete com palavras a mais, sai o texto, e o destaque fica no lugar dele. Nos 238
+    lidos, todo vizinho que contém o removido é o texto, mais longo;
+  - **a frase repetida de propósito:** a regra vale também para o EPUB. A frase de 6 palavras ou
+    mais que o parágrafo vizinho repete dentro de um parágrafo mais longo (a fala que a multidão
+    devolve, o refrão de um poema) sairia, registrada. Não há caso no Huxley, no Tides nem no
+    Learning DDD;
+  - **a virada de página:** o `importar-pdf` só separa o destaque na virada de coluna. O que fica
+    no alto da página seguinte, com a frase do texto aberta, continua colado;
+  - **o tamanho comparado é o da 1ª linha** do parágrafo aberto: um parágrafo que abre com uma
+    linha de outro tamanho se partiria na virada de coluna;
+  - **as notas do destaque:** o destaque removido leva as notas dele. Nos 238, não há nenhuma;
+  - **a ordem não tem teste:** tirar o destaque depois da primeira junção dá o mesmo, porque a
+    segunda junção, depois da capitular, emenda as metades (mutante equivalente).
+
 ## Consequências
 
 **Ganha:**
@@ -264,12 +393,15 @@ medido: a prova da palavra da capitular (ADR-0007) ainda conta as palavras do c�
 | Índice sai inteiro | testes: `epub:type="index"` no `<section>` e no `<body>`, `role="doc-index"`, `data-type="index"`; o livro montado não tem o termo pai nem as vírgulas | portão | sobra texto do índice no livro montado ou em `texto_fora_de_segmento` |
 | O link do `landmarks` não é índice | teste: `<a epub:type="index">` no `nav` fica | portão | o sumário perde o item |
 | Marca d'água sai, o repetido de propósito fica | testes: o parágrafo em metade dos arquivos sai, registrado; abaixo da metade, em menos de 10 arquivos, como título, como citação ou sem letra, fica | portão | a marca fica, ou sai texto que não é marca |
+| Destaque sai, registrado, e a frase se emenda | testes (`tests/test_destaque.py`): o destaque ao lado do texto, no meio da frase, no meio da palavra partida, com hífen diferente e abrindo no meio da frase do texto sai com o motivo "destaque de margem: repete o texto vizinho"; do PDF de ponta a ponta, a frase da p. 250 volta inteira | portão | o destaque fica, ou a frase não se emenda |
+| O que não é destaque fica | testes: título como parágrafo, continuação em minúscula, pergunta com ":", pedaço que abre em algarismo, outro número, outra obra com uma palavra a menos, menos de 6 palavras, texto a mais de 3 segmentos ou em outro capítulo, citação e nota, gêmeos fora do meio da frase | portão | sai texto que o vizinho não repete |
 | Nada a mais some | `preparar` no Huxley e no Tides, `importar-pdf` e `preparar` no Competente e no Hard Parts, comparados com o ADR-0003 e o ADR-0004 | a cada mudança na limpeza | `limpos/` diferente sem explicação |
 | Escuta ★ (manual) | o `montar --original` do DDD, num trecho com código e no fim do livro | depois desta mudança; responsável: Mateus | o ouvinte se perde onde o código saiu |
 
 Regras derivadas no `AGENTS.md`: em "O que atrapalha o ouvido", o índice remissivo e o bloco de
 código passam a feitos no `preparar` (quando o EPUB os marca), o Gherkin fica, e entra a marca
-d'água repetida em metade dos arquivos.
+d'água repetida em metade dos arquivos. Desde 2026-11-03, entra também o destaque de margem que
+repete o texto vizinho.
 
 ## Fora desta decisão (medido no DDD, para o Mateus escolher a ordem)
 
@@ -278,12 +410,15 @@ d'água repetida em metade dos arquivos.
   três PDFs medidos não há capítulo com esse título.
 - **Tabela e legenda:** 217 células com 221 palavras, uma por segmento; 133 legendas "Figure N-N."
   e 3 "Table N-N.", com 1.228 palavras, lidas sem a imagem. Ficam para a escuta da amostra.
+- **O destaque marcado no EPUB** (`epub:type="pullquote"`, `role="doc-pullquote"`): sairia pela
+  marcação, como o índice, inclusive o resumido. Nenhum dos livros medidos o tem (2026-11-03).
 - **Divisão dos tradutores:** o livro vem partido pelo calibre em 321 arquivos
   (`part0007_split_000.html`…), com mediana de 178 palavras; 319 arquivos têm menos de um lote.
 
 ## Notas
 
 Autor: Mateus, com o Claude Code · Criado em: 2026-11-02 · Aprovado em: 2026-11-02 (pelo Mateus,
-na sessão principal: "Aceitar com a marca", que acrescentou a marca d'água à proposta)
+na sessão principal: "Aceitar com a marca", que acrescentou a marca d'água à proposta). A seção
+"Destaque de margem repetido" foi aprovada em 2026-11-03 ("Aprovar").
 O número 0008 estava reservado num rascunho para o `earbook adaptar`, que ainda não está no
 repositório: aquele ADR passa a ser o próximo número livre.

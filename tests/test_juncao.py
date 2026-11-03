@@ -69,6 +69,36 @@ def test_cabecalho_colado_sai_antes_da_juncao() -> None:
     assert _textos(livro) == [["into the fog, trying to pierce its gloom."]]
 
 
+def test_hifen_da_quebra_sai_quando_o_livro_escreve_a_palavra_inteira() -> None:
+    # Dalgalarrondo c004: o destaque partia "identifi-" | destaque | "car"; sem ele, a junção
+    # emendava "identifi-car", e o livro escreve "identificar" em outro lugar (ADR-0003).
+    livro = _livro(
+        ["O psicopatólogo busca observar, identifi-", "car e compreender.", "Cabe identificar."]
+    )
+    assert _textos(livro) == [
+        ["O psicopatólogo busca observar, identificar e compreender.", "Cabe identificar."]
+    ]
+
+
+@pytest.mark.parametrize(
+    ("partido", "inteiro"),
+    [
+        # O composto que o livro só escreve com hífen.
+        (
+            ["A cor do dia relaciona-", "se ao humor.", "O humor relaciona-se à cor."],
+            "relaciona-se",
+        ),
+        # O hífen de quebra que o livro não prova fica: melhor um hífen a mais que uma palavra
+        # inventada (Dalgalarrondo: "embrioná-ria").
+        (["Isso vem desde a fase embrioná-", "ria do cérebro."], "embrioná-ria"),
+    ],
+)
+def test_hifen_fica_quando_o_livro_nao_escreve_a_palavra_inteira(
+    partido: list[str], inteiro: str
+) -> None:
+    assert inteiro in _textos(_livro(partido))[0][0]
+
+
 def test_fala_que_continua_depois_das_aspas_vira_um_so() -> None:
     livro = _livro(["“You are correct, of course,”", "he answered."])
     assert _textos(livro) == [["“You are correct, of course,” he answered."]]

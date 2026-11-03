@@ -90,6 +90,48 @@ Limite conservador registrado (N4): uma linha de editora que começa como dedica
 
 Ficaram de fora, sem marca: o endereço da editora no Tides ("A Division of Simon & Schuster, Inc. 1230 Avenue of the Americas" e "10020") e o título repetido nas páginas de rosto.
 
+### Hífen da quebra na junção (2026-11-03)
+
+A junção emenda sem espaço a palavra partida por hífen no fim do parágrafo e guarda o hífen:
+"sub-" + "commander", no Tides, é composto (A2 da auditoria, acima). Com o destaque de margem
+fora do texto (ADR-0008, "Destaque de margem repetido"), a junção passou a emendar palavras que
+o destaque partia na quebra de linha, e o hífen ficava no meio: "identifi-car", "in-terpretar",
+"inte-resse", "embrioná-ria". São 95 emendas com hífen no Dalgalarrondo. Antes do destaque, a
+palavra vinha partida pelo destaque inteiro.
+
+**Decisão:** o hífen sai quando o próprio livro escreve a palavra inteira em outro lugar, sem
+contar caixa. A prova vem do livro como entrou no `limpar`, com o destaque que vai sair, que é
+o mesmo texto. Quando o livro não escreve a palavra inteira, o hífen fica: o composto que só
+existe com hífen ("sub-commander", "relaciona-se", "pré-fabricadas") e o hífen de quebra que o
+livro não prova. É a mesma pergunta que o `blocos` faz ao hífen do fim da linha (ADR-0004),
+feita na junção.
+
+| Opção | Ganha | Perde | Por que não |
+|---|---|---|---|
+| **A. Sai quando o livro escreve a palavra inteira** | a palavra volta inteira onde o livro prova; o composto fica | o hífen de quebra que o livro não prova continua | — |
+| B. Sai sempre | as 95 voltam | "sub-commander" vira "subcommander", e "relaciona-se", "relacionase" | inventa palavra |
+| C. Só na emenda que o destaque deixa | não toca em nada além do destaque | a mesma palavra partida pela página continua com o hífen | a medição mostrou que nenhum outro livro muda |
+
+Medido no código, contra a rodada anterior (`*-destaque` e `*-destaque-revisado` em
+`livros/trabalho/`):
+- **Dalgalarrondo:** das 95 emendas com hífen, 87 perdem o hífen ("identificar",
+  "interpretar", "interesse", "ingênua", "funcionamento"…). Mudam só esses 87 segmentos, e só no
+  hífen; o `limpeza.json` é o mesmo. Ficam 8: os compostos "relaciona-se" e "pré-fabricadas" e
+  6 quebras que o livro não prova ("embrioná-ria", "per-turbador", "co-çar", "gesticu-lação",
+  "ga-guez", "trans-surgem").
+- **Tides:** a única emenda com hífen é "sub-commander", que fica. `limpos/` idêntico: a
+  tradução não fica velha.
+- **Competente, Hard Parts, Huxley, Learning DDD:** nenhuma emenda com hífen; idênticos.
+
+Antes do código, provar a palavra só com o texto já sem o destaque deixava 4 hífens a mais
+("crip-tolalia", "integra-do", "afe-tado", "hipota-lâmicos"): a palavra inteira só estava no
+destaque, ou no cabeçalho que saiu.
+
+O Mateus aprovou como lote B da revisão do destaque ("A, B e C").
+
+Fica como limite: o composto que o livro escreve com hífen num lugar e sem hífen em outro perde o
+hífen na emenda. Isso segue a grafia do próprio livro.
+
 ## Consequências
 
 **Ganha:**
@@ -119,6 +161,7 @@ Limites registrados pela auditoria de 2026-11-01, sem caso nos livros medidos:
 |---|---|---|---|
 | Nada some na limpeza | `conferir`: origem = mantidos + removidos + juntados, por ID | antes do `montar` | algum ID de origem não aparece em nenhum dos três |
 | Padrões medidos | testes com EPUB sintético que reproduz cada padrão (cabeçalho `Título N`, parágrafo partido, capitular ausente, sumário) | portão | o padrão volta a passar para o texto |
+| O hífen da quebra sai só com prova | testes (`tests/test_juncao.py`, `tests/test_destaque.py`): "identifi-" + "car" vira "identificar" quando o livro escreve a palavra; "relaciona-se", "embrioná-ria" e "sub-commander" ficam | portão | o hífen fica onde o livro prova a palavra, ou sai do composto |
 | Escuta ★ (manual) | rodar a esteira nos livros de `livros/` e contar o que sobrou | a cada mudança na limpeza; responsável: Mateus | a contagem sobe |
 
 Regra derivada no `AGENTS.md`: a limpeza registra toda remoção; nada sai do texto sem o ID de origem.

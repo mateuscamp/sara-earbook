@@ -256,11 +256,7 @@ class _Montador:
         if aberto.tabela or fim_do_verbete:
             return True
         if _virou_a_coluna(linha, anterior):
-            # A margem da coluna nova não se compara com a do parágrafo na coluna de antes: o
-            # item que vira de coluna se partia no ponto. A virada é como a de página
-            # (ADR-0004, "Duas colunas").
-            item = _ITEM_DE_LISTA.match(linha.texto) is not None
-            return item or self._comeca_frase_na_pagina_nova(aberto, linha)
+            return self._quebra_na_virada(aberto, linha)
         if self._mudou_o_recuo(aberto, linha):
             return True
         # Hard Parts p. 45: itens a 1,32 entrelinha um do outro passavam abaixo do limiar.
@@ -302,6 +298,18 @@ class _Montador:
         # Na margem do parágrafo, até o verbete segue: é o título da obra em negrito no meio
         # da referência ("(EMNLP 2024)." e "Proceedings of…", Competente p. 493).
         return abs(linha.x - aberto.x_do_corpo) >= RECUO_MINIMO
+
+    @staticmethod
+    def _quebra_na_virada(aberto: _Aberto, linha: Linha) -> bool:
+        """A margem da coluna nova não se compara com a do parágrafo na coluna de antes: o item
+        que vira de coluna se partia no ponto. A virada é como a de página (ADR-0004, "Duas
+        colunas"), a não ser que a letra mude: o destaque de margem de 9 pt, ao lado do texto de
+        10 pt, colava na frase dele (ADR-0004, "Destaque de margem na virada de coluna").
+        """
+        if abs(linha.tamanho - aberto.tamanho) > DIFERENCA_DE_TAMANHO:
+            return True
+        item = _ITEM_DE_LISTA.match(linha.texto) is not None
+        return item or _Montador._comeca_frase_na_pagina_nova(aberto, linha)
 
     @staticmethod
     def _comeca_frase_na_pagina_nova(aberto: _Aberto, linha: Linha) -> bool:

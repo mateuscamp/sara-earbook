@@ -346,6 +346,50 @@ O Mateus ouviu `dalgalarrondo-pagina.pronto.epub` no ElevenReader. Ouviu o capí
 - **Sotaque:** no meio do capítulo, a voz passou a ler com sotaque de Portugal e, no fim, voltou ao do Brasil. Ele trocou de voz, e o sotaque continuou. O EPUB declara `pt-BR` no OPF e nas 88 marcas de língua dos XHTML, sem outra língua em trecho nenhum, então o defeito é do ElevenReader.
 - **O minuto:** o ElevenReader mostra o tempo do capítulo, não o do livro, e o roteiro dava o do livro (37 a 41). O capítulo dura 10:12 para 1.408 palavras. O trecho, de 755 palavras, coube até 5:29. São ~138 palavras por minuto, contra as 160 do `earbook minuto`. A partir de agora, o roteiro dá a frase de início e a de fim e o minuto aproximado do capítulo (skill `traduzir-livro`, passo 9).
 
+### Destaque de margem na virada de coluna (2026-11-03)
+
+O defeito da escuta acima é o destaque de margem. No Dalgalarrondo, ele tem 9 pt, numa coluna
+estreita na margem (p. 31: x 46 a 123), e o texto de 10 pt ao lado estreita para dar lugar a ele
+(x 143 a 228). O `colunas` já o lê antes ou depois do texto ao lado ("Duas colunas"). Mas a
+virada de coluna é como a de página: só abre parágrafo na frase fechada seguida de maiúscula. O
+destaque fecha a frase, e o texto que ele interrompe continua em minúscula, por isso ele colava:
+- **no começo da continuação:** "O corpo é um dos principais palcos" | "O corpo é um dos
+  principais palcos de nossas vidas. Lugar de dor… desejo. de nossas vidas. Lugar de dor…"
+  (p. 250);
+- **no fim do texto,** quando a frase ainda não fechou: "…Só após o agravamento Geralmente a
+  desorientação ocorre…";
+- **no meio da palavra:** "As ilusões ocor-" | destaque | "rem basicamente…".
+
+Medido no HEAD `0038af9`: 221 segmentos do Dalgalarrondo repetem dentro de si 8 palavras
+seguidas. Os 7 do Competente e os 12 do Hard Parts são repetição do próprio texto, não destaque.
+
+**Decisão:** na virada de coluna, a linha cuja letra difere da do parágrafo aberto em mais de 0,5
+pt (`DIFERENCA_DE_TAMANHO`, a folga do título) abre parágrafo novo. O destaque vira parágrafo
+próprio, e o texto em volta dele fica em dois. Quando o destaque sai, o `limpar` emenda os dois
+(ADR-0008, "Destaque de margem repetido").
+
+Alternativa recusada: abrir parágrafo em toda linha que muda de tamanho, e não só na virada.
+Pegaria também o destaque que fica abaixo do texto, na mesma coluna, mas muda o Competente (+177
+parágrafos) e o Hard Parts (+21), que não têm destaque.
+
+Medido depois do código, contra o HEAD `0038af9`, nas pastas `*-destaque` de `livros/trabalho/`:
+
+| Livro | `importar-pdf` | `preparar` |
+|---|---|---|
+| *Dalgalarrondo* | parágrafos 3.479 → 3.747 | segmentos 3.872 → 4.140; destaques, junções e suspeitas no ADR-0008 |
+| *Competente*, *Hard Parts* | igual: o XHTML do EPUB é idêntico | `segmentos/`, `limpos/`, `limpeza.json` e `livro.json` idênticos (fora a origem) |
+
+A quebra nova separa também o subtítulo de 9 pt que vinha colado num pedaço de texto fora de
+ordem ("As alucinações imagem perceptiva real…", "Constituição corporal mentos são…"). O
+pedaço continua fora de ordem, agora depois de uma linha curta: são 4 das 6 "capitular
+perdida?" novas, sem pista que mude o texto.
+
+O Mateus aprovou junto com a regra do `limpar` ("Aprovar").
+
+Fica como limite o destaque colado sem virada de coluna, abaixo do texto na mesma coluna: uns 15
+no Dalgalarrondo (`c019-s0048`, `c011-s0025`). Vai, com os outros destaques que ficam, para o
+`adaptar` (ADR-0008).
+
 ## Consequências
 
 **Ganha:** um comando a mais na mesma esteira, sem repositório novo. Os defeitos de conversão são atacados onde nascem.
@@ -362,6 +406,7 @@ O Mateus ouviu `dalgalarrondo-pagina.pronto.epub` no ElevenReader. Ouviu o capí
 |---|---|---|---|
 | A biblioteca de PDF só entra pelo adaptador | import-linter: `dominio` e `comandos` não importam a biblioteca de PDF | portão | contrato quebrado |
 | O portão continua leve | tempo do `make check` | a cada mudança no conversor; responsável: Mateus | passar de 30 s |
+| O destaque não cola no texto | testes (`tests/test_destaque.py`): a letra menor na virada de coluna abre parágrafo, para os dois lados; a mesma letra, ou meio ponto de diferença, segue; a letra menor sem virada segue; do PDF de ponta a ponta, a frase da p. 250 volta inteira | portão | o destaque cola na frase, ou um parágrafo sem destaque se parte |
 | A escuta ★ | rodar `importar-pdf` + `preparar` num PDF real em `livros/` e contar o que o `limpar` ainda precisa tirar | a cada mudança no conversor | a contagem sobe |
 
 Regra derivada no `AGENTS.md`: a biblioteca de PDF só entra em `adaptadores/`.

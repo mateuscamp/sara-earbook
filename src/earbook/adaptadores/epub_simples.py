@@ -19,8 +19,9 @@ from typing import assert_never
 from earbook.adaptadores.pacote_epub import CONTAINER, DC, OPF, gravar_pacote
 from earbook.adaptadores.papel_do_bloco import OPS
 from earbook.adaptadores.xhtml import XHTML
-from earbook.dominio.blocos import Bloco, TipoDeBloco
+from earbook.dominio.blocos import Bloco
 from earbook.dominio.segmento import FORA_DO_XML
+from earbook.dominio.tipo_da_linha import TipoDeBloco
 
 _CONTAINER = """<?xml version="1.0" encoding="utf-8"?>
 <container version="1.0" xmlns="{container}">

@@ -53,6 +53,9 @@ class Linha:
     monoespacada: bool = False
     negrito: bool = False
     """Toda letra visível em fonte negrito: o subtítulo do tamanho do corpo (Competente)."""
+    versalete: bool = False
+    """Só maiúsculas, e alguma letra maior que a da linha: o subtítulo em versalete feito à mão
+    (Dalgalarrondo), que pelo tamanho viraria nota."""
 
 
 @dataclass(frozen=True)
@@ -91,6 +94,22 @@ def corpo_em_negrito(paginas: Sequence[Pagina], corpo: float) -> bool:
             if round(linha.tamanho, 1) == corpo:
                 caracteres[linha.negrito] += len(linha.texto)
     return caracteres[True] > caracteres[False]
+
+
+def em_versalete(letras: Sequence[tuple[str, float]], tamanho: float) -> bool:
+    """Maiúsculas de dois tamanhos: nenhuma letra minúscula, e alguma letra maior que o tamanho
+    da linha (a moda). É o versalete feito à mão do Dalgalarrondo, com a inicial da palavra em
+    10,5 pt e o resto em 7,4 (ADR-0004, "O que ficou da Fase 1"). Os rótulos do Competente
+    ("PREFÁCIO", "APÊNDICE A") têm um tamanho só, e o somatório maior numa fórmula ("ML = 100 *
+    ∑", Hard Parts) não é letra.
+    """
+    maior = any(letra.isalpha() and t > tamanho + DIFERENCA_DE_TAMANHO for letra, t in letras)
+    return so_maiusculas("".join(letra for letra, _ in letras)) and maior
+
+
+def so_maiusculas(texto: str) -> bool:
+    """Nenhuma letra minúscula: o versalete e a linha que continua o título em versalete."""
+    return not any(letra.islower() for letra in texto)
 
 
 def comeca_em_minuscula(texto: str) -> bool:

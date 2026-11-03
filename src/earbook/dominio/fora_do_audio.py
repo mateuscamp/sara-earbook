@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """O que sai inteiro do texto lido (ADR-0008): pelo papel, o bloco de código e o índice
-remissivo; pela repetição, a marca d'água e o destaque de margem. A limpeza registra cada um,
-com o motivo daqui.
+remissivo; pela repetição, a marca d'água e o destaque de margem; pelo conteúdo de cada
+parágrafo, a bibliografia. A limpeza registra cada um, com o motivo daqui.
 """
 
 from __future__ import annotations
@@ -31,8 +31,53 @@ _FECHA_FRASE = re.compile(r"[.!?\u2026][\u201d\u2019\"')]*$")
 # O hífen da quebra ("pri-" + "meiros") e o do composto ("divi-dem-se", contra "dividem-se" no
 # destaque) não contam na comparação.
 _HIFEN_NA_PALAVRA = re.compile(r"(?<=[^\W\d_])[-\u2010\u00ad]\s*(?=[^\W\d_])")
+# A bibliografia (ADR-0008, "Bibliografia"), no padrão ABNT: o sobrenome, ou a instituição, em
+# maiúsculas, seguido de vírgula ou ponto ("ABDO, C. H. N.", "ALONSO FERNANDES, F.", "AMERICAN
+# PSYCHIATRIC ASSOCIATION.", "WORLD HEALTH ORGANIZATION (WHO)."), e um ano. Medido: o
+# Dalgalarrondo tem 24 parágrafos-referência seguidos (p. 417 a 431); o Competente, no máximo 3
+# (as referências dele se partem entre nota e parágrafo); o Learning DDD, 0 (APA: "Evans, E.").
+REFERENCIAS_SEGUIDAS = 10
+MOTIVO_DA_BIBLIOGRAFIA = "bibliografia: referências no padrão ABNT"
+_AUTOR_ABNT = re.compile(r"[A-ZÀ-Ý][A-ZÀ-Ý'\u2019-]+(?:\s+[A-ZÀ-Ý(][A-ZÀ-Ý'\u2019()-]*)*[,.]\s")
+_ANO = re.compile(r"\b(?:1[5-9]|20)\d\d\b")
 # O número conta: o destaque com "3 a 25 segundos" não repete o texto com "5 a 30".
 _PALAVRA_OU_NUMERO = re.compile(rf"{PALAVRA.pattern}|\d+")
+
+
+def bibliografia(capitulos: Sequence[tuple[str, Sequence[Segmento]]]) -> dict[str, str]:
+    """ID → motivo de cada referência das sequências de 10 ou mais parágrafos-referência seguidos
+    no mesmo capítulo, e do título logo antes de cada sequência (ADR-0008, "Bibliografia").
+
+    O título nunca dispara a regra: o ADR-0008 proíbe reconhecer pelo título ("Índice" é o
+    sumário em português). Ele só sai junto, como o "Index" do índice remissivo.
+    """
+    saem: dict[str, str] = {}
+    for _, segmentos in capitulos:
+        for inicio, fim in _sequencias_de_referencias(segmentos):
+            titulo_antes = inicio > 0 and segmentos[inicio - 1].papel is Papel.TITULO
+            primeiro = inicio - 1 if titulo_antes else inicio
+            saem |= {s.id: MOTIVO_DA_BIBLIOGRAFIA for s in segmentos[primeiro:fim]}
+    return saem
+
+
+def _sequencias_de_referencias(segmentos: Sequence[Segmento]) -> list[tuple[int, int]]:
+    """(início, fim) de cada sequência de `REFERENCIAS_SEGUIDAS` ou mais parágrafos-referência."""
+    sequencias: list[tuple[int, int]] = []
+    inicio = 0
+    for posicao, segmento in enumerate([*segmentos, None]):
+        if segmento is not None and _referencia(segmento):
+            continue
+        if posicao - inicio >= REFERENCIAS_SEGUIDAS:
+            sequencias.append((inicio, posicao))
+        inicio = posicao + 1
+    return sequencias
+
+
+def _referencia(segmento: Segmento) -> bool:
+    """O parágrafo que abre com o autor em maiúsculas, no padrão ABNT, e traz um ano."""
+    texto = segmento.texto
+    abnt = _AUTOR_ABNT.match(texto) is not None and _ANO.search(texto) is not None
+    return segmento.papel is Papel.PARAGRAFO and abnt
 
 
 def pelo_papel(capitulos: Sequence[tuple[str, Sequence[Segmento]]]) -> dict[str, str]:

@@ -268,7 +268,7 @@ Medido num protótipo, nas linhas que o pdfminer entrega: no Competente, nenhuma
 O Mateus aprovou a decisão inteira ("Sim aos três"): o critério com continuidade de 40%, a leitura coluna a coluna das tabelas das p. 412 e 429 do Hard Parts, sem restringir a regra, e a bibliografia do Dalgalarrondo ainda intercalada, que fica para o `adaptar`.
 
 Ficam como limite:
-- **colunas de verbete que começa em maiúscula**: a bibliografia do Dalgalarrondo (p. 416–431: "BERGSON, H.", "São Paulo:") e algumas páginas do glossário têm continuidade de 0,33 a 0,4 e continuam intercaladas. No protótipo, 43 páginas do Dalgalarrondo ainda têm alguma faixa larga recusada (bibliografia, quadros e tabelas);
+- **colunas de verbete que começa em maiúscula**: a bibliografia do Dalgalarrondo (p. 416–431: "BERGSON, H.", "São Paulo:") e algumas páginas do glossário têm continuidade de 0,33 a 0,4 e continuam intercaladas. No protótipo, 43 páginas do Dalgalarrondo ainda têm alguma faixa larga recusada (bibliografia, quadros e tabelas). Resolvido em "O que ficou da Fase 1" (2026-11-03), pelo texto justificado;
 - **tabela de célula curta** (chave e valor) continua linha a linha, como antes: Competente p. 144 e 377–380, as tabelas do Hard Parts e os Quadros do Dalgalarrondo. É o certo para o ouvido. A tabela de registro com célula que quebra linha, como a p. 144, seria lida coluna a coluna se passasse do limiar;
 - **destaque de margem** (pull quote, fora deste ciclo): vira parágrafo próprio, antes ou depois do pedaço de texto ao lado dele, quando a frase fecha antes dele (69 viradas de coluna trocam de tamanho, o destaque de 9 pt para o texto de 10). Quando a frase do texto atravessa o destaque, ele ainda entra no meio da frase (p. 250: "O corpo é um dos principais palcos" | destaque | "de nossas vidas");
 - **página de uma coluna com figura ao lado**: rótulos de figura com 3 linhas ou mais que se continuam virariam coluna; nenhum caso nos três livros;
@@ -330,7 +330,7 @@ O que acontece com o texto que vinha depois dos 402 números que eram título:
 O Mateus aprovou as duas regras, esta e a do ADR-0007 ("Sim, as duas"), e aceitou as 21 emendas no título do quadro até o ciclo do Quadro.
 
 Ficam como limite conhecido:
-- **o cabeçalho de duas páginas:** "Prefácio da 1a edição", em 9 pt no alto das p. 14 e 15, não chega às 3 páginas da linha repetida e fica, como antes. Sem o número que o colava num título ("14 Prefácio da 1a edição"), ele entra no meio da frase partida pela página: "Bernard e Si- Prefácio da 1a edição mone Trouvé (1977)". As junções continuam 19 porque esta entra e uma sai: a de `c011`, "Sullivan (1983) afirmava que" + "o entrevistador desempenha", que é um dos 21 casos do quadro, abaixo. O começo da frase ("senciais da clínica…") vai para o título do quadro, e "o entrevistador desempenha…" fica depois do quadro, num parágrafo próprio;
+- **o cabeçalho de duas páginas:** "Prefácio da 1a edição", em 9 pt no alto das p. 14 e 15, não chega às 3 páginas da linha repetida e fica, como antes. Sem o número que o colava num título ("14 Prefácio da 1a edição"), ele entra no meio da frase partida pela página: "Bernard e Si- Prefácio da 1a edição mone Trouvé (1977)". As junções continuam 19 porque esta entra e uma sai: a de `c011`, "Sullivan (1983) afirmava que" + "o entrevistador desempenha", que é um dos 21 casos do quadro, abaixo. O começo da frase ("senciais da clínica…") vai para o título do quadro, e "o entrevistador desempenha…" fica depois do quadro, num parágrafo próprio. Resolvido em "O que ficou da Fase 1" (2026-11-03), pelas páginas vizinhas;
 - **a continuação emendada no título do quadro:** quando a página termina num Quadro ou numa tabela, que viram nota, a continuação em minúscula da página seguinte retoma o título do quadro, e não o parágrafo de antes dele ("Semiotécnica simplificada da afasia nica, por conflitos interpessoais ou por imitação.", p. 239; "Exemplos de formulação diagnóstica satisfatoriamente o objeto pesquisado…", p. 44). Some com o conserto do Quadro, que precisa tirar o quadro do fluxo do parágrafo. Resolvido em "Quadro no lugar" (2026-11-03), que contou 33 casos.
 
 Registrados pela code-review, sem correção, porque não têm caso nos três PDFs:
@@ -504,7 +504,8 @@ quadro espera até a frase acabar. A legenda seguida de um destaque que parte a 
 o defeito que o quadro tinha no primeiro protótipo: o resto da frase cairia depois da legenda.
 Unificar os dois exige medir de novo as legendas do Competente (code-review).
 
-Achados na medição, para a fila da próxima filha, sem correção aqui:
+Achados na medição, para a fila da próxima filha, sem correção aqui (resolvidos em "O que ficou
+da Fase 1", abaixo):
 - **subtítulo em versalete de 7,4 pt:** são 39 no Dalgalarrondo ("DELÍRIO DE GRANDEZA (DE
   ENORMIDADE)", "TRANSTORNO DA PERSONALIDADE ESQUIZÓIDE"), que viram nota e vão para "Notas",
   longe da seção que nomeiam. São 39 das 43 notas que sobram;
@@ -551,6 +552,191 @@ um visto falhar na asserção com o mutante plantado:
 - **P4, o número do rótulo:** "Quadro clínico" em letra de título, sem número, não abre quadro.
   Sem a guarda, os três PDFs saíam iguais.
 
+### O que ficou da Fase 1 (2026-11-03)
+
+A Fase 1 do Dalgalarrondo é a conversão limpa, sem escuta. Ela fecha com cinco regras do
+`importar-pdf`, que estavam na fila do Quadro e das rodadas anteriores, e uma do `limpar` (a
+bibliografia, no ADR-0008, "Bibliografia"). Medido no HEAD `f60971a`, nas pastas `*-base-fase1`
+de `livros/trabalho/`:
+- **43 notas em "Notas":**
+  - 39 são subtítulos em versalete;
+  - 3 são pedaços do Quadro 22.4, que o texto escondido da p. 275 fechava;
+  - 1 é a coluna da direita da tabela do Quadro 29.1 (p. 324).
+- **1 capítulo falso** (`c026`).
+- **17 páginas intercaladas:** o glossário (p. 405 e 416) e a bibliografia (p. 418 a 431).
+- **A lista da p. 384** intercalada com o texto.
+- **"Bernard e Si- Prefácio da 1a edição mone Trouvé"**, a frase partida pelo cabeçalho.
+
+O Mateus aprovou as seis regras, com o cabeçalho na forma estreita ("Aprovar").
+
+**1. Subtítulo em versalete.**
+- **O defeito:** são 39 subtítulos, em 48 linhas, nas p. 126 a 342 ("DELÍRIO DE GRANDEZA (DE
+  ENORMIDADE)", "TRANSTORNO DA PERSONALIDADE PARANÓIDE"). O versalete é feito à mão: só
+  maiúsculas, a inicial de cada palavra em 10,5 pt e o resto em 7,4. Pela moda, a linha tinha
+  7,4 pt, virava nota e ia para "Notas", longe da seção que nomeia.
+- **A regra:**
+  - o adaptador marca a linha só em maiúsculas que tem alguma **letra** maior que a moda
+    (`Linha.versalete`, `em_versalete` em `dominio/pagina.py`), e ela é título;
+  - a linha de nota seguinte, só em maiúsculas e do mesmo tamanho, continua o título. Na segunda
+    linha não há letra maior ("PERSONALIDADE PARANÓIDE").
+- **Recusado: "nota toda em maiúsculas".** Pegaria 37 linhas do Competente, de um tamanho só: o
+  sumário ("PARTE I · O QUE É ESSA COISA"), "PREFÁCIO", "APÊNDICE A" e "CRÉDITOS DAS IMAGENS".
+  Com a marca, o Competente tem 0 linhas e o Hard Parts tem 1 ("ML = 100 * ∑"), que fica de fora
+  porque o "∑" não é letra.
+- **O que se perde:** o versalete de fonte própria, de um tamanho só, continua nota.
+
+**2. Texto escondido.**
+- **O defeito:** debaixo do Quadro 22.4 (p. 275) ficou o resto de uma abertura de capítulo
+  antiga: "24" em 60 pt, e "A inteligência e" / "suas alterações" em 22 pt. O capítulo real é o
+  23, com o mesmo título.
+  - Na mesma altura de linhas do quadro, essas linhas se juntavam a elas.
+  - O "24" virava título do tamanho do capítulo e abria o `c026`.
+  - O quadro fechava, e 3 pedaços dele iam para "Notas".
+- **A regra:** a linha em letra de título que, na mesma altura, se sobrepõe na horizontal (mais
+  de 1 pt) a uma linha de **outro tamanho** sai antes da paginação, com o motivo "texto escondido
+  debaixo de outro" (`dominio/texto_escondido.py`). O resumo do comando passa a dizer "linhas
+  tiradas da página: a borda e o texto escondido".
+- **Medido nos três PDFs:** só os 3 da p. 275.
+  - O texto repetido por cima, do mesmo tamanho, fica. É negrito feito à mão: "Conheça também"
+    no Dalgalarrondo (p. 2) e "Beijing" no Hard Parts (p. 5).
+  - A letra miúda sobreposta também fica: Hard Parts p. 462, de 0,7 a 3,6 pt.
+- **O que se perde:**
+  - o texto escondido do tamanho do corpo continua;
+  - o título legítimo que encosta numa linha de outro tamanho, na mesma altura, sairia. Não há
+    caso.
+- **"Para personalidade paranóide"** (8 pt, dentro do quadro) passa a colar na pergunta de cima,
+  como "Para personalidade anti-social" já colava. É o quadro lido como lista de linhas, que vai
+  para o `adaptar`.
+
+**3. As colunas das p. 324 e 384** (`dominio/colunas.py`, que passa a receber o tamanho do corpo,
+`linhas_visuais(linhas, corpo)`).
+
+- **p. 324:** a tabela do Quadro 29.1 (8 pt, duas colunas) e o corpo de baixo (10 pt) ficavam
+  na mesma faixa. O vão entre eles era de 0,036, abaixo do vão das faixas (2,5 entrelinhas, ou
+  0,038). A coluna da direita da tabela vinha depois do corpo, fora do quadro.
+  - **Regra (`_acaba_a_tabela`):** o vão de parágrafo (1,35 entrelinha) antes de uma linha do
+    corpo também fecha as colunas, quando os **dois** lados acabam, logo acima, em 3 linhas ou
+    mais de letra menor que o corpo.
+  - **Recusado: cortar em toda troca de letra.** Mudava 6 páginas para pior, porque o subtítulo
+    de 11 pt partia as colunas (p. 193 e 332), e mudava o Hard Parts.
+  - **Recusado: sem as 3 linhas dos dois lados.** O versalete de um lado só estragava a p. 219.
+- **p. 384:** no pé da página, o resto do parágrafo tinha 2 linhas à esquerda ("…é classi-" /
+  "camente definida pela tríade:"), e a lista "1. 2. 3." ficava à direita. Uma coluna precisava
+  de 3 linhas.
+  - **Regra (`_curta_do_corpo`):** o lado de 2 linhas do corpo também é coluna quando a de cima
+    termina no hífen da quebra e a de baixo começa em minúscula.
+  - **Recusado: "2 linhas bastam".** Mudava a p. 257 do Hard Parts, porque a célula de duas
+    linhas continua em minúscula sem se partir em sílaba, e 4 páginas de quadro do
+    Dalgalarrondo.
+- **Medido:** só essas duas páginas mudam nos três PDFs.
+  - A p. 324 sai com o corpo inteiro ("Já a somatização… síndromes pseudoneurológicas."), e o
+    Quadro 29.1 vem depois, coluna a coluna: "Crise dissociativa histérica" e depois "Crise
+    epiléptica".
+  - A p. 384 sai com "…é classicamente definida pela tríade:" e depois a lista.
+
+**4. O glossário, pelo texto justificado.**
+- **O defeito:** os verbetes abrem em maiúscula, e a continuidade do glossário (p. 405 e 416) e
+  da bibliografia (p. 418 a 431) fica entre 0,31 e 0,4, abaixo dos 40% de "Duas colunas". As
+  colunas saíam intercaladas ("Prová- Lambuzão: desleixado…", "denomi- Zebra: pouco
+  inteligente…").
+- **A regra:** o lado também é texto corrido quando continua em 30% ou mais dos pares e **40% ou
+  mais** das linhas terminam na margem direita dele (a menos de 1 pt), ou seja, é justificado
+  (`_justificado`).
+- **Medido:**
+  - o glossário tem de 0,40 a 0,55 de linhas cheias;
+  - a bibliografia, de 0,62 a 0,77;
+  - as tabelas do Competente e do Hard Parts que passam de 0,3 de continuidade têm no máximo 0,25
+    (a p. 144 do Competente, 0,11);
+  - as tabelas com a coluna da direita alinhada (Hard Parts p. 59, 143 e 144) têm linhas cheias,
+    mas continuidade zero, e por isso as linhas cheias sozinhas não bastam.
+- **O que muda:** só páginas do Dalgalarrondo.
+  - O glossário fica sem intercalação.
+  - A bibliografia fica em ordem, e sai inteira (ADR-0008).
+  - As p. 219 e 273, com versaletes nas colunas, ficam em ordem.
+  - A p. 309 deixa de sair intercalada ("…fatores A ordenação da depressão…"), e o destaque dela
+    passa a sair.
+  - A tabela do Quadro 24.2 (p. 299) passa a sair por coluna; já saía embaralhada.
+- **O que se perde:**
+  - o texto justificado com menos de 30% de continuação continua intercalado;
+  - as páginas que ainda saem intercaladas são quadros e tabelas, lidos como lista de linhas.
+
+**5. O cabeçalho de duas páginas.**
+- **O defeito:** "Prefácio da 1a edição" (p. 14 e 15) e "Sumário" (p. 18 e 19), em 9 pt no mesmo
+  topo, não chegam às 3 páginas da linha repetida (limite "o cabeçalho de duas páginas", acima).
+- **A regra (forma estreita):** a linha repetida também sai quando aparece em 2 páginas
+  **vizinhas**, as duas de uma abertura (`PAGINAS_VIZINHAS`). O teste "a linha no alto em duas
+  páginas só fica", que tinha as duas páginas vizinhas, passou a ter uma página entre elas: esse
+  caso fica.
+- **Recusado: a forma geral,** com até uma página entre as duas.
+  - **Competente:** tiraria 8 cabeçalhos ("PREFÁCIO", p. 10 e 12; "DO GNU GO AO KATAGO"; "COMO
+    ESTE LIVRO FOI FEITO"; "AI-MEMORY"), que hoje vão para "Notas".
+  - **Hard Parts:** tiraria 30 rodapés de seção curta ("| Preface", "Sysops Squad Saga: …", o
+    limite da primeira regra), com 28 emendas certas.
+  - **Mas há 2 colagens novas no Hard Parts.** O rodapé separava, por acaso, um item de lista do
+    parágrafo da página seguinte. Sem ele, a virada de página os cola: "…better deployability
+    Consequences The migration effort…" e "• Authorization Consequences Teams should not…".
+  - Volta quando a virada de página não colar mais o item de lista sem pontuação no parágrafo
+    seguinte.
+
+**Medido depois do código, contra o HEAD `f60971a`** (pastas `*-fase1`). O Dalgalarrondo saiu
+idêntico ao protótipo (`*-prototipo-fase1`), fora o texto do motivo da bibliografia.
+
+| Livro | `importar-pdf` | `preparar` |
+|---|---|---|
+| *Dalgalarrondo* | capítulos 43 → **42**; títulos 222 → 260; parágrafos 4.524 → 4.436; **notas 44 → 1** (a página de direitos, que o `limpar` tira); linhas tiradas 819 → 826 (+3 escondidas, +4 do cabeçalho); hífen tirado 10.973 → 11.075, mantido 193 → 196 | segmentos 4.790 → 4.719; remoções 243 → 269 (+25 da bibliografia, +1 destaque, o da p. 309); junções 237 → 229 (6 remendavam a p. 309 intercalada, e 2, o prefácio); suspeitas 23 → 23. `limpos/`: 4.310 → 4.199 segmentos, **0 notas** |
+| *Competente*, *Hard Parts* | igual: o XHTML do EPUB é idêntico | `segmentos/`, `limpos/`, `limpeza.json` e `livro.json` idênticos (fora a origem) |
+| *Huxley*, *Tides*, *Learning DDD* | — | idênticos; o `limpos/` do Learning DDD é igual ao da pasta traduzida |
+
+- **Nenhuma letra se perde.** Contando o `limpos/`, os destaques e a bibliografia tirados, a
+  diferença, caractere a caractere, é exatamente o texto escondido e as 4 linhas de cabeçalho.
+- **Em palavras:** 167.749 → 167.628. São 16 palavras dessas linhas e ~105 palavras partidas
+  entre as colunas do glossário e da bibliografia, que voltam inteiras.
+- **Frases:** "…Paul Bernard e Simone Trouvé (1977)…" e "…é classicamente definida pela tríade:"
+  saem inteiras. "DELÍRIO DE RELAÇÃO" e "DELÍRIO DE GRANDEZA (DE ENORMIDADE)" saem como títulos,
+  cada um antes do seu texto.
+
+Para caber nas 400 linhas, o `blocos.py` foi dividido por assunto, sem mudar o comportamento. O
+tipo da linha pela fonte e as medidas do livro (`TipoDeBloco`, `tipo_da_linha`, `medir`) foram
+para `dominio/tipo_da_linha.py`.
+
+Correções da code-review e da code-audit (2026-11-03), aprovadas pelo Mateus ("A, B, C e
+commit"). Os seis livros saíram idênticos à medição acima.
+- **Lote A, duas guardas que já existiam e ganharam teste.** Cada teste passa no código e foi
+  visto falhar na asserção com o mutante plantado numa cópia:
+  - **M6, só o título em versalete se continua:** sem a guarda, a linha só em maiúsculas
+    depois de uma nota virava título. Mudavam os três PDFs: "ISBN 978-85-363-1493-8" na página
+    de direitos do Dalgalarrondo, "1957)" na linha do tempo do Competente e 3 blocos do Hard
+    Parts;
+  - **M15, a tabela só acaba no vão de parágrafo:** sem o vão, 3 linhas de letra menor em cada
+    coluna, seguidas do corpo na entrelinha comum, cortavam as colunas. Mudavam 4 páginas do
+    Dalgalarrondo (p. 91, "O inconsciente").
+- **Lote B, código, sem mudar a saída:**
+  - **R1:** o texto escondido compara só as linhas da mesma altura, na ordem do topo, e não
+    todos os pares da página. O PDF é entrada não confiável: uma página de 10 mil linhas leva
+    0,1 s. Fica quadrático só o que está numa altura só (2 mil linhas, 0,6 s);
+  - **R2:** o par de páginas vizinhas só vale para a linha com letra. A pausa de cena ("* * *")
+    no alto de duas páginas seguidas fica e continua precisando de 3 páginas. Teste novo, visto
+    falhar na asserção antes da correção;
+  - **R7 e R9:** o ajudante `so_maiusculas` (`dominio/pagina.py`) serve ao versalete e à linha
+    que o continua; e `tirar_texto_escondido`, `acrescentar` e `_repetidas` foram divididos.
+- **Lote C, limites sem caso nos livros medidos:**
+  - **R3:** a contagem de letra menor de `_acaba_a_tabela` vem desde o alto da página e pula a
+    linha que atravessa a calha. Ela pode somar linhas de uma faixa anterior;
+  - **R4:** uma linha toda em maiúsculas com uma capitular maior passa por versalete e vira
+    título;
+  - **pendências, guardas sem teste que não mudam os três PDFs:**
+    - **M5:** o tamanho da linha que continua o versalete;
+    - **M7:** o `all` dos pedaços da mesma altura no versalete;
+    - **M18:** a letra do corpo na coluna curta.
+
+**Fila, achada nesta medição e fora do ciclo** (vai para um ciclo curto depois deste):
+- **"Conheça Conheça Conheça também…"** (`c001-s0002`, p. 2): negrito feito com o texto repetido
+  por cima, do mesmo tamanho. É lido cinco vezes;
+- **o índice remissivo do Dalgalarrondo** (p. 433 em diante): continua lido. É "o índice do PDF
+  importado", já pendente no `AGENTS.md`;
+- **a bibliografia do Competente** (p. 481 a 503): 118 referências ABNT partidas entre nota e
+  parágrafo, que nunca chegam a 10 seguidas. São 226 notas.
+
 ## Consequências
 
 **Ganha:** um comando a mais na mesma esteira, sem repositório novo. Os defeitos de conversão são atacados onde nascem.
@@ -569,6 +755,7 @@ um visto falhar na asserção com o mutante plantado:
 | O portão continua leve | tempo do `make check` | a cada mudança no conversor; responsável: Mateus | passar de 30 s |
 | O destaque não cola no texto | testes (`tests/test_destaque.py`): a letra menor na virada de coluna abre parágrafo, para os dois lados; a mesma letra, ou meio ponto de diferença, segue; a letra menor sem virada segue; do PDF de ponta a ponta, a frase da p. 250 volta inteira | portão | o destaque cola na frase, ou um parágrafo sem destaque se parte |
 | O quadro fica no lugar | testes (`tests/test_quadro.py`): o conteúdo do quadro é parágrafo, não nota; a frase interrompida volta inteira, com o quadro depois, também quando o quadro acaba em linha de 9 pt; o quadro espera o destaque que parte a continuação; fica no lugar entre parágrafos, entra antes do título seguinte e não se perde no fim do livro; o rótulo seguido ("Quadro" ou "Tabela") e a linha de 11 pt continuam o quadro, e os quadros seguidos esperam juntos a frase acabar; a letra do corpo e o título o fecham, e o corpo colado à última linha do quadro abre bloco próprio; o código dentro do quadro não retoma o texto, e a linha em maiúscula depois do quadro também não; o título "Quadro clínico", sem número, não abre quadro; a menção no corpo não o abre; do PDF de ponta a ponta, as p. 43 e 44 | portão | conteúdo de quadro vira nota, a frase se emenda no quadro, ou um bloco de quadro some |
+| O que ficou da Fase 1 | testes: o versalete feito à mão é título e o continua a linha de maiúsculas seguinte, e as maiúsculas de um tamanho só, a minúscula e o símbolo maior não são versalete, e as maiúsculas depois de uma nota continuam nota (`tests/test_versalete.py`, com o adaptador lendo um PDF); a linha de título sobre outra de outro tamanho sai, e o texto repetido do mesmo tamanho, a linha ao lado e a letra miúda ficam; o `importar-pdf` não abre o capítulo falso (`tests/test_texto_escondido.py`); os verbetes justificados saem coluna a coluna, e a célula com alguma continuação sem margem comum segue linha a linha; o corpo depois da tabela de letra menor é outra faixa, e o destaque de um lado só não a corta, nem a letra menor dos dois lados sem o vão de parágrafo; a coluna de duas linhas ligadas pelo hífen vem antes da outra, e a de duas linhas sem o hífen segue linha a linha (`tests/test_colunas_curtas_e_justificadas.py`); o cabeçalho de duas páginas vizinhas sai, e o de duas com uma entre elas e a linha sem letra em duas vizinhas ficam (`tests/test_paginacao.py`) | portão | volta uma nota de versalete, o capítulo falso, a intercalação do glossário, ou muda um livro sem versalete, texto escondido nem cabeçalho de abertura |
 | A escuta ★ | rodar `importar-pdf` + `preparar` num PDF real em `livros/` e contar o que o `limpar` ainda precisa tirar | a cada mudança no conversor | a contagem sobe |
 
 Regra derivada no `AGENTS.md`: a biblioteca de PDF só entra em `adaptadores/`.

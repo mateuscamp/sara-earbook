@@ -9,9 +9,10 @@ a marcação do EPUB diz o que eles são, e o `limpar` os tira do texto, registr
 `limpeza.json`. O Gherkin fica no texto, como parágrafo, porque é feito para ser lido por gente.
 O `limpar` tira também o parágrafo idêntico que se repete em metade ou mais dos arquivos do
 spine (a marca d'água "OceanofPDF.com") e, desde 2026-11-03, o destaque de margem que repete,
-palavra por palavra, o texto vizinho (seção "Destaque de margem repetido"). Inverte se a escuta
-mostrar que o ouvinte se perde sem o código ("depois da linha 7"), ou se um livro medido perder
-um texto que não é código, índice, marca d'água nem destaque.
+palavra por palavra, o texto vizinho (seção "Destaque de margem repetido"), e a bibliografia no
+padrão ABNT, reconhecida pelo conteúdo (seção "Bibliografia"). Inverte se a escuta mostrar que o
+ouvinte se perde sem o código ("depois da linha 7"), ou se um livro medido perder um texto que
+não é código, índice, marca d'água, destaque nem bibliografia.
 
 ## Contexto
 
@@ -354,6 +355,70 @@ A code-review e a code-audit não acharam bloqueador. O Mateus aprovou os três 
   - **a ordem não tem teste:** tirar o destaque depois da primeira junção dá o mesmo, porque a
     segunda junção, depois da capitular, emenda as metades (mutante equivalente).
 
+## Bibliografia (2026-11-03)
+
+### Contexto
+
+No Dalgalarrondo, as p. 417 a 431 trazem a bibliografia, depois do título "Referências
+bibliográficas e leituras recomendadas". São 9 pt, duas colunas e o padrão ABNT ("ABDO, C. H. N.
+Diagnóstico em psiquiatria e relação médico-paciente. Revista da Associação Médica do Brasil,
+n. 42, p. 222-228, 1996."). Medido no HEAD `f60971a`: 127 segmentos e 8.021 palavras, lidos com
+as colunas intercaladas. O Mateus decidiu: "Sim, sai".
+
+O índice remissivo deste ADR sai pela marcação do EPUB, e o reconhecimento pelo título ou pelo
+nome do arquivo foi recusado (alternativa C do índice). O PDF importado não tem marcação, e o
+título ("Referências", "Bibliografia", "Leituras") também aparece no meio do livro.
+
+### Alternativas
+
+| Opção | Ganha | Perde | Por que não |
+|---|---|---|---|
+| **A. Pelo conteúdo de cada parágrafo** (escolhida) | não depende do título nem da marcação; nenhum livro medido além do Dalgalarrondo muda | só o padrão ABNT; a bibliografia partida em pedaços curtos não chega às 10 referências seguidas | — |
+| B. O `importar-pdf` marca `<section epub:type="bibliography">`, e o `preparar` dá papel próprio, como ao índice | a forma geral, que pega também o EPUB marcado | o Learning DDD já marca a dele (`c317`, 30 segmentos traduzidos), que sairia, e a tradução ficaria velha; o `importar-pdf` ainda precisaria reconhecer a bibliografia do PDF | muda um livro traduzido, e o reconhecimento continua sendo o da opção A |
+| C. Pelo título | pega qualquer padrão | o ADR-0008 proíbe; o título de seção no meio do livro levaria o texto seguinte | tira texto que não é bibliografia |
+
+### Decisão
+
+- **O parágrafo-referência** abre com o autor em maiúsculas, o sobrenome ou a instituição,
+  seguido de vírgula ou ponto ("ABDO, C. H. N.", "ALONSO FERNANDES, F.", "AMERICAN PSYCHIATRIC
+  ASSOCIATION.", "WORLD HEALTH ORGANIZATION (WHO).") e traz um ano, de 1500 a 2099.
+- **Sai a sequência de 10 ou mais** parágrafos-referência seguidos, no mesmo capítulo, e o título
+  **logo antes dela**. O título nunca dispara a regra; ele só sai junto, como o "Index" sai com o
+  índice.
+- O motivo registrado é "bibliografia: referências no padrão ABNT". A regra fica em
+  `fora_do_audio.bibliografia` e roda por último, depois do código e do índice, enquanto a
+  bibliografia ainda separa os parágrafos em volta dela.
+- No Dalgalarrondo, a sequência só existe depois que as colunas saem em ordem: intercaladas, as
+  referências tinham no máximo 7 seguidas. A ordem vem do texto justificado (ADR-0004, "O que
+  ficou da Fase 1").
+
+O Mateus aprovou ("Aprovar"), junto com as regras do `importar-pdf` do fim da Fase 1.
+
+### Medição (2026-11-03, depois do código)
+
+| Livro | Maior sequência de parágrafos-referência | O que muda |
+|---|---|---|
+| *Dalgalarrondo* | 24 (p. 417 a 431) | saem os 24 parágrafos e o título: 25 remoções e 7.943 palavras |
+| *Competente* | 3 (118 referências ABNT nas p. 481 a 503, partidas entre nota e parágrafo) | nada |
+| *Hard Parts*, *Huxley*, *Tides* | 0 | nada |
+| *Learning DDD* | 0 (APA: "Evans, E. (2003).") | nada |
+
+Os cinco livros que não são o Dalgalarrondo saem com `segmentos/`, `limpos/` e `limpeza.json`
+idênticos.
+
+### O que fica
+
+- **A bibliografia de outro padrão** (APA, Vancouver, numerada) continua lida.
+- **A do Competente** também, porque metade das entradas vira nota. Está na fila do ADR-0004.
+- **A lista curta,** com menos de 10 referências (no fim de um capítulo), continua lida.
+- **A referência sem ano** ("s.d.") parte a sequência, e a entrada fora do padrão também
+  ("McDONALD", "LeRESCHE", o autor entre aspas). Numa bibliografia de uma referência por
+  parágrafo, os pedaços com menos de 10 ficam lidos, soltos entre os que saem (R5 da
+  code-review, aceito como limite em "A, B, C e commit"). No Dalgalarrondo isso não acontece,
+  porque cada coluna é um parágrafo.
+- **O que sairia:** um trecho de prosa com 10 parágrafos seguidos, cada um abrindo em maiúsculas
+  com vírgula e um ano. Não há caso nos livros medidos.
+
 ## Consequências
 
 **Ganha:**
@@ -395,13 +460,14 @@ A code-review e a code-audit não acharam bloqueador. O Mateus aprovou os três 
 | Marca d'água sai, o repetido de propósito fica | testes: o parágrafo em metade dos arquivos sai, registrado; abaixo da metade, em menos de 10 arquivos, como título, como citação ou sem letra, fica | portão | a marca fica, ou sai texto que não é marca |
 | Destaque sai, registrado, e a frase se emenda | testes (`tests/test_destaque.py`): o destaque ao lado do texto, no meio da frase, no meio da palavra partida, com hífen diferente e abrindo no meio da frase do texto sai com o motivo "destaque de margem: repete o texto vizinho"; do PDF de ponta a ponta, a frase da p. 250 volta inteira | portão | o destaque fica, ou a frase não se emenda |
 | O que não é destaque fica | testes: título como parágrafo, continuação em minúscula, pergunta com ":", pedaço que abre em algarismo, outro número, outra obra com uma palavra a menos, menos de 6 palavras, texto a mais de 3 segmentos ou em outro capítulo, citação e nota, gêmeos fora do meio da frase | portão | sai texto que o vizinho não repete |
+| Bibliografia sai, registrada, só pelo conteúdo | testes (`tests/test_bibliografia.py`): 10 referências ABNT seguidas e o título logo antes saem com o motivo "bibliografia: referências no padrão ABNT"; 9 ficam; a referência sem ano parte a sequência; a APA fica; o título sozinho não tira nada; o título longe das referências fica | portão | a bibliografia fica, ou o título sozinho tira texto |
 | Nada a mais some | `preparar` no Huxley e no Tides, `importar-pdf` e `preparar` no Competente e no Hard Parts, comparados com o ADR-0003 e o ADR-0004 | a cada mudança na limpeza | `limpos/` diferente sem explicação |
 | Escuta ★ (manual) | o `montar --original` do DDD, num trecho com código e no fim do livro | depois desta mudança; responsável: Mateus | o ouvinte se perde onde o código saiu |
 
 Regras derivadas no `AGENTS.md`: em "O que atrapalha o ouvido", o índice remissivo e o bloco de
 código passam a feitos no `preparar` (quando o EPUB os marca), o Gherkin fica, e entra a marca
-d'água repetida em metade dos arquivos. Desde 2026-11-03, entra também o destaque de margem que
-repete o texto vizinho.
+d'água repetida em metade dos arquivos. Desde 2026-11-03, entram também o destaque de margem que
+repete o texto vizinho e a bibliografia ABNT.
 
 ## Fora desta decisão (medido no DDD, para o Mateus escolher a ordem)
 
@@ -419,6 +485,7 @@ repete o texto vizinho.
 
 Autor: Mateus, com o Claude Code · Criado em: 2026-11-02 · Aprovado em: 2026-11-02 (pelo Mateus,
 na sessão principal: "Aceitar com a marca", que acrescentou a marca d'água à proposta). A seção
-"Destaque de margem repetido" foi aprovada em 2026-11-03 ("Aprovar").
+"Destaque de margem repetido" foi aprovada em 2026-11-03 ("Aprovar"), e a seção "Bibliografia",
+no mesmo dia ("Aprovar").
 O número 0008 estava reservado num rascunho para o `earbook adaptar`, que ainda não está no
 repositório: aquele ADR passa a ser o próximo número livre.

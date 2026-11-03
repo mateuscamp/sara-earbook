@@ -91,10 +91,12 @@ Verificadas só em revisão (`code-audit`):
 
 - Marcador de nota no meio da frase ("...disse ele.12"). Feito no `preparar`.
 - Trecho lido duas vezes (`<p>` dentro de `<blockquote>`). Feito no `preparar`.
-- Número de página, cabeçalho repetido, sumário duplicado.
+- Número de página, cabeçalho repetido, sumário duplicado. No PDF, o cabeçalho de duas páginas vizinhas também sai; o de duas páginas alternadas ainda é lido (ADR-0004, "O que ficou da Fase 1").
 - Índice remissivo, bloco de código e marca d'água repetida: feitos no `preparar` quando o EPUB marca o índice e o código (ADR-0008). O índice e o código do PDF importado ainda são lidos.
 - Destaque de margem que repete a frase do texto: feito no `importar-pdf` e no `preparar` (ADR-0004, ADR-0008). O destaque resumido ou reescrito ainda é lido.
 - Quadro do PDF que vira nota e vai para o fim do capítulo, longe do texto: feito no `importar-pdf` (ADR-0004, "Quadro no lugar"). O quadro sem rótulo "Quadro N.N" ou "Tabela N.N" em letra de título ainda não é reconhecido.
+- Subtítulo em versalete do PDF que vira nota, e texto escondido debaixo de outro que abre capítulo falso: feitos no `importar-pdf` (ADR-0004, "O que ficou da Fase 1"). O versalete de fonte própria, de um tamanho só, ainda vira nota.
+- Bibliografia: feita no `preparar` para a do padrão ABNT, 10 referências seguidas ou mais (ADR-0008, "Bibliografia"). A de outro padrão, a lista curta e a do Competente, partida entre nota e parágrafo, ainda são lidas.
 - Alternativa de exercício cuja letra só existe no CSS do `<ol>`: a voz lê "B e C" sem que nada tenha letra. Pendente.
 - Algarismo romano em título de capítulo ("Chapter IV").
 - Abreviação, URL, tabela e legenda de imagem.
@@ -134,12 +136,14 @@ src/earbook/
   dominio/      segmento.py (Segmento, IDs), trabalho.py (LivroPreparado), limpeza.py (regras do ouvido),
                 pagina.py (Pagina, Linha e letra espaçada do PDF), paginacao.py (cabeçalho do PDF
                 pela posição), blocos.py (parágrafo, título, código, nota e quadro do PDF),
+                tipo_da_linha.py (o tipo da linha do PDF pela fonte), texto_escondido.py (o texto
+                desenhado por baixo de outro),
                 hifen_da_quebra.py (o hífen do fim da linha do PDF), quadro.py (o Quadro do PDF),
                 capitulos.py (capítulo e nível do título), conferencia.py (o conferir), direitos.py (página de direitos autorais),
                 metadados.py (título e autor do PDF), traducao.py (lote, pedido, resposta, modo),
                 glossario.py (candidatos a nome, termos declarados), conferencia_da_traducao.py,
                 capitular.py (a capitular devolvida), escuta.py (o minuto de cada segmento),
-                fora_do_audio.py (código, índice e marca d'água), cabecalho.py (cabeçalho de página),
+                fora_do_audio.py (código, índice, marca d'água, destaque e bibliografia), cabecalho.py (cabeçalho de página),
                 colunas.py (a ordem de leitura da página em colunas)
   adaptadores/  xml_seguro.py (parser), pacote_epub.py (zip + OPF), xhtml.py, papel_do_bloco.py (o papel
                 pela marcação), pasta_de_trabalho.py,

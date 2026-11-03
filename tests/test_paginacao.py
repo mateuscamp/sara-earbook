@@ -72,10 +72,36 @@ def test_espaco_diferente_nao_separa_a_repeticao() -> None:
     assert _textos(limpas) == [["Texto."]] * 3
 
 
-def test_linha_no_alto_em_duas_paginas_so_fica() -> None:
-    # Duas vezes ainda pode ser texto do livro; três é numeração de página.
-    paginas = [[_linha("Um aviso no alto", ALTO), _linha("Texto.")] for _ in range(2)]
-    assert _textos(_limpar(*paginas)) == [["Um aviso no alto", "Texto."]] * 2
+def test_linha_no_alto_de_duas_paginas_com_uma_entre_elas_fica() -> None:
+    # Duas vezes, longe uma da outra, ainda pode ser texto do livro; três é cabeçalho. O
+    # Competente ("PREFÁCIO", p. 10 e 12) e o Hard Parts (o rodapé de seção curta) têm o
+    # cabeçalho de duas páginas alternadas, que fica: a forma geral foi recusada (ADR-0004, "O
+    # que ficou da Fase 1"). Este teste dizia "em duas páginas só fica", com as duas vizinhas.
+    aviso = [_linha("Um aviso no alto", ALTO), _linha("Texto.")]
+    paginas = [aviso, [_linha("Texto.")], aviso]
+    assert _textos(_limpar(*paginas)) == [
+        ["Um aviso no alto", "Texto."],
+        ["Texto."],
+        ["Um aviso no alto", "Texto."],
+    ]
+
+
+def test_linha_sem_letra_em_duas_paginas_vizinhas_fica() -> None:
+    # A pausa de cena ("* * *") no alto de duas páginas seguidas é texto do livro: o par de
+    # páginas vizinhas só vale para o cabeçalho com letra (R2 da code-review). A linha sem letra
+    # continua precisando de 3 páginas.
+    paginas = [[_linha("* * *", ALTO), _linha("Texto.")] for _ in range(2)]
+    assert _textos(_limpar(*paginas)) == [["* * *", "Texto."]] * 2
+
+
+def test_cabecalho_de_duas_paginas_vizinhas_sai() -> None:
+    # Dalgalarrondo p. 14 e 15: "Prefácio da 1a edição", em 9 pt no alto das duas páginas do
+    # prefácio, entrava no meio da frase partida pela página ("Bernard e Si- Prefácio da 1a
+    # edição mone Trouvé").
+    paginas = [[_linha("Prefácio da 1a edição", ALTO, 9), _linha("Texto.")] for _ in range(2)]
+    limpas = _limpar(*paginas)
+    assert _textos(limpas) == [["Texto."]] * 2
+    assert [r.motivo for r in limpas.remocoes] == ["cabeçalho de página repetido"] * 2
 
 
 def test_linha_repetida_no_meio_da_pagina_fica() -> None:

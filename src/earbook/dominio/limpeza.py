@@ -15,7 +15,13 @@ from earbook.dominio.cabecalho import (
 )
 from earbook.dominio.capitular import CapitularDevolvida, Vocabulario, devolver_uma, leituras
 from earbook.dominio.direitos import nas_pontas, pagina_de_direitos
-from earbook.dominio.fora_do_audio import MOTIVO_DO_PAPEL, destaques, marcas_dagua, pelo_papel
+from earbook.dominio.fora_do_audio import (
+    MOTIVO_DO_PAPEL,
+    bibliografia,
+    destaques,
+    marcas_dagua,
+    pelo_papel,
+)
 from earbook.dominio.segmento import Papel, Segmento, primeira_letra
 
 # Termina frase. Aspas e apóstrofo não estão aqui: a fala que fecha aspas com vírgula segue
@@ -106,7 +112,7 @@ def limpar_para_o_ouvido(
     autor: str,
 ) -> LivroLimpo:
     """A limpeza inteira, na ordem: direitos, marca d'água, cabeçalho solto, cabeçalho colado,
-    destaque de margem, parágrafo partido, capitular e, por último, código e índice.
+    destaque de margem, parágrafo partido, capitular e, por último, código, índice e bibliografia.
 
     A ordem importa: o cabeçalho, solto ou colado, fica exatamente onde o parágrafo se
     partiu, e só some do meio depois que as duas metades ficam lado a lado.
@@ -124,8 +130,9 @@ def limpar_para_o_ouvido(
     juntado = _juntar_paragrafos_partidos(
         _devolver_capitulares(_marcar_capitulares_perdidas(juntado)), vocabulario
     )
-    # ADR-0008: código e índice saem por último: até aqui, separam os parágrafos em volta deles.
-    return _tirar_do_livro(juntado, pelo_papel)
+    # ADR-0008: código, índice e bibliografia saem por último: até aqui, separam os parágrafos em
+    # volta deles.
+    return _tirar_do_livro(_tirar_do_livro(juntado, pelo_papel), bibliografia)
 
 
 def _tirar_paginas_marcas_e_cabecalhos(

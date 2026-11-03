@@ -29,7 +29,7 @@ def _coluna(coluna: tuple[float, float], *textos: str, topo: float = 0.1) -> lis
 
 
 def _lidas(linhas: list[Linha]) -> list[str]:
-    return [linha.texto for linha, _ in linhas_visuais(linhas)]
+    return [linha.texto for linha, _ in linhas_visuais(linhas, 10.0)]
 
 
 def test_tabela_de_chave_e_valor_continua_lida_linha_a_linha() -> None:

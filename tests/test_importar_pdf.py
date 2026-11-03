@@ -14,7 +14,7 @@ import pytest
 from earbook.comandos.cli import principal
 from earbook.comandos.importar_pdf import PdfSemTextoError, epub_padrao, importar_pdf
 from earbook.comandos.preparar import preparar
-from earbook.dominio.blocos import TipoDeBloco
+from earbook.dominio.tipo_da_linha import TipoDeBloco
 from tests.pdf_de_teste import LinhaDeTeste, montar_pdf
 
 ENTRELINHA = 16.6  # pontos: 0,021 de uma página de 792 pt, como no Competente

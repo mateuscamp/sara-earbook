@@ -12,6 +12,7 @@ from earbook.dominio.blocos import LivroMontado, montar_blocos
 from earbook.dominio.capitulos import dividir_em_capitulos
 from earbook.dominio.metadados import autor_do_livro, titulo_do_livro
 from earbook.dominio.paginacao import LinhaRemovida, tirar_cabecalhos_e_rodapes
+from earbook.dominio.texto_escondido import tirar_texto_escondido
 
 
 class PdfSemTextoError(ValueError):
@@ -52,7 +53,10 @@ def importar_pdf(
         mensagem = f"{epub} já existe"
         raise FileExistsError(mensagem)
     paginas = ler_paginas(pdf)
-    limpas = tirar_cabecalhos_e_rodapes(paginas)
+    # O texto escondido sai antes da borda: em letra de título, ele contaria no corpo e na
+    # paginação (ADR-0004, "O que ficou da Fase 1").
+    visiveis = tirar_texto_escondido(paginas)
+    limpas = tirar_cabecalhos_e_rodapes(visiveis.paginas)
     livro = montar_blocos(limpas.paginas)
     if not livro.blocos:
         mensagem = f"{pdf}: nenhum texto nas {len(paginas)} páginas (escaneado? não há OCR)"
@@ -62,4 +66,5 @@ def importar_pdf(
     titulo = titulo or titulo_do_livro(metadados.titulo, pdf.stem)
     autor = autor or autor_do_livro(metadados.autor)
     gravar_epub(epub, titulo, idioma, capitulos, autor=autor)
-    return Importacao(epub, len(paginas), limpas.remocoes, livro, len(capitulos), titulo, autor)
+    remocoes = (*visiveis.remocoes, *limpas.remocoes)
+    return Importacao(epub, len(paginas), remocoes, livro, len(capitulos), titulo, autor)

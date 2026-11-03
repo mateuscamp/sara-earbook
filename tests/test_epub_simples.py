@@ -14,7 +14,8 @@ from lxml import etree
 from earbook.adaptadores.epub_simples import gravar_epub
 from earbook.adaptadores.xml_seguro import PARSER_SEGURO
 from earbook.comandos.preparar import Preparo, preparar
-from earbook.dominio.blocos import Bloco, TipoDeBloco
+from earbook.dominio.blocos import Bloco
+from earbook.dominio.tipo_da_linha import TipoDeBloco
 
 
 def _bloco(tipo: TipoDeBloco, texto: str, nivel: int = 0) -> Bloco:

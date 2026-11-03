@@ -19,7 +19,7 @@ from pdfminer.pdfparser import PDFParser
 from pdfminer.pdftypes import PDFObjRef
 from pdfminer.utils import decode_text
 
-from earbook.dominio.pagina import Letra, Linha, Pagina, juntar_letras_espacadas
+from earbook.dominio.pagina import Letra, Linha, Pagina, em_versalete, juntar_letras_espacadas
 from earbook.dominio.segmento import normalizar_espacos
 
 # Medido no spike: o código do "Hard Parts" vem em UbuntuMono.
@@ -167,6 +167,7 @@ def _linha(linha: LTTextLine, altura: float) -> Linha | None:
         tamanho=tamanho,
         monoespacada=monoespacada,
         negrito=negrito,
+        versalete=em_versalete([(c.get_text(), c.size) for c in visiveis], tamanho),
         fim=linha.x1,
     )
 

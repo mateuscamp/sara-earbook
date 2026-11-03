@@ -26,6 +26,12 @@ from earbook.dominio.pagina import Linha, Pagina, tamanho_do_corpo
 FAIXA_DA_BORDA = 0.08
 # Duas páginas ainda podem ser texto do livro; três já é cabeçalho corrente.
 PAGINAS_MINIMAS = 3
+# A não ser que as duas sejam vizinhas, as duas de uma abertura: "Prefácio da 1a edição" e
+# "Sumário", no Dalgalarrondo (p. 14 e 15, 18 e 19). O par com uma página entre elas (o
+# Competente e o Hard Parts, que alternam o cabeçalho) fica: a forma geral foi recusada, porque
+# no Hard Parts o rodapé tirado deixava a virada de página colar um item de lista no parágrafo
+# seguinte (ADR-0004, "O que ficou da Fase 1").
+PAGINAS_VIZINHAS = 2
 # Medido nos dois livros: cada cabeçalho tirado tinha um topo só (0,05 e 0,9252).
 TOLERANCIA_DO_TOPO = 0.01
 # Cabeçalho e número de página vêm no tamanho do corpo ou menores (7,5 e 9 pt contra 10,5).
@@ -152,7 +158,23 @@ def _chave(texto: str) -> str:
 
 
 def _repetidas(candidatas: Iterable[_Ocorrencia]) -> dict[tuple[int, int], str]:
-    """A linha que se repete no mesmo topo em 3 páginas ou mais, com o motivo de cada uma."""
+    """A linha que se repete no mesmo topo em 3 páginas ou mais, ou nas 2 de uma abertura, com o
+    motivo de cada uma."""
+    motivos: dict[tuple[int, int], str] = {}
+    for (chave, _), ocorrencias in _grupos(candidatas).items():
+        com_letra = _LETRA.search(chave) is not None
+        for mesma_altura in _por_altura(ocorrencias):
+            paginas = {pagina for pagina, _, _ in mesma_altura}
+            if not _cabecalho_corrente(paginas, com_letra=com_letra):
+                continue
+            for pagina, posicao, linha in mesma_altura:
+                lugar = "cabeçalho" if linha.topo < FAIXA_DA_BORDA else "rodapé"
+                motivos[pagina, posicao] = f"{lugar} de página repetido"
+    return motivos
+
+
+def _grupos(candidatas: Iterable[_Ocorrencia]) -> dict[tuple[str, bool], list[_Ocorrencia]]:
+    """As ocorrências pela chave do texto e pela faixa, alto ou pé."""
     # Alto e pé em grupos separados: com o título no alto das pares e no pé das ímpares, a
     # mediana do grupo inteiro caía no meio da página e nada saía (revisão nº 3).
     grupos: defaultdict[tuple[str, bool], list[_Ocorrencia]] = defaultdict(list)
@@ -164,15 +186,14 @@ def _repetidas(candidatas: Iterable[_Ocorrencia]) -> dict[tuple[int, int], str]:
         if not _LETRA.search(chave):
             chave = "".join(ocorrencia[2].texto.split())
         grupos[chave, ocorrencia[2].topo < FAIXA_DA_BORDA].append(ocorrencia)
-    motivos: dict[tuple[int, int], str] = {}
-    for ocorrencias in grupos.values():
-        for mesma_altura in _por_altura(ocorrencias):
-            if len({pagina for pagina, _, _ in mesma_altura}) < PAGINAS_MINIMAS:
-                continue
-            for pagina, posicao, linha in mesma_altura:
-                lugar = "cabeçalho" if linha.topo < FAIXA_DA_BORDA else "rodapé"
-                motivos[pagina, posicao] = f"{lugar} de página repetido"
-    return motivos
+    return grupos
+
+
+def _cabecalho_corrente(paginas: set[int], *, com_letra: bool) -> bool:
+    """3 páginas ou mais, ou 2 vizinhas, se a linha tem letra: a pausa de cena ("* * *") no alto
+    de duas páginas seguidas é texto do livro (R2 da code-review)."""
+    vizinhas = len(paginas) == PAGINAS_VIZINHAS and max(paginas) - min(paginas) == 1
+    return len(paginas) >= PAGINAS_MINIMAS or (vizinhas and com_letra)
 
 
 def _por_altura(ocorrencias: Sequence[_Ocorrencia]) -> list[list[_Ocorrencia]]:

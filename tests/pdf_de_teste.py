@@ -24,6 +24,9 @@ class LinhaDeTeste:
     tamanho: float = 10.5
     mono: bool = False
     negrito: bool = False
+    versalete: bool = False
+    """A inicial de cada palavra maior, como o versalete feito à mão do Dalgalarrondo (10,5 pt
+    sobre 7,4)."""
 
 
 def _cadeia_pdf(texto: str) -> str:
@@ -43,14 +46,21 @@ def _fonte(linha: LinhaDeTeste) -> str:
     return "F2" if linha.mono else "F3" if linha.negrito else "F1"
 
 
+def _texto(linha: LinhaDeTeste) -> str:
+    """Os comandos que escrevem o texto: um só, ou um por trecho de tamanho no versalete."""
+    if not linha.versalete:
+        return f"/{_fonte(linha)} {linha.tamanho} Tf ({_cadeia_pdf(linha.texto)}) Tj"
+    maior = round(linha.tamanho * 10.5 / 7.4, 1)
+    trechos: list[str] = []
+    for i, palavra in enumerate(linha.texto.split(" ")):
+        inicial = (" " if i else "") + palavra[:1]
+        trechos.append(f"/{_fonte(linha)} {maior} Tf ({_cadeia_pdf(inicial)}) Tj")
+        trechos.append(f"/{_fonte(linha)} {linha.tamanho} Tf ({_cadeia_pdf(palavra[1:])}) Tj")
+    return " ".join(trechos)
+
+
 def _conteudo(linhas: list[LinhaDeTeste]) -> bytes:
-    comandos = [
-        (
-            f"BT /{_fonte(linha)} {linha.tamanho} Tf {linha.x} {linha.y} Td "
-            f"({_cadeia_pdf(linha.texto)}) Tj ET"
-        )
-        for linha in linhas
-    ]
+    comandos = [f"BT {linha.x} {linha.y} Td {_texto(linha)} ET" for linha in linhas]
     return "\n".join(comandos).encode("latin-1")
 
 

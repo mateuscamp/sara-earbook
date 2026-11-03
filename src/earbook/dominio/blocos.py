@@ -4,9 +4,7 @@
 As regras vêm da medição no Competente (pt-BR) e no Hard Parts (en):
 - parágrafo novo quando a linha recua em relação ao parágrafo (Competente: recuo de 13 pt) ou
   quando o espaço acima dela passa de 1,35 entrelinha (Hard Parts: 0,028 contra 0,019);
-- título é fonte de 1,2 vez o corpo ou mais, ou linha toda em negrito do tamanho do corpo para
-  cima (subtítulo do Competente); código é linha toda monoespaçada; nota é fonte menor que
-  0,85 do corpo;
+- o tipo da linha (título, parágrafo, código ou nota) vem da fonte, em `tipo_da_linha.py`;
 - o verbete (linha toda em negrito menor que o corpo) abre parágrafo depois de frase fechada, e
   a linha comum seguinte abre outro: o termo do glossário sai fora da definição (Competente);
 - a palavra partida no fim da linha volta inteira, a não ser que o livro escreva a mesma
@@ -18,11 +16,8 @@ As regras vêm da medição no Competente (pt-BR) e no Hard Parts (en):
 from __future__ import annotations
 
 import re
-from collections import Counter
 from collections.abc import Sequence
 from dataclasses import dataclass
-from enum import StrEnum
-from itertools import pairwise
 from typing import final
 
 from earbook.dominio.colunas import linhas_visuais
@@ -34,20 +29,15 @@ from earbook.dominio.pagina import (
     Linha,
     Pagina,
     comeca_em_minuscula,
-    corpo_em_negrito,
-    tamanho_do_corpo,
+    so_maiusculas,
 )
 from earbook.dominio.quadro import abre_o_quadro, letra_de_quadro, solta_o_quadro
+from earbook.dominio.tipo_da_linha import Medidas, TipoDeBloco, medir, tipo_da_linha
 
-RAZAO_DA_NOTA = 0.85
 RAZAO_DO_ESPACO = 1.35
 RECUO_MINIMO = 3.0
 """Em pontos. Medido: parágrafo recua 13 (Competente) e 18 (Hard Parts); item de lista, 4 e 5;
 nenhuma linha de corpo entre 1 e 3."""
-# O subtítulo em negrito vai do corpo para cima, com esta folga: o cabeçalho de tabela do Hard
-# Parts tem 10 pt, com corpo de 10,5; o cabeçalho de tabela menor e o rodapé de seção, 9 pt
-# (ADR-0004).
-FOLGA_DO_SUBTITULO = 0.5
 # Com 3 pedaços ou mais na mesma altura, é linha de tabela; com 2, linha justificada partida.
 CELULAS_DA_TABELA = 3
 _FIM_DE_FRASE = tuple('.!?:\u201d"')
@@ -60,13 +50,6 @@ _FECHA_PARA_O_RECUO = tuple(".!?:;")
 # Item de lista: travessão, meia-risca, bolinha, hífen ou "3.", seguido de espaço. Até dois
 # algarismos, para "2020. Depois…" no começo da linha não contar como item.
 _ITEM_DE_LISTA = re.compile(r"(?:[\u2013\u2014\u2022\-]|\d{1,2}\.)\s")
-
-
-class TipoDeBloco(StrEnum):
-    TITULO = "titulo"
-    PARAGRAFO = "paragrafo"
-    CODIGO = "codigo"
-    NOTA = "nota"
 
 
 @dataclass(frozen=True)
@@ -88,14 +71,6 @@ class LivroMontado:
     hifens_mantidos: int
 
 
-@dataclass(frozen=True)
-class _Medidas:
-    corpo: float
-    entrelinha: float
-    negrito_destaca: bool
-    """O corpo não é negrito: só então a linha toda em negrito é subtítulo."""
-
-
 @dataclass
 class _Aberto:
     """O bloco em montagem: o texto ainda cresce a cada linha."""
@@ -110,16 +85,19 @@ class _Aberto:
     """Recebeu célula na mesma altura: é linha de tabela, e a próxima altura abre outra."""
     negrito: bool = False
     """Parágrafo aberto por linha toda em negrito: é verbete, e a 1ª linha comum abre outro."""
+    versalete: bool = False
+    """Título em versalete: a linha seguinte só em maiúsculas, do mesmo tamanho, o continua."""
     quadro: bool = False
     """Bloco de quadro: espera em `_Montador._quadro` e não mexe na retomada do texto."""
 
 
 def montar_blocos(paginas: Sequence[Pagina]) -> LivroMontado:
     """Junta as linhas, página por página e de cima para baixo, em blocos do livro."""
-    montador = _Montador(_medir(paginas), dicionario_do_livro(paginas))
+    medidas = medir(paginas)
+    montador = _Montador(medidas, dicionario_do_livro(paginas))
     for pagina in paginas:
         anterior: Linha | None = None
-        for linha, pedacos in linhas_visuais(pagina.linhas):
+        for linha, pedacos in linhas_visuais(pagina.linhas, medidas.corpo):
             montador.acrescentar(pagina.numero, linha, anterior, pedacos)
             anterior = linha
     return montador.livro()
@@ -130,47 +108,9 @@ def _virou_a_coluna(linha: Linha, anterior: Linha | None) -> bool:
     return anterior is not None and linha.topo < anterior.topo
 
 
-def _tipo(linha: Linha, corpo: float, *, negrito_destaca: bool) -> TipoDeBloco:
-    if linha.monoespacada:
-        return TipoDeBloco.CODIGO
-    if linha.tamanho >= corpo * RAZAO_DO_TITULO:
-        return TipoDeBloco.TITULO
-    if linha.tamanho < corpo * RAZAO_DA_NOTA:
-        return TipoDeBloco.NOTA
-    # O subtítulo em negrito tem o tamanho do corpo ou mais (Competente: 10,5 e 12 pt, com
-    # corpo de 10,5). O negrito menor fica parágrafo: é verbete do glossário (Competente: 9,5
-    # pt), que o `_quebra` separa da definição, ou cabeçalho de tabela e rodapé de seção (Hard
-    # Parts: 9 pt). ADR-0004, "Subtítulo em negrito do tamanho do corpo", com os limites.
-    if negrito_destaca and linha.negrito and linha.tamanho >= corpo - FOLGA_DO_SUBTITULO:
-        return TipoDeBloco.TITULO
-    return TipoDeBloco.PARAGRAFO
-
-
-def _medir(paginas: Sequence[Pagina]) -> _Medidas:
-    """O corpo e a entrelinha mais comum entre linhas de corpo seguidas da mesma página."""
-    corpo = tamanho_do_corpo(paginas)
-    destaca = not corpo_em_negrito(paginas, corpo)
-    distancias: Counter[float] = Counter()
-    for pagina in paginas:
-        corpo_da_pagina = sorted(
-            (
-                linha
-                for linha in pagina.linhas
-                if _tipo(linha, corpo, negrito_destaca=destaca) is TipoDeBloco.PARAGRAFO
-            ),
-            key=lambda linha: linha.topo,
-        )
-        for de_cima, de_baixo in pairwise(corpo_da_pagina):
-            distancia = round(de_baixo.topo - de_cima.topo, 3)
-            if distancia > 0:
-                distancias[distancia] += 1
-    entrelinha = distancias.most_common(1)[0][0] if distancias else 0.0
-    return _Medidas(corpo, entrelinha, destaca)
-
-
 @final
 class _Montador:
-    def __init__(self, medidas: _Medidas, dicionario: Dicionario) -> None:
+    def __init__(self, medidas: Medidas, dicionario: Dicionario) -> None:
         self._medidas = medidas
         self._dicionario = dicionario
         self._prontos: list[Bloco] = []
@@ -187,10 +127,7 @@ class _Montador:
         self._quadro: list[Bloco] = []
 
     def acrescentar(self, pagina: int, linha: Linha, anterior: Linha | None, pedacos: int) -> None:
-        medidas = self._medidas
-        tipo, saiu_do_quadro = self._no_quadro_ou_fora(
-            linha, _tipo(linha, medidas.corpo, negrito_destaca=medidas.negrito_destaca)
-        )
+        tipo, saiu_do_quadro = self._tipo(linha)
         de_tabela = tipo is TipoDeBloco.PARAGRAFO and pedacos >= CELULAS_DA_TABELA
         aberto = self._aberto
         retoma = tipo is TipoDeBloco.PARAGRAFO and not de_tabela and not self._no_quadro
@@ -222,6 +159,7 @@ class _Montador:
             linha.x,
             tabela=tabela,
             negrito=negrito,
+            versalete=linha.versalete,
             quadro=self._no_quadro,
         )
 
@@ -229,6 +167,26 @@ class _Montador:
         self._fechar()
         self._prontos.extend(self._quadro)
         return LivroMontado(tuple(self._prontos), self._hifens_tirados, self._hifens_mantidos)
+
+    def _tipo(self, linha: Linha) -> tuple[TipoDeBloco, bool]:
+        """O tipo da linha, com o versalete que continua e o quadro, e se ela fecha o quadro."""
+        medidas = self._medidas
+        tipo = tipo_da_linha(linha, medidas.corpo, negrito_destaca=medidas.negrito_destaca)
+        return self._no_quadro_ou_fora(linha, self._continua_o_versalete(linha, tipo))
+
+    def _continua_o_versalete(self, linha: Linha, tipo: TipoDeBloco) -> TipoDeBloco:
+        """A segunda linha do versalete não tem letra maior ("PERSONALIDADE PARANÓIDE",
+        Dalgalarrondo p. 270): a linha de nota só em maiúsculas, do tamanho do título em
+        versalete aberto, o continua."""
+        aberto = self._aberto
+        continua = (
+            tipo is TipoDeBloco.NOTA
+            and aberto is not None
+            and aberto.versalete
+            and so_maiusculas(linha.texto)
+            and abs(linha.tamanho - aberto.tamanho) <= DIFERENCA_DE_TAMANHO
+        )
+        return TipoDeBloco.TITULO if continua else tipo
 
     def _no_quadro_ou_fora(self, linha: Linha, tipo: TipoDeBloco) -> tuple[TipoDeBloco, bool]:
         """O tipo da linha e se ela fecha o quadro (`dominio/quadro.py`). A letra menor do quadro

@@ -27,6 +27,10 @@ A decisão está no [ADR-0001](docs/adr/0001-reescrever-com-claude-code-orquestr
 - O destaque de margem que repete, palavra por palavra, uma frase do texto ao lado dele. A frase
   que ele partia volta inteira ([ADR-0008](docs/adr/0008-codigo-e-indice-saem-do-audio.md)). O
   destaque que resume ou reescreve a frase fica.
+- A bibliografia no padrão ABNT ("ABDO, C. H. N. Diagnóstico… 1996."): 10 referências seguidas
+  ou mais, com o título logo antes delas
+  ([ADR-0008](docs/adr/0008-codigo-e-indice-saem-do-audio.md)). A bibliografia de outro padrão
+  (APA, numerada) e a lista curta ficam.
 - A capitular deslocada, que volta para a palavra quando o próprio livro prova que a palavra
   existe ([ADR-0007](docs/adr/0007-a-proxima-traducao-sem-trabalho-a-mao.md)). A letra que
   abre a frase antes de palavra em minúscula, como o artigo em "desejo. A resultante", fica
@@ -130,15 +134,20 @@ O `importar-pdf` grava `livro.epub` ao lado do PDF (ou onde `--epub` mandar), co
 autor do metadado do PDF (ou os de `--titulo` e `--autor`). O que ele faz:
 
 - tira o número de página, também o que é maior que o texto, e o cabeçalho repetido, pela
-  posição na página;
+  posição na página. O cabeçalho que aparece só nas duas páginas de uma abertura também sai;
+- tira o texto escondido: a linha em letra de título desenhada por cima de uma linha de outro
+  tamanho, na mesma altura. O resumo conta essas linhas junto com as da borda;
 - junta as linhas em parágrafos e devolve inteira a palavra partida no fim da linha;
 - lê a página em duas colunas coluna por coluna, pela calha entre elas, quando os dois lados
-  são texto corrido. A tabela continua lida linha a linha;
+  são texto corrido, também o de verbetes justificados (glossário, bibliografia). A tabela
+  continua lida linha a linha;
 - separa do texto o destaque de margem, que fica numa coluna estreita ao lado dele e tem letra
   de outro tamanho, para que o `preparar` o tire;
 - deixa o quadro no lugar. O quadro abre no rótulo "Quadro 5.1" ou "Tabela 5.1" em letra de
   título, e o conteúdo dele, em letra menor, é lido como parágrafo, e não como nota no fim do
   capítulo. Ele entra depois da frase que interrompe, e a frase volta a ser uma só;
+- lê o subtítulo em versalete feito à mão (maiúsculas de dois tamanhos) como título, e não
+  como nota no fim do capítulo;
 - divide os capítulos pelo tamanho dos títulos.
 
 O EPUB serve para ouvir, não para ler na tela. Sai sem imagem e sem estilo, e cada linha de

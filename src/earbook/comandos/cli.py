@@ -17,8 +17,8 @@ from earbook.comandos.importar_pdf import Importacao, epub_padrao, importar_pdf
 from earbook.comandos.preparar import Preparo, pasta_padrao, preparar
 from earbook.comandos.roteiro import minutos
 from earbook.comandos.traduzir import Exportacao, traduzir
-from earbook.dominio.blocos import TipoDeBloco
 from earbook.dominio.limpeza import LivroLimpo
+from earbook.dominio.tipo_da_linha import TipoDeBloco
 from earbook.dominio.trabalho import LivroPreparado
 from earbook.dominio.traducao import PALAVRAS_POR_LOTE, Modo
 
@@ -258,7 +258,9 @@ def _resumo_da_importacao(importacao: Importacao) -> str:
     linhas.append(
         f"Blocos: {titulos} títulos, {paragrafos} parágrafos, {codigo} de código, {notas} notas."
     )
-    linhas.append(f"{len(importacao.remocoes)} linhas tiradas da borda da página.")
+    linhas.append(
+        f"{len(importacao.remocoes)} linhas tiradas da página: a borda e o texto escondido."
+    )
     motivos = Counter(r.motivo for r in importacao.remocoes)
     linhas += [f"  {motivo}: {n}" for motivo, n in motivos.most_common()]
     tirados, mantidos = livro.hifens_tirados, livro.hifens_mantidos

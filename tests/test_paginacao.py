@@ -20,7 +20,7 @@ ESPACADO = "C O M P E T E N T E   O   S U F I C I E N T E"
 
 
 def _linha(texto: str, topo: float = MEIO, tamanho: float = 10.5) -> Linha:
-    return Linha(texto, x=54, topo=topo, tamanho=tamanho)
+    return Linha(texto, x=54, fim=378, topo=topo, tamanho=tamanho)
 
 
 def _corpo(numero: int) -> Linha:

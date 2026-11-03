@@ -18,12 +18,21 @@ from __future__ import annotations
 import re
 from collections import Counter
 from collections.abc import Sequence
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from enum import StrEnum
 from itertools import pairwise
 from typing import final
 
-from earbook.dominio.pagina import Linha, Pagina, corpo_em_negrito, tamanho_do_corpo
+from earbook.dominio.colunas import linhas_visuais
+from earbook.dominio.pagina import (
+    HIFEN_SUAVE,
+    HIFEN_TIPOGRAFICO,
+    Linha,
+    Pagina,
+    comeca_em_minuscula,
+    corpo_em_negrito,
+    tamanho_do_corpo,
+)
 
 RAZAO_DO_TITULO = 1.2
 RAZAO_DA_NOTA = 0.85
@@ -36,14 +45,11 @@ DIFERENCA_DE_TAMANHO = 0.5
 # Parts tem 10 pt, com corpo de 10,5; o cabeçalho de tabela menor e o rodapé de seção, 9 pt
 # (ADR-0004).
 FOLGA_DO_SUBTITULO = 0.5
-# Linhas a menos disso de topo estão na mesma altura (células de tabela no Hard Parts: 0,001).
-MESMA_ALTURA = 0.004
 # Com 3 pedaços ou mais na mesma altura, é linha de tabela; com 2, linha justificada partida.
 CELULAS_DA_TABELA = 3
 _PONTUACAO_DA_PONTA = ".,;:!?\"'()[]\u201c\u201d\u2018\u2019"
 _FIM_DE_FRASE = tuple('.!?:\u201d"')
 _HIFEN_NO_FIM = re.compile(r"\w[-\u2010]$")
-_PRIMEIRA_LETRA = re.compile(r"[^\W\d_]")
 # Norma brasileira: o hífen do composto se repete no começo da linha de baixo.
 _HIFEN_REPETIDO = re.compile(r"[-\u2010][^\W\d_]")
 # Fecha a frase para a regra do recuo. A aspa de fechamento não: "uma “transformação”"
@@ -52,10 +58,6 @@ _FECHA_PARA_O_RECUO = tuple(".!?:;")
 # Item de lista: travessão, meia-risca, bolinha, hífen ou "3.", seguido de espaço. Até dois
 # algarismos, para "2020. Depois…" no começo da linha não contar como item.
 _ITEM_DE_LISTA = re.compile(r"(?:[\u2013\u2014\u2022\-]|\d{1,2}\.)\s")
-HIFEN_SUAVE = "\u00ad"
-# O Hard Parts quebra a linha com o U+2010 (1.058 vezes) e nunca o usa no meio da linha;
-# para o dicionário do livro, ele vale o mesmo que o "-".
-HIFEN_TIPOGRAFICO = "\u2010"
 
 
 class TipoDeBloco(StrEnum):
@@ -123,43 +125,15 @@ def montar_blocos(paginas: Sequence[Pagina]) -> LivroMontado:
     montador = _Montador(_medir(paginas), _dicionario(paginas))
     for pagina in paginas:
         anterior: Linha | None = None
-        for linha, pedacos in _linhas_visuais(pagina.linhas):
+        for linha, pedacos in linhas_visuais(pagina.linhas):
             montador.acrescentar(pagina.numero, linha, anterior, pedacos)
             anterior = linha
     return montador.livro()
 
 
-def _comeca_em_minuscula(texto: str) -> bool:
-    letra = _PRIMEIRA_LETRA.search(texto)
-    return letra is not None and letra.group().islower()
-
-
-def _linhas_visuais(linhas: Sequence[Linha]) -> list[tuple[Linha, int]]:
-    """Junta os pedaços na mesma altura numa linha só, de cima para baixo e da esquerda.
-
-    O pdfminer parte linha justificada ("…communication patterns" e "in", Hard Parts p. 60)
-    e devolve cada célula de tabela como linha própria. O número de pedaços vai junto: com
-    3 ou mais, é linha de tabela.
-    """
-    alturas: list[list[Linha]] = []
-    for linha in sorted(linhas, key=lambda linha: linha.topo):
-        if alturas and abs(linha.topo - alturas[-1][0].topo) < MESMA_ALTURA:
-            alturas[-1].append(linha)
-        else:
-            alturas.append([linha])
-    visuais: list[tuple[Linha, int]] = []
-    # Revisão nº 2: ordenar por (topo, x) punha primeiro o pedaço da direita que ficasse um
-    # pouco mais alto (618 vezes no Hard Parts). A ordem dentro da altura é só a do x.
-    for altura in alturas:
-        pedacos = sorted(altura, key=lambda linha: linha.x)
-        juntas = replace(
-            pedacos[0],
-            texto=" ".join(pedaco.texto for pedaco in pedacos),
-            monoespacada=all(pedaco.monoespacada for pedaco in pedacos),
-            negrito=all(pedaco.negrito for pedaco in pedacos),
-        )
-        visuais.append((juntas, len(pedacos)))
-    return visuais
+def _virou_a_coluna(linha: Linha, anterior: Linha | None) -> bool:
+    """A linha sobe na página: é a primeira da coluna seguinte (ADR-0004, "Duas colunas")."""
+    return anterior is not None and linha.topo < anterior.topo
 
 
 def _tipo(linha: Linha, corpo: float, *, negrito_destaca: bool) -> TipoDeBloco:
@@ -259,6 +233,8 @@ class _Montador:
                 negrito=negrito,
             )
         else:
+            if _virou_a_coluna(linha, anterior):
+                aberto.x_do_corpo = linha.x
             self._continuar(aberto, linha)
 
     def livro(self) -> LivroMontado:
@@ -271,10 +247,21 @@ class _Montador:
             return self._quebra_o_titulo(aberto, linha, anterior)
         if aberto.tipo is not TipoDeBloco.PARAGRAFO:
             return anterior is None and aberto.tipo is TipoDeBloco.NOTA
+        return self._quebra_o_paragrafo(aberto, linha, anterior)
+
+    def _quebra_o_paragrafo(self, aberto: _Aberto, linha: Linha, anterior: Linha | None) -> bool:
         # O termo do glossário acaba onde a letra deixa de ser negrito (Competente p. 479:
         # "Tokenizador A parte do modelo…"). ADR-0004, "Verbete em negrito abaixo do corpo".
         fim_do_verbete = aberto.negrito and not self._verbete(linha)
-        if aberto.tabela or fim_do_verbete or self._mudou_o_recuo(aberto, linha):
+        if aberto.tabela or fim_do_verbete:
+            return True
+        if _virou_a_coluna(linha, anterior):
+            # A margem da coluna nova não se compara com a do parágrafo na coluna de antes: o
+            # item que vira de coluna se partia no ponto. A virada é como a de página
+            # (ADR-0004, "Duas colunas").
+            item = _ITEM_DE_LISTA.match(linha.texto) is not None
+            return item or self._comeca_frase_na_pagina_nova(aberto, linha)
+        if self._mudou_o_recuo(aberto, linha):
             return True
         # Hard Parts p. 45: itens a 1,32 entrelinha um do outro passavam abaixo do limiar.
         if _ITEM_DE_LISTA.match(linha.texto):
@@ -372,7 +359,7 @@ class _Montador:
         # Revisão nº 1: só nota e código interrompem. Com título aberto, a linha colava no
         # parágrafo de antes dele, e o título ia parar depois do texto.
         interrompe = self._aberto.tipo in {TipoDeBloco.NOTA, TipoDeBloco.CODIGO}
-        if not interrompe or not _comeca_em_minuscula(linha.texto):
+        if not interrompe or not comeca_em_minuscula(linha.texto):
             return False
         interrompido, posicao = self._interrompido
         self._fechar()

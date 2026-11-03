@@ -129,7 +129,8 @@ src/earbook/
                 metadados.py (título e autor do PDF), traducao.py (lote, pedido, resposta, modo),
                 glossario.py (candidatos a nome, termos declarados), conferencia_da_traducao.py,
                 capitular.py (a capitular devolvida), escuta.py (o minuto de cada segmento),
-                fora_do_audio.py (código, índice e marca d'água), cabecalho.py (cabeçalho de página)
+                fora_do_audio.py (código, índice e marca d'água), cabecalho.py (cabeçalho de página),
+                colunas.py (a ordem de leitura da página em colunas)
   adaptadores/  xml_seguro.py (parser), pacote_epub.py (zip + OPF), xhtml.py, papel_do_bloco.py (o papel
                 pela marcação), pasta_de_trabalho.py,
                 pdf.py (pdfminer), epub_simples.py (grava o EPUB do PDF)

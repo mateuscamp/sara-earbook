@@ -57,6 +57,12 @@ def test_x_e_tamanho_da_fonte_vem_do_pdf(tmp_path: Path) -> None:
     assert [(round(linha.x), round(linha.tamanho, 1)) for linha in _linhas(paginas)] == [(90, 19.0)]
 
 
+def test_fim_da_linha_vem_do_pdf(tmp_path: Path) -> None:
+    # "na pasta" em Helvetica 10,5: 3.836 milésimos de em, 40,3 pt a partir de x = 72.
+    paginas = _ler(tmp_path, [LinhaDeTeste("na pasta", 72, 700)])
+    assert [round(linha.fim, 1) for linha in _linhas(paginas)] == [112.3]
+
+
 def test_fonte_monoespacada_e_marcada(tmp_path: Path) -> None:
     paginas = _ler(
         tmp_path,

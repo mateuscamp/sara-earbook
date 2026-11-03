@@ -67,6 +67,32 @@ def test_paragrafo_do_pdf_chega_inteiro_ao_preparar(pdf: Path, tmp_path: Path) -
     )
 
 
+ESQUERDA = (
+    "A primeira coluna começa aqui e",
+    "segue pela linha de baixo, sem",
+    "pular para a coluna vizinha da",
+    "direita, que vem só depois do fim",
+)
+DIREITA = (
+    "da coluna da esquerda, quando a",
+    "leitura continua na mesma frase",
+    "até chegar ao ponto final do",
+    "parágrafo inteiro.",
+)
+
+
+def test_pagina_em_duas_colunas_e_lida_uma_coluna_depois_da_outra(tmp_path: Path) -> None:
+    # Dalgalarrondo p. 30: as duas colunas saíam intercaladas linha a linha (ADR-0004).
+    linhas = [
+        LinhaDeTeste(texto, x, 700 - n * ENTRELINHA)
+        for x, coluna in ((54, ESQUERDA), (320, DIREITA))
+        for n, texto in enumerate(coluna)
+    ]
+    pdf = montar_pdf(tmp_path / "livro.pdf", [linhas])
+    importacao = importar_pdf(pdf, tmp_path / "livro.epub")
+    assert [bloco.texto for bloco in importacao.livro.blocos] == [" ".join(ESQUERDA + DIREITA)]
+
+
 def test_importar_pdf_recusa_epub_que_ja_existe_antes_de_ler_o_pdf(tmp_path: Path) -> None:
     # Um PDF de 500 páginas leva minutos: a recusa vem antes. Se o PDF fosse lido
     # primeiro, o erro seria de PDF inválido, não de arquivo existente.

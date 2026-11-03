@@ -7,6 +7,7 @@ tamanho é a letra. O adaptador de PDF traduz a biblioteca para estes tipos.
 
 from __future__ import annotations
 
+import re
 from collections import Counter
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -22,13 +23,24 @@ VIZINHAS_MINIMAS = 3
 # O vão entre letras espaçadas fica bem abaixo do espaço comum da mesma linha; caracteres
 # soltos separados pelo espaço comum ("passos 1 2 3 4 e 5") não são letra espaçada (F1).
 FRACAO_DO_ESPACO = 0.75
+HIFEN_SUAVE = "\u00ad"
+# O Hard Parts quebra a linha com o U+2010 (1.058 vezes) e nunca o usa no meio da linha;
+# para o dicionário do livro, ele vale o mesmo que o "-".
+HIFEN_TIPOGRAFICO = "\u2010"
+HIFENS_DA_QUEBRA = ("-", HIFEN_TIPOGRAFICO, HIFEN_SUAVE)
+"""O hífen da quebra de linha: o "-", o U+2010 do Hard Parts e o hífen suave do Competente."""
+_PRIMEIRA_LETRA = re.compile(r"[^\W\d_]")
 
 
 @dataclass(frozen=True)
 class Linha:
     texto: str
     x: float
-    """Distância da borda esquerda da página até o começo da linha, em pontos."""
+    """Distância da borda esquerda da página até o começo da linha, em pontos. Na linha visual
+    de uma coluna, conta da margem da coluna (ADR-0004, "Duas colunas")."""
+    fim: float
+    """Até o fim da linha, medido como o `x`: com ele, diz se a linha atravessa a calha entre
+    duas colunas (ADR-0004, "Duas colunas")."""
     topo: float
     """Posição do alto da linha: 0 no topo da página, 1 no pé."""
     tamanho: float
@@ -74,6 +86,12 @@ def corpo_em_negrito(paginas: Sequence[Pagina], corpo: float) -> bool:
             if round(linha.tamanho, 1) == corpo:
                 caracteres[linha.negrito] += len(linha.texto)
     return caracteres[True] > caracteres[False]
+
+
+def comeca_em_minuscula(texto: str) -> bool:
+    """A primeira letra do texto, passando por algarismo e pontuação, é minúscula."""
+    letra = _PRIMEIRA_LETRA.search(texto)
+    return letra is not None and letra.group().islower()
 
 
 def juntar_letras_espacadas(letras: Sequence[Letra], tamanho: float) -> str | None:

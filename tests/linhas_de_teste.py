@@ -15,12 +15,15 @@ from earbook.dominio.pagina import Linha, Pagina
 MARGEM = 54.0
 RECUO = 67.0
 ENTRELINHA = 0.021
+FIM_DA_LINHA = 378.0
+"""A margem direita do Competente: toda linha vai até ela, atravessa qualquer calha e não faz
+coluna (ADR-0004, "Duas colunas")."""
 
 
 def linha(
     texto: str, topo: float, x: float = MARGEM, tamanho: float = 10.5, *, mono: bool = False
 ) -> Linha:
-    return Linha(texto, x=x, topo=topo, tamanho=tamanho, monoespacada=mono)
+    return Linha(texto, x=x, fim=FIM_DA_LINHA, topo=topo, tamanho=tamanho, monoespacada=mono)
 
 
 def em_negrito(linha: Linha) -> Linha:

@@ -160,7 +160,15 @@ def _linha(linha: LTTextLine, altura: float) -> Linha | None:
     # Toda letra visível, como na monoespaçada: a ênfase no meio da prosa (619 linhas no
     # Competente) não faz a linha negrito.
     negrito = all(_fonte_casa(_FONTE_NEGRITO, c.fontname) for c in visiveis)
-    return Linha(texto, linha.x0, 1 - linha.y1 / altura, tamanho, monoespacada, negrito)
+    return Linha(
+        texto,
+        x=linha.x0,
+        topo=1 - linha.y1 / altura,
+        tamanho=tamanho,
+        monoespacada=monoespacada,
+        negrito=negrito,
+        fim=linha.x1,
+    )
 
 
 def _fonte_casa(padrao: re.Pattern[str], nome_da_fonte: object) -> bool:

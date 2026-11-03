@@ -20,28 +20,35 @@ from __future__ import annotations
 
 import contextlib
 import json
-import os
 import posixpath
 import re
-import tempfile
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
+from earbook.adaptadores.registros_da_pasta import (
+    Json,
+    PastaDeTrabalhoInvalidaError,
+    campo_inteiro,
+    campo_nome,
+    campo_papel,
+    campo_texto,
+    gravar_json,
+    grupo_do_registro,
+    ler_json,
+    lista,
+    objeto,
+    recusar_link,
+    segmentos_do_arquivo,
+)
+from earbook.dominio.adaptacao import RespostaDaAdaptacao
 from earbook.dominio.glossario import CandidatoANome, EntradaDoGlossario, TermosDoLote
 from earbook.dominio.limpeza import CapituloLimpo, LivroLimpo
-from earbook.dominio.segmento import Papel, Segmento
+from earbook.dominio.segmento import Segmento
+from earbook.dominio.siglas import CandidatoASigla
 from earbook.dominio.trabalho import CapituloPreparado, LivroPreparado
 from earbook.dominio.traducao import LOTE, Pedido, Resposta, Traduzido
 
 _ID_DO_CAPITULO = re.compile(r"c[0-9]{3,}")
-# O `mkstemp` cria com 0600; os arquivos da pasta eram 0644, como os do `write_text`.
-PERMISSAO_DOS_ARQUIVOS = 0o644
-
-type Json = bool | int | float | str | list[Json] | dict[str, Json] | None
-
-
-class PastaDeTrabalhoInvalidaError(ValueError):
-    pass
 
 
 @dataclass(frozen=True)
@@ -75,12 +82,12 @@ def gravar_xhtml(pasta: Path, arquivo: str, conteudo: bytes) -> None:
 
 
 def gravar_segmentos(pasta: Path, capitulo: str, segmentos: list[Segmento]) -> None:
-    _gravar_json(pasta / "segmentos" / f"{capitulo}.json", [asdict(s) for s in segmentos])
+    gravar_json(pasta / "segmentos" / f"{capitulo}.json", [asdict(s) for s in segmentos])
 
 
 def gravar_limpos(pasta: Path, capitulo: CapituloLimpo) -> None:
     caminho = pasta / "limpos" / f"{capitulo.capitulo}.json"
-    _gravar_json(caminho, [asdict(s) for s in capitulo.segmentos])
+    gravar_json(caminho, [asdict(s) for s in capitulo.segmentos])
 
 
 def gravar_limpeza(pasta: Path, limpeza: LivroLimpo) -> None:
@@ -91,53 +98,37 @@ def gravar_limpeza(pasta: Path, limpeza: LivroLimpo) -> None:
         "juncoes": [asdict(j) for j in limpeza.juncoes],
         "capitulares": [asdict(c) for c in limpeza.capitulares],
     }
-    _gravar_json(pasta / "limpeza.json", registro)
+    gravar_json(pasta / "limpeza.json", registro)
 
 
 def gravar_livro(pasta: Path, livro: LivroPreparado) -> None:
-    _gravar_json(pasta / "livro.json", asdict(livro))
-
-
-def _gravar_json(caminho: Path, conteudo: object) -> None:
-    """Num temporário e depois no lugar: o link, físico ou simbólico, é trocado sem tocar no
-    alvo (A5 da pós-auditoria curta), e a queda no meio deixa o arquivo antigo inteiro."""
-    texto = json.dumps(conteudo, ensure_ascii=False, indent=2) + "\n"
-    descritor, nome = tempfile.mkstemp(dir=caminho.parent, prefix=f".{caminho.name}.")
-    temporario = Path(nome)
-    try:
-        os.fchmod(descritor, PERMISSAO_DOS_ARQUIVOS)
-        with os.fdopen(descritor, "w", encoding="utf-8") as arquivo:
-            _ = arquivo.write(texto)
-        _ = temporario.replace(caminho)
-    except BaseException:
-        temporario.unlink(missing_ok=True)
-        raise
+    gravar_json(pasta / "livro.json", asdict(livro))
 
 
 def ler_segmentos(pasta: Path, capitulo: str) -> tuple[Segmento, ...]:
-    return _segmentos(pasta / "segmentos" / f"{capitulo}.json")
+    return segmentos_do_arquivo(pasta / "segmentos" / f"{capitulo}.json")
 
 
 def ler_limpos(pasta: Path, capitulo: str) -> tuple[Segmento, ...]:
-    return _segmentos(pasta / "limpos" / f"{capitulo}.json")
+    return segmentos_do_arquivo(pasta / "limpos" / f"{capitulo}.json")
 
 
 def ler_capitulos(pasta: Path) -> tuple[CapituloPreparado, ...]:
     caminho = pasta / "livro.json"
-    livro = _objeto(_ler_json(caminho), caminho)
-    capitulos = [_objeto(item, caminho) for item in _lista(livro.get("capitulos"), caminho)]
+    livro = objeto(ler_json(caminho), caminho)
+    capitulos = [objeto(item, caminho) for item in lista(livro.get("capitulos"), caminho)]
     return tuple(
         CapituloPreparado(
             _id_do_capitulo(capitulo, caminho),
             _arquivo_do_capitulo(capitulo, caminho),
-            _inteiro(capitulo, "segmentos", caminho),
+            campo_inteiro(capitulo, "segmentos", caminho),
         )
         for capitulo in capitulos
     )
 
 
 def _id_do_capitulo(capitulo: dict[str, Json], caminho: Path) -> str:
-    id_ = _texto(capitulo, "id", caminho)
+    id_ = campo_texto(capitulo, "id", caminho)
     if not _ID_DO_CAPITULO.fullmatch(id_):
         mensagem = f"{caminho}: id de capítulo fora do formato cNNN: {id_!r}"
         raise PastaDeTrabalhoInvalidaError(mensagem)
@@ -147,7 +138,7 @@ def _id_do_capitulo(capitulo: dict[str, Json], caminho: Path) -> str:
 def _arquivo_do_capitulo(capitulo: dict[str, Json], caminho: Path) -> str:
     """O caminho dentro de `epub/`, na forma que o `preparar` grava (A5 da auditoria): com
     `./` o `montar` não achava o arquivo para trocar, e com `../` lia fora da pasta."""
-    arquivo = _texto(capitulo, "arquivo", caminho)
+    arquivo = campo_texto(capitulo, "arquivo", caminho)
     if (
         posixpath.normpath(arquivo) != arquivo
         or arquivo.startswith(("/", "../"))
@@ -160,18 +151,21 @@ def _arquivo_do_capitulo(capitulo: dict[str, Json], caminho: Path) -> str:
 
 def ler_limpeza(pasta: Path) -> LimpezaRegistrada:
     caminho = pasta / "limpeza.json"
-    registro = _objeto(_ler_json(caminho), caminho)
-    remocoes = [_objeto(item, caminho) for item in _lista(registro.get("remocoes"), caminho)]
-    juncoes = [_objeto(item, caminho) for item in _lista(registro.get("juncoes"), caminho)]
+    registro = objeto(ler_json(caminho), caminho)
+    remocoes = [objeto(item, caminho) for item in lista(registro.get("remocoes"), caminho)]
+    juncoes = [objeto(item, caminho) for item in lista(registro.get("juncoes"), caminho)]
     return LimpezaRegistrada(
-        tuple(_texto(remocao, "id", caminho) for remocao in remocoes),
-        tuple((_texto(juncao, "id", caminho), _texto(juncao, "em", caminho)) for juncao in juncoes),
+        tuple(campo_texto(remocao, "id", caminho) for remocao in remocoes),
+        tuple(
+            (campo_texto(juncao, "id", caminho), campo_texto(juncao, "em", caminho))
+            for juncao in juncoes
+        ),
     )
 
 
 def ler_idioma(pasta: Path) -> str:
     caminho = pasta / "livro.json"
-    return _texto(_objeto(_ler_json(caminho), caminho), "idioma", caminho)
+    return campo_texto(objeto(ler_json(caminho), caminho), "idioma", caminho)
 
 
 def criar_pastas_da_traducao(pasta: Path) -> None:
@@ -219,7 +213,7 @@ def caminho_das_decisoes(pasta: Path) -> Path:
 def gravar_decisoes_se_faltar(pasta: Path, modelo: str) -> None:
     """Grava o modelo uma vez só: o arquivo que existe é da sessão e nunca é reescrito."""
     caminho = caminho_das_decisoes(pasta)
-    _recusar_link(caminho)
+    recusar_link(caminho)
     with contextlib.suppress(FileExistsError), caminho.open("x", encoding="utf-8") as arquivo:
         _ = arquivo.write(modelo)
 
@@ -241,16 +235,24 @@ def gravar_pedido(pasta: Path, pedido: Pedido) -> None:
 
     Sem as notas: o destino da chamada de nota é do `montar`, não do tradutor.
     """
+    _gravar_pedido(caminho_do_pedido(pasta, pedido.lote), pedido)
+
+
+def _gravar_pedido(caminho: Path, pedido: Pedido) -> None:
     registros = [{"id": s.id, "papel": s.papel.value, "texto": s.texto} for s in pedido.segmentos]
     texto = json.dumps(registros, ensure_ascii=False, indent=2) + "\n"
-    with caminho_do_pedido(pasta, pedido.lote).open("x", encoding="utf-8") as arquivo:
+    with caminho.open("x", encoding="utf-8") as arquivo:
         _ = arquivo.write(texto)
 
 
 def ler_pedidos(pasta: Path) -> tuple[Pedido, ...]:
+    return _pedidos(pasta_dos_pedidos(pasta))
+
+
+def _pedidos(pasta: Path) -> tuple[Pedido, ...]:
     return tuple(
         Pedido(lote, tuple(_segmento_do_pedido(registro, caminho) for registro in registros))
-        for lote, caminho, registros in _lotes(pasta_dos_pedidos(pasta))
+        for lote, caminho, registros in _lotes(pasta)
     )
 
 
@@ -266,134 +268,100 @@ def ler_glossario(pasta: Path) -> tuple[EntradaDoGlossario, ...]:
     """Sem `glossario.json`, o glossário é vazio. Campo além dos dois (uma nota do agente)
     é ignorado."""
     caminho = caminho_do_glossario(pasta)
-    _recusar_link(caminho)
+    recusar_link(caminho)
     if not caminho.exists():
         return ()
-    registros = [_objeto(item, caminho) for item in _lista(_ler_json(caminho), caminho)]
+    registros = [objeto(item, caminho) for item in lista(ler_json(caminho), caminho)]
     return tuple(_entrada(r, caminho) for r in registros)
 
 
 def _entrada(item: dict[str, Json], caminho: Path) -> EntradaDoGlossario:
-    return EntradaDoGlossario(_nome(item, "original", caminho), _nome(item, "traducao", caminho))
+    return EntradaDoGlossario(
+        campo_nome(item, "original", caminho), campo_nome(item, "traducao", caminho)
+    )
 
 
 def gravar_candidatos(pasta: Path, candidatos: tuple[CandidatoANome, ...]) -> None:
     """Pelo link, a gravação sairia da pasta de trabalho e apagaria o alvo (F4 da pós)."""
     caminho = caminho_dos_candidatos(pasta)
-    _recusar_link(caminho)
-    _gravar_json(caminho, [asdict(c) for c in candidatos])
+    recusar_link(caminho)
+    gravar_json(caminho, [asdict(c) for c in candidatos])
 
 
 def _lotes(pasta: Path) -> list[tuple[str, Path, list[dict[str, Json]]]]:
     """Os arquivos `cNNN-lNNN.json` da pasta, em ordem de lote; a pasta que não existe é vazia."""
-    _recusar_link(pasta)
+    recusar_link(pasta)
     if not pasta.is_dir():
         return []
     lotes: list[tuple[str, Path, list[dict[str, Json]]]] = []
     for caminho in sorted(pasta.glob("*.json")):
-        _recusar_link(caminho)
+        recusar_link(caminho)
         if not LOTE.fullmatch(caminho.stem):
             mensagem = f"{caminho}: nome fora do formato cNNN-lNNN.json de um lote"
             raise PastaDeTrabalhoInvalidaError(mensagem)
-        registros = [_objeto(item, caminho) for item in _lista(_ler_json(caminho), caminho)]
+        registros = [objeto(item, caminho) for item in lista(ler_json(caminho), caminho)]
         lotes.append((caminho.stem, caminho, registros))
     return lotes
 
 
-def _recusar_link(caminho: Path) -> None:
-    """A tradução é escrita pelo agente: o link traria para o livro a resposta de outro livro,
-    sem aviso (A5 da auditoria). O `epub/` já recusa link pelo mesmo motivo (ADR-0005)."""
-    if caminho.is_symlink():
-        mensagem = f"{caminho}: link simbólico na pasta de trabalho; não leio"
-        raise PastaDeTrabalhoInvalidaError(mensagem)
-
-
 def _segmento_do_pedido(registro: dict[str, Json], caminho: Path) -> Segmento:
     return Segmento(
-        _texto(registro, "id", caminho),
-        _papel(registro, caminho),
-        _texto(registro, "texto", caminho),
+        campo_texto(registro, "id", caminho),
+        campo_papel(registro, caminho),
+        campo_texto(registro, "texto", caminho),
     )
 
 
 def _traduzido(registro: dict[str, Json], caminho: Path) -> Traduzido:
-    return Traduzido(_texto(registro, "id", caminho), _texto(registro, "texto", caminho))
+    return Traduzido(campo_texto(registro, "id", caminho), campo_texto(registro, "texto", caminho))
 
 
-def _nome(registro: dict[str, Json], chave: str, caminho: Path) -> str:
-    """O nome vazio "aparece" em todo segmento e acusaria o livro inteiro."""
-    nome = _texto(registro, chave, caminho)
-    if not nome.strip():
-        mensagem = f"{caminho}: {chave!r} vazio no glossário: {registro!r}"
-        raise PastaDeTrabalhoInvalidaError(mensagem)
-    return nome
+def criar_pastas_da_adaptacao(pasta: Path) -> None:
+    """`para-adaptar/`, que o Python grava, e `adaptados/`, onde o agente grava (ADR-0009)."""
+    pasta_para_adaptar(pasta).mkdir(exist_ok=True)
+    pasta_dos_adaptados(pasta).mkdir(exist_ok=True)
 
 
-def _segmentos(caminho: Path) -> tuple[Segmento, ...]:
-    registros = [_objeto(item, caminho) for item in _lista(_ler_json(caminho), caminho)]
-    return tuple(_segmento(registro, caminho) for registro in registros)
+def ha_adaptacao(pasta: Path) -> bool:
+    """O `adaptar` já rodou: o `conferir` e o `montar` passam ao modo adaptação."""
+    return pasta_para_adaptar(pasta).is_dir()
 
 
-def _segmento(registro: dict[str, Json], caminho: Path) -> Segmento:
-    notas = tuple(
-        _como_texto(nota, "notas", caminho) for nota in _lista(registro.get("notas"), caminho)
+def pasta_para_adaptar(pasta: Path) -> Path:
+    return pasta / "para-adaptar"
+
+
+def pasta_dos_adaptados(pasta: Path) -> Path:
+    return pasta / "adaptados"
+
+
+def caminho_do_adaptado(pasta: Path, lote: str) -> Path:
+    """Com `lote="<lote>"`, é o modelo do caminho que a CLI mostra ao agente."""
+    return pasta_dos_adaptados(pasta) / f"{lote}.json"
+
+
+def caminho_das_siglas(pasta: Path) -> Path:
+    return pasta / "siglas.json"
+
+
+def gravar_siglas(pasta: Path, candidatas: tuple[CandidatoASigla, ...]) -> None:
+    caminho = caminho_das_siglas(pasta)
+    recusar_link(caminho)
+    gravar_json(caminho, [asdict(c) for c in candidatas])
+
+
+def gravar_pedido_da_adaptacao(pasta: Path, pedido: Pedido) -> None:
+    """Como o da tradução: o pedido gravado nunca é reescrito."""
+    _gravar_pedido(pasta_para_adaptar(pasta) / f"{pedido.lote}.json", pedido)
+
+
+def ler_pedidos_da_adaptacao(pasta: Path) -> tuple[Pedido, ...]:
+    return _pedidos(pasta_para_adaptar(pasta))
+
+
+def ler_adaptados(pasta: Path) -> tuple[RespostaDaAdaptacao, ...]:
+    """Escritos pelo agente: nome de lote e cada campo de cada grupo validados."""
+    return tuple(
+        RespostaDaAdaptacao(lote, tuple(grupo_do_registro(r, caminho) for r in registros))
+        for lote, caminho, registros in _lotes(pasta_dos_adaptados(pasta))
     )
-    return Segmento(
-        _texto(registro, "id", caminho),
-        _papel(registro, caminho),
-        _texto(registro, "texto", caminho),
-        notas,
-    )
-
-
-def _papel(registro: dict[str, Json], caminho: Path) -> Papel:
-    papel = _texto(registro, "papel", caminho)
-    if papel not in {p.value for p in Papel}:
-        mensagem = f"{caminho}: papel desconhecido {papel!r}"
-        raise PastaDeTrabalhoInvalidaError(mensagem)
-    return Papel(papel)
-
-
-def _ler_json(caminho: Path) -> Json:
-    """O arquivo é escrito por nós e, depois, pela tradução: valida-se tudo o que se lê."""
-    try:
-        return json.loads(caminho.read_text(encoding="utf-8"))  # pyright: ignore[reportAny]  # motivo: o json devolve Any; Json é o que o formato garante, e cada campo é validado ao ser lido
-    # Todo ValueError (JSON quebrado, texto que não é UTF-8, inteiro de mais de 4.300
-    # algarismos) e o RecursionError (JSON aninhado demais) viram erro com o caminho: sem
-    # ele, a CLI mostrava a mensagem crua ou um traceback (A6 da auditoria; N5 da pós).
-    except (ValueError, RecursionError) as erro:
-        mensagem = f"{caminho}: JSON inválido ({type(erro).__name__}: {erro})"
-        raise PastaDeTrabalhoInvalidaError(mensagem) from erro
-
-
-def _objeto(valor: Json, caminho: Path) -> dict[str, Json]:
-    if not isinstance(valor, dict):
-        mensagem = f"{caminho}: esperava um objeto, veio {valor!r}"
-        raise PastaDeTrabalhoInvalidaError(mensagem)
-    return valor
-
-
-def _lista(valor: Json, caminho: Path) -> list[Json]:
-    if not isinstance(valor, list):
-        mensagem = f"{caminho}: esperava uma lista, veio {valor!r}"
-        raise PastaDeTrabalhoInvalidaError(mensagem)
-    return valor
-
-
-def _texto(registro: dict[str, Json], chave: str, caminho: Path) -> str:
-    return _como_texto(registro.get(chave), chave, caminho)
-
-
-def _como_texto(valor: Json, chave: str, caminho: Path) -> str:
-    if not isinstance(valor, str):
-        mensagem = f"{caminho}: {chave!r} devia ser texto, veio {valor!r}"
-        raise PastaDeTrabalhoInvalidaError(mensagem)
-    return valor
-
-
-def _inteiro(registro: dict[str, Json], chave: str, caminho: Path) -> int:
-    valor = registro.get(chave)
-    if not isinstance(valor, int) or isinstance(valor, bool):
-        mensagem = f"{caminho}: {chave!r} devia ser número inteiro, veio {valor!r}"
-        raise PastaDeTrabalhoInvalidaError(mensagem)
-    return valor

@@ -11,7 +11,7 @@ from __future__ import annotations
 import html.entities
 import posixpath
 import re
-from collections.abc import Collection, Iterator, Mapping
+from collections.abc import Collection, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from urllib.parse import unquote
 
@@ -129,6 +129,32 @@ def montar_xhtml(
         _acrescentar_notas(corpo, no_fim)
     if idioma is not None:
         _trocar_idioma(corpo.getroottree().getroot(), idioma)
+    return etree.tostring(corpo.getroottree(), xml_declaration=True, encoding="utf-8")
+
+
+def acrescentar_paragrafos(
+    conteudo: bytes, seguintes: Mapping[str, Sequence[str]], caminho: str
+) -> bytes:
+    """Antes do `montar_xhtml`: os parágrafos que o grupo adaptado põe depois do primeiro
+    (ADR-0009) viram irmãos logo depois do elemento do primeiro ID, com a mesma tag e a mesma
+    classe, sem `id` (que é único) e sem marca, para que o `montar_xhtml` os deixe como estão."""
+    if not seguintes:
+        return conteudo
+    corpo = _corpo(conteudo, caminho)
+    for elemento in [e for e in corpo.iter() if e.get(ATRIBUTO_DO_ID) in seguintes]:
+        # O texto solto depois do elemento vai só depois do último irmão; entre eles, só o
+        # espaço, ou o texto solto seria lido uma vez por parágrafo (A1 da auditoria).
+        cauda = elemento.tail or ""
+        espaco = cauda[: len(cauda) - len(cauda.lstrip())] or None
+        ultimo = elemento
+        for texto in seguintes[elemento.get(ATRIBUTO_DO_ID, "")]:
+            irmao = etree.Element(elemento.tag)
+            if (classe := elemento.get("class")) is not None:
+                irmao.set("class", classe)
+            irmao.text, ultimo.tail = texto, espaco
+            ultimo.addnext(irmao)
+            ultimo = irmao
+        ultimo.tail = cauda or None
     return etree.tostring(corpo.getroottree(), xml_declaration=True, encoding="utf-8")
 
 

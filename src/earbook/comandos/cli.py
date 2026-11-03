@@ -13,10 +13,12 @@ from collections.abc import Callable
 from pathlib import Path
 
 from earbook.comandos import montar as montagem
+from earbook.comandos.adaptar import ExportacaoDaAdaptacao, adaptar
 from earbook.comandos.importar_pdf import Importacao, epub_padrao, importar_pdf
 from earbook.comandos.preparar import Preparo, pasta_padrao, preparar
 from earbook.comandos.roteiro import minutos
 from earbook.comandos.traduzir import Exportacao, traduzir
+from earbook.dominio.conferencia import Problema
 from earbook.dominio.limpeza import LivroLimpo
 from earbook.dominio.tipo_da_linha import TipoDeBloco
 from earbook.dominio.trabalho import LivroPreparado
@@ -92,21 +94,40 @@ def _preparar(opcoes: _Opcoes) -> tuple[str, int]:
 def _conferir(opcoes: _Opcoes) -> tuple[str, int]:
     """Código 1 quando há problema: o `montar` recusaria o livro (ADR-0005)."""
     pasta = opcoes.trabalho
-    problemas = montagem.conferir_pasta(pasta, opcoes.modo, opcoes.capitulo)
+    conferencia = montagem.conferencia_da_pasta(pasta, opcoes.modo, opcoes.capitulo)
+    problemas = conferencia.problemas
+    avisos = _linhas_dos_avisos(conferencia.avisos)
     if not problemas and opcoes.capitulo is not None:
         # Lote A da revisão: "pode montar" escondia o resto do livro, que não foi conferido.
-        return f"{pasta}: nada a corrigir no capítulo {opcoes.capitulo}.", 0
+        linhas = [f"{pasta}: nada a corrigir no capítulo {opcoes.capitulo}."]
+        return "\n".join([*linhas, *avisos]), 0
     if not problemas:
-        return f"{pasta}: nada faltando, sobrando ou repetido; pode montar.", 0
+        linhas = [f"{pasta}: nada faltando, sobrando ou repetido; pode montar."]
+        return "\n".join([*linhas, *avisos]), 0
     linhas = [f"{pasta}: {len(problemas)} problemas; o montar recusaria o livro."]
     linhas += [f"  {p.id}: {p.motivo}" for p in problemas[:PROBLEMAS_LISTADOS]]
     if len(problemas) > PROBLEMAS_LISTADOS:
         linhas.append(f"  ... e mais {len(problemas) - PROBLEMAS_LISTADOS}")
-    return "\n".join(linhas), 1
+    return "\n".join([*linhas, *avisos]), 1
+
+
+def _linhas_dos_avisos(avisos: tuple[Problema, ...]) -> list[str]:
+    """O termo omitido e o descarte por decisão, que a sessão lê antes do `montar` (ADR-0009)."""
+    if not avisos:
+        return []
+    if len(avisos) == 1:
+        cabecalho = "1 aviso, que não recusa o livro:"
+    else:
+        cabecalho = f"{len(avisos)} avisos, que não recusam o livro:"
+    return [cabecalho, *(f"  {a.id}: {a.motivo}" for a in avisos)]
 
 
 def _traduzir(opcoes: _Opcoes) -> tuple[str, int]:
     return _resumo_da_traducao(traduzir(opcoes.trabalho, opcoes.palavras), opcoes.trabalho), 0
+
+
+def _adaptar(opcoes: _Opcoes) -> tuple[str, int]:
+    return _resumo_da_adaptacao(adaptar(opcoes.trabalho, opcoes.palavras), opcoes.trabalho), 0
 
 
 def _montar(opcoes: _Opcoes) -> tuple[str, int]:
@@ -133,7 +154,8 @@ def _minuto(opcoes: _Opcoes) -> tuple[str, int]:
 def _resumo_da_amostra(feito: montagem.Montagem) -> str:
     partes: list[str] = []
     if feito.fora:
-        partes.append(f"{feito.fora} sem tradução ficaram de fora")
+        sem = "sem adaptação" if feito.adaptado else "sem tradução"
+        partes.append(f"{feito.fora} {sem} ficaram de fora")
     if feito.no_original == 1:
         partes.append("1 item do sumário ficou no original")
     elif feito.no_original:
@@ -145,6 +167,7 @@ _COMANDOS: dict[str, Callable[[_Opcoes], tuple[str, int]]] = {
     "preparar": _preparar,
     "importar-pdf": _importar,
     "traduzir": _traduzir,
+    "adaptar": _adaptar,
     "conferir": _conferir,
     "montar": _montar,
     "minuto": _minuto,
@@ -167,16 +190,10 @@ def _analisador() -> argparse.ArgumentParser:
         "--titulo", help="padrão: o do metadado do PDF ou o nome do arquivo"
     )
     _ = importacao.add_argument("--autor", help="padrão: o do metadado do PDF")
-    traducao = comandos.add_parser(
-        "traduzir", help="exporta em lotes o que o Claude Code traduz (ADR-0006)"
-    )
-    _ = traducao.add_argument("trabalho", type=Path, help="a pasta .earbook")
-    _ = traducao.add_argument(
-        "--palavras",
-        type=int,
-        default=PALAVRAS_POR_LOTE,
-        help=f"palavras por lote (padrão: {PALAVRAS_POR_LOTE})",
-    )
+    ajuda = "exporta em lotes o que o Claude Code traduz (ADR-0006)"
+    _por_lote(comandos.add_parser("traduzir", help=ajuda))
+    ajuda = "exporta em lotes o que o Claude Code adapta para o ouvido (ADR-0009)"
+    _por_lote(comandos.add_parser("adaptar", help=ajuda))
     conferencia = comandos.add_parser("conferir", help="confere se nada some antes de montar")
     _ = conferencia.add_argument("trabalho", type=Path, help="a pasta .earbook")
     _ = conferencia.add_argument("--capitulo", help="só os problemas deste capítulo (cNNN)")
@@ -191,6 +208,17 @@ def _analisador() -> argparse.ArgumentParser:
     _ = minuto.add_argument("trabalho", type=Path, help="a pasta .earbook")
     _ = minuto.add_argument("ids", nargs="+", help="IDs de segmento (cNNN-sNNNN)")
     return analisador
+
+
+def _por_lote(comando: argparse.ArgumentParser) -> None:
+    """O `traduzir` e o `adaptar`: a pasta e o tamanho do lote."""
+    _ = comando.add_argument("trabalho", type=Path, help="a pasta .earbook")
+    _ = comando.add_argument(
+        "--palavras",
+        type=int,
+        default=PALAVRAS_POR_LOTE,
+        help=f"palavras por lote (padrão: {PALAVRAS_POR_LOTE})",
+    )
 
 
 def _modos(comando: argparse.ArgumentParser) -> None:
@@ -233,6 +261,37 @@ def _resumo_da_traducao(exportacao: Exportacao, pasta: Path) -> str:
         f"Depois: earbook conferir {pasta}",
     ]
     return "\n".join(linhas)
+
+
+def _resumo_da_adaptacao(exportacao: ExportacaoDaAdaptacao, pasta: Path) -> str:
+    """O que a sessão do Claude Code precisa para distribuir os lotes (ADR-0009)."""
+    capitulos = exportacao.capitulos
+    total = sum(c.segmentos for c in capitulos)
+    feitos = sum(c.adaptados for c in capitulos)
+    linhas = [
+        f"{pasta}: {feitos} de {total} segmentos adaptados, em {len(capitulos)} capítulos.",
+        f"{exportacao.novos} lotes novos pedidos em {exportacao.pedidos}.",
+        *(
+            f"  {c.capitulo}: {c.adaptados} de {c.segmentos}"
+            + _pendentes(c.pendentes, exportacao.palavras_pendentes[c.capitulo])
+            for c in capitulos
+        ),
+        (
+            f'Resposta de cada lote: {exportacao.resposta}, lista de grupos {{"fontes", e'
+            ' "texto", "igual" ou "descarte"}.'
+        ),
+        (
+            f"Glossário das siglas: {exportacao.glossario} ({exportacao.siglas} siglas fora do"
+            f" glossário em {exportacao.caminho_das_siglas})."
+        ),
+        f"Decisões do livro, que todo adaptador lê: {exportacao.decisoes}",
+        f"Depois: earbook conferir {pasta}",
+    ]
+    return "\n".join(linhas)
+
+
+def _pendentes(lotes: tuple[str, ...], palavras: int) -> str:
+    return f"; pendentes: {', '.join(lotes)} ({palavras} palavras)" if lotes else ""
 
 
 def _linhas_dos_capitulos(exportacao: Exportacao) -> list[str]:

@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from lxml import etree
 
-from earbook.adaptadores.xhtml import XHTML, ids_marcados, montar_xhtml
+from earbook.adaptadores.xhtml import XHTML, acrescentar_paragrafos, ids_marcados, montar_xhtml
 from earbook.adaptadores.xml_seguro import PARSER_SEGURO
 from tests.livro_de_teste import xhtml
 
@@ -185,3 +185,35 @@ def test_ancora_do_tirado_vem_antes_do_texto_do_proximo_bloco() -> None:
     paragrafo = etree.fromstring(saida, PARSER_SEGURO).find(f".//{{{XHTML}}}p")
     assert paragrafo is not None
     assert (paragrafo.text, paragrafo[0].get("id"), paragrafo[0].tail) == (None, "x", "Texto.")
+
+
+def test_paragrafos_seguintes_do_grupo_entram_como_irmaos_logo_depois() -> None:
+    """ADR-0009: o grupo adaptado de N fontes vira M parágrafos, no lugar da primeira."""
+    corpo = (
+        '<h1 data-earbook="c001-s0001">Um</h1>'
+        '<p class="quadro" id="q1" data-earbook="c001-s0002">• Humor</p>'
+        '<p data-earbook="c001-s0003">• Anedonia</p>'
+        '<p data-earbook="c001-s0004">Fim.</p>'
+    )
+    textos = {"c001-s0001": "Um", "c001-s0002": "Os critérios.", "c001-s0004": "Fim."}
+    seguintes = {"c001-s0002": ("Os subtipos.", "As características.")}
+    com_os_seguintes = acrescentar_paragrafos(xhtml(corpo), seguintes, "OEBPS/a.xhtml")
+    saida = montar_xhtml(com_os_seguintes, textos, set(), "OEBPS/a.xhtml")
+    assert _blocos(saida) == [
+        ("h1", "Um"),
+        ("p", "Os critérios."),
+        ("p", "Os subtipos."),
+        ("p", "As características."),
+        ("p", "Fim."),
+    ]
+    raiz = etree.fromstring(saida, PARSER_SEGURO)
+    assert len(raiz.findall(f".//{{{XHTML}}}p[@class='quadro']")) == 3
+    assert len(raiz.findall(".//*[@id='q1']")) == 1
+
+
+def test_texto_solto_depois_do_grupo_continua_lido_uma_vez() -> None:
+    """A1 da auditoria: o irmão copiava o tail, e o texto solto saía uma vez por parágrafo."""
+    corpo = '<div><p data-earbook="c001-s0001">A</p> solto</div>'
+    saida = acrescentar_paragrafos(xhtml(corpo), {"c001-s0001": ("B", "C")}, "a.xhtml")
+    assert saida.decode().count("solto") == 1
+    assert "<p>C</p> solto</div>" in saida.decode()

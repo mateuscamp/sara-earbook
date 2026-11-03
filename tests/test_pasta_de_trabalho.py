@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 
 from earbook.adaptadores import pasta_de_trabalho as trabalho
+from earbook.adaptadores.registros_da_pasta import PastaDeTrabalhoInvalidaError
 from earbook.dominio.limpeza import CapituloLimpo, Juncao, LivroLimpo, Remocao
 from earbook.dominio.segmento import Papel, Segmento
 from earbook.dominio.trabalho import CapituloPreparado, LivroPreparado
@@ -67,20 +68,20 @@ def test_remocao_repetida_no_registro_chega_repetida(pasta: Path) -> None:
 def test_segmento_com_formato_errado_e_recusado_com_o_caminho(pasta: Path) -> None:
     arquivo = pasta / "limpos" / "c001.json"
     _ = arquivo.write_text('[{"id": "c001-s0001", "papel": "titulo", "texto": 3, "notas": []}]')
-    with pytest.raises(trabalho.PastaDeTrabalhoInvalidaError, match=r"c001\.json.*texto"):
+    with pytest.raises(PastaDeTrabalhoInvalidaError, match=r"c001\.json.*texto"):
         _ = trabalho.ler_limpos(pasta, "c001")
 
 
 def test_papel_desconhecido_e_recusado_com_o_caminho(pasta: Path) -> None:
     arquivo = pasta / "limpos" / "c001.json"
     _ = arquivo.write_text('[{"id": "c001-s0001", "papel": "rodape", "texto": "x", "notas": []}]')
-    with pytest.raises(trabalho.PastaDeTrabalhoInvalidaError, match=r"c001\.json.*rodape"):
+    with pytest.raises(PastaDeTrabalhoInvalidaError, match=r"c001\.json.*rodape"):
         _ = trabalho.ler_limpos(pasta, "c001")
 
 
 def test_json_quebrado_e_recusado_com_o_caminho(pasta: Path) -> None:
     _ = (pasta / "limpeza.json").write_text('{"remocoes": [')
-    with pytest.raises(trabalho.PastaDeTrabalhoInvalidaError, match=r"limpeza\.json"):
+    with pytest.raises(PastaDeTrabalhoInvalidaError, match=r"limpeza\.json"):
         _ = trabalho.ler_limpeza(pasta)
 
 
@@ -102,7 +103,7 @@ def test_capitulo_com_caminho_ou_id_fora_do_formato_e_recusado(
     # empacotava o capítulo cru dizendo que tinha montado; com "../", lia fora da pasta.
     capitulo = {"id": "c001", "arquivo": "OEBPS/ch01.xhtml", "segmentos": 1} | {campo: valor}
     _ = (pasta / "livro.json").write_text(json.dumps({"capitulos": [capitulo]}))
-    with pytest.raises(trabalho.PastaDeTrabalhoInvalidaError, match=r"livro\.json"):
+    with pytest.raises(PastaDeTrabalhoInvalidaError, match=r"livro\.json"):
         _ = trabalho.ler_capitulos(pasta)
 
 
@@ -118,21 +119,21 @@ def test_capitulo_com_caminho_ou_id_fora_do_formato_e_recusado(
 )
 def test_livro_json_com_forma_errada_e_recusado(pasta: Path, conteudo: str) -> None:
     _ = (pasta / "livro.json").write_text(conteudo)
-    with pytest.raises(trabalho.PastaDeTrabalhoInvalidaError, match=r"livro\.json"):
+    with pytest.raises(PastaDeTrabalhoInvalidaError, match=r"livro\.json"):
         _ = trabalho.ler_capitulos(pasta)
 
 
 def test_json_que_nao_e_utf8_e_recusado_com_o_caminho(pasta: Path) -> None:
     # A6 da auditoria: saía só "'utf-8' codec can't decode byte 0xff", sem o arquivo.
     _ = (pasta / "limpeza.json").write_bytes(b"\xff{}")
-    with pytest.raises(trabalho.PastaDeTrabalhoInvalidaError, match=r"limpeza\.json"):
+    with pytest.raises(PastaDeTrabalhoInvalidaError, match=r"limpeza\.json"):
         _ = trabalho.ler_limpeza(pasta)
 
 
 def test_json_aninhado_demais_e_recusado_com_o_caminho(pasta: Path) -> None:
     # A6 da auditoria: o RecursionError passava pela CLI como traceback.
     _ = (pasta / "limpeza.json").write_text("[" * 100_000 + "]" * 100_000)
-    with pytest.raises(trabalho.PastaDeTrabalhoInvalidaError, match=r"limpeza\.json"):
+    with pytest.raises(PastaDeTrabalhoInvalidaError, match=r"limpeza\.json"):
         _ = trabalho.ler_limpeza(pasta)
 
 
@@ -146,5 +147,5 @@ def test_numero_grande_demais_no_json_e_recusado_com_o_caminho(pasta: Path) -> N
     # N5 da pós-auditoria: o json recusa inteiro de mais de 4.300 algarismos com um
     # ValueError simples, e a CLI mostrava a mensagem sem o arquivo.
     _ = (pasta / "limpeza.json").write_text('{"remocoes": [' + "9" * 5000 + "]}")
-    with pytest.raises(trabalho.PastaDeTrabalhoInvalidaError, match=r"limpeza\.json"):
+    with pytest.raises(PastaDeTrabalhoInvalidaError, match=r"limpeza\.json"):
         _ = trabalho.ler_limpeza(pasta)

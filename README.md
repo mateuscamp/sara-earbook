@@ -1,7 +1,9 @@
 # earbook
 
 Prepara livros para **ouvir** no ElevenReader. Tira do EPUB o que o leitor de voz leria e não é
-do livro e, quando o livro é em inglês, traduz para pt-BR. PDF com camada de texto entra pelo
+do livro e, quando o livro é em inglês, traduz para pt-BR. O livro didático em português pode ser
+adaptado para o ouvido: a lista vira frase, o Quadro vira parágrafo e a citação sai
+([ADR-0009](docs/adr/0009-adaptar-reescreve-por-grupo-e-o-conferir-cobra-a-fidelidade.md)). PDF com camada de texto entra pelo
 comando `importar-pdf` ([ADR-0004](docs/adr/0004-pdf-entra-como-comando-importar-pdf.md)).
 
 O repositório se chama sara-earbook desde 2026-11-02; o pacote e o comando continuam
@@ -84,8 +86,8 @@ Opções dos dois:
 - `--capitulo cNNN` (só no `conferir`): só os problemas daquele capítulo.
 - `--original`: o texto limpo no idioma do original. É para ouvir a limpeza antes de traduzir,
   e o `montar` grava `livro.original.epub`.
-- `--amostra`: no livro em tradução, só o que já foi traduzido. O `montar` grava
-  `livro.amostra.epub`.
+- `--amostra`: no livro em tradução, só o que já foi traduzido; no livro em adaptação, só o que
+  já foi adaptado. O `montar` grava `livro.amostra.epub`.
 
 ### Traduzir
 
@@ -119,6 +121,41 @@ No livro em tradução, o `conferir` cobra mais quatro coisas:
 O `montar` grava só a tradução, nunca as duas línguas, porque o leitor de voz leria as duas. O
 livro sai declarado em pt-BR.
 
+### Adaptar
+
+```bash
+uv run earbook adaptar livro.earbook
+```
+
+Só para livro em português. O `adaptar` divide cada capítulo em lotes de até ~2 mil palavras
+(`--palavras`), que terminam antes de um título ou entre duas frases, e grava o pedido de cada
+lote em `para-adaptar/`. Ele lista em `siglas.json` as siglas que ainda não estão no glossário,
+com a forma por extenso que o livro dá, e cria `decisoes.md`. Rodar de novo não refaz nada
+([ADR-0009](docs/adr/0009-adaptar-reescreve-por-grupo-e-o-conferir-cobra-a-fidelidade.md)).
+
+Quem adapta é o Claude Code, um subagente [`adaptador`](.claude/agents/adaptador.md) por
+capítulo, que lê a página do PDF original quando o lote tem Quadro. A resposta de cada lote vai
+para `adaptados/`, como uma lista de grupos: as `fontes` (IDs vizinhos) e um destes:
+- `texto`, os parágrafos que se ouvem no lugar delas: N segmentos viram M parágrafos;
+- `igual`, quando o segmento fica como está;
+- `descarte`, com o motivo: `repetido`, `rotulo` ou `decisao: <seção>`.
+
+A sigla que vai por extenso entra no `glossario.json`, como o nome na tradução.
+
+No livro em adaptação, o `conferir` cobra a fidelidade de cada grupo:
+- cada segmento num grupo só, de fontes vizinhas, no lote que o pediu;
+- cada número das fontes no texto, e nenhum número que elas não têm (o ano de citação, o rótulo
+  "Quadro 27.1" e o ordinal "1." ficam fora da conta);
+- cada termo raro das fontes (8 letras ou mais, em até 20 segmentos do livro) no texto, ou
+  declarado em `omitidos`;
+- o descarte `repetido` provado pelos grupos do lado;
+- nada que só funciona no papel: `•`, "Quadro 27.1", "(Autor, ano)", "et al.", "p. ex.",
+  pontilhado de sumário, linha de formulário e a sigla que o glossário manda por extenso.
+
+O termo omitido e o descarte por decisão saem como avisos, que não recusam o livro. O `montar`
+põe o primeiro parágrafo do grupo no elemento do primeiro ID, cada parágrafo a mais num elemento
+irmão logo depois, e tira as outras fontes. `--original` monta o texto limpo, sem a adaptação.
+
 ### Roteiro de escuta
 
 ```bash
@@ -126,7 +163,7 @@ uv run earbook minuto livro.earbook c005-s0288 c006-s0022
 ```
 
 Diz em que minuto da escuta cai cada segmento. Conta a 160 palavras por minuto, pelo texto que
-se ouve: a tradução, quando existe.
+se ouve: a tradução, quando existe. No livro adaptado, ainda conta o texto limpo.
 
 ### PDF
 

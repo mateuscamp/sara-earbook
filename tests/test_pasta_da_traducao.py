@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 
 from earbook.adaptadores import pasta_de_trabalho as trabalho
-from earbook.adaptadores.pasta_de_trabalho import PastaDeTrabalhoInvalidaError
+from earbook.adaptadores.registros_da_pasta import PastaDeTrabalhoInvalidaError
 from earbook.dominio.glossario import CandidatoANome, EntradaDoGlossario
 from earbook.dominio.segmento import Papel, Segmento
 from earbook.dominio.trabalho import LivroPreparado

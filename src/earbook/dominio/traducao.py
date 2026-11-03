@@ -38,6 +38,8 @@ class Modo(StrEnum):
     """Só o traduzido entra; o resto sai, nunca fica no original."""
     ORIGINAL = "original"
     """O texto limpo, no idioma do original (para ouvir a limpeza antes de traduzir)."""
+    ADAPTACAO = "adaptacao"
+    """O livro em português adaptado para o ouvido, que cobre o livro inteiro (ADR-0009)."""
 
 
 @dataclass(frozen=True)
@@ -119,12 +121,24 @@ def novos_pedidos(
     """Os lotes do que ainda não está em `pedidos`, com até `palavras` palavras cada. A
     numeração continua depois do último lote com pedido ou com resposta (`respondidos`):
     reusar o nome casaria o pedido novo com a resposta velha (achado da code-review)."""
+    lotes = _em_lotes(ainda_sem_pedido(limpos, pedidos), palavras)
+    return lotes_numerados(capitulo, lotes, [*(pedido.lote for pedido in pedidos), *respondidos])
+
+
+def ainda_sem_pedido(limpos: Sequence[Segmento], pedidos: Sequence[Pedido]) -> list[Segmento]:
     ja_pedidos = {segmento.id for pedido in pedidos for segmento in pedido.segmentos}
-    faltam = [segmento for segmento in limpos if segmento.id not in ja_pedidos]
-    ultimo = _ultimo_lote(capitulo, [*(pedido.lote for pedido in pedidos), *respondidos])
+    return [segmento for segmento in limpos if segmento.id not in ja_pedidos]
+
+
+def lotes_numerados(
+    capitulo: str, lotes: Sequence[tuple[Segmento, ...]], ja_numerados: Sequence[str]
+) -> tuple[Pedido, ...]:
+    """Os lotes com nome, depois do maior número que já tem pedido ou resposta. A adaptação
+    corta os lotes de outro jeito e numera igual (ADR-0009)."""
+    ultimo = _ultimo_lote(capitulo, ja_numerados)
     return tuple(
         Pedido(id_do_lote(capitulo, ultimo + posicao), lote)
-        for posicao, lote in enumerate(_em_lotes(faltam, palavras), start=1)
+        for posicao, lote in enumerate(lotes, start=1)
     )
 
 

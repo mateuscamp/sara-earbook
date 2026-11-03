@@ -14,6 +14,7 @@ ADRs em `docs/adr/`. O Claude Code traduz; o Python nunca chama o LLM (ADR-0001)
 
 - Esteira (ADR-0003): `preparar → limpar → [traduzir] → conferir → montar`. O `montar` troca o texto no EPUB original e recusa o livro que o `conferir` reprova (ADR-0005). Livro em inglês é traduzido para pt-BR; livro em português só é preparado para o ouvido.
 - Tradução (ADR-0006): o `traduzir` exporta pedidos por lote (~2 mil palavras); o subagente `tradutor` (`.claude/agents/tradutor.md`) grava a resposta de cada lote; o `conferir` cobra cada ID, o texto que ficou em inglês e o glossário, e o `montar` declara pt-BR. Nomes do Tides: a localização oficial pt-BR da Blizzard.
+- Adaptação (ADR-0009): o `adaptar` exporta pedidos por lote, só de livro em português; o subagente `adaptador` (`.claude/agents/adaptador.md`) responde com grupos, em que N segmentos viram M parágrafos, e lê a página do PDF no Quadro; o `conferir` cobra cada ID, cada número e cada termo raro das fontes, e o que só funciona no papel; o `montar` põe o grupo no lugar do primeiro ID. As decisões de gosto do Dalgalarrondo estão no ADR-0009 ("Decisões do Mateus").
 - A limpeza nunca apaga em silêncio: toda remoção fica em `limpeza.json`, com o ID do segmento de origem.
 - Capitular deslocada (ADR-0007): o `limpar` devolve a letra quando o próprio livro prova a palavra, e registra em `capitulares`; a que o livro não prova fica suspeita. Nunca vai no brief do tradutor.
 - Código, índice e marca d'água (ADR-0008): o `<pre>` que se declara código e o índice que o EPUB marca (`epub:type`, `role`, `data-type`; nunca pelo título nem pelo nome do arquivo) saem no `limpar`, registrados; o Gherkin fica, como parágrafo. Sai também o parágrafo idêntico em metade ou mais dos arquivos do spine, e em 10 ou mais ("OceanofPDF.com").
@@ -58,6 +59,7 @@ Saída de medição vai para `livros/trabalho/`, nunca para `/tmp` nem para o sc
 - Uso: `uv run earbook preparar livro.epub` → `livro.earbook/`.
 - PDF: `uv run earbook importar-pdf livro.pdf --idioma pt-BR [--titulo T] [--autor A]` → `livro.epub`, que segue para o `preparar`. Título e autor vêm do metadado do PDF quando não são dados.
 - Tradução: `uv run earbook traduzir livro.earbook [--palavras 2000]` → `pedidos/` e `nomes.json`, e diz os lotes pendentes. Depois: o glossário a partir de `nomes.json`, um subagente `tradutor` por capítulo (capítulo menor que um lote vai junto com outros) e o `conferir`. Antes de um livro inteiro, mostre ao Mateus o custo estimado (lotes e segmentos) e peça o sim.
+- Adaptação: `uv run earbook adaptar livro.earbook [--palavras 2000]` → `para-adaptar/` e `siglas.json`, e diz os lotes pendentes. Depois: o glossário das siglas a partir de `siglas.json`, `decisoes.md` com o caminho do PDF, um subagente `adaptador` por capítulo e o `conferir`, que lista também os avisos (termo omitido, descarte por decisão). No livro em adaptação, `--amostra` monta só o adaptado e `--original`, o texto limpo.
 - Fim da esteira: `uv run earbook conferir livro.earbook [--capitulo cNNN]` e `uv run earbook montar livro.earbook` → `livro.pronto.epub`. Roteiro de escuta: `uv run earbook minuto livro.earbook <ID>...`. No livro que se traduz, `--amostra` monta só o traduzido (`livro.amostra.epub`) e `--original` monta o texto limpo no idioma do original (`livro.original.epub`), que nunca vai para `livros/prontos/`.
 
 ## Livro novo (pedido do Mateus, 2026-11-02)
@@ -81,8 +83,8 @@ Verificadas por ferramenta (import-linter e `tests/test_arquitetura.py`):
 - Arquivo ≤ 400 linhas; função ≤ 20 linhas (teto 40); primeira linha de todo `.py` é o SPDX.
 
 Verificadas só em revisão (`code-audit`):
-- O agente grava só `traduzidos/`, `termos/`, `glossario.json` e `decisoes.md`; nunca `segmentos/`, `limpos/` nem `pedidos/` (ADR-0006, ADR-0007). O tradutor não grava `glossario.json` nem `decisoes.md`, que são da sessão. Pedido gravado nunca é reescrito. O Python cria `decisoes.md` uma vez e nunca o lê.
-- Só `adaptadores/pasta_de_trabalho.py` conhece o layout da pasta de trabalho, e todo JSON lido dela é validado campo a campo (o tipo `Json`; a única supressão é a do `json.loads`).
+- O agente grava só `traduzidos/`, `termos/`, `adaptados/`, `glossario.json` e `decisoes.md`; nunca `segmentos/`, `limpos/`, `pedidos/` nem `para-adaptar/` (ADR-0006, ADR-0007, ADR-0009). O tradutor e o adaptador não gravam `glossario.json` nem `decisoes.md`, que são da sessão. Pedido gravado nunca é reescrito. O Python cria `decisoes.md` uma vez e nunca o lê. O adaptador nunca escreve número que as fontes não têm, nem tira número que elas têm, fora o ano de citação; o termo raro omitido vai em `omitidos`, com o motivo.
+- Só `adaptadores/pasta_de_trabalho.py` conhece o layout da pasta de trabalho, e todo JSON lido dela é validado campo a campo por `adaptadores/registros_da_pasta.py` (o tipo `Json`; a única supressão é a do `json.loads`, lá).
 - EPUB é entrada não confiável: XML só pelo `PARSER_SEGURO` de `adaptadores/xml_seguro.py`; nenhum caminho sai da pasta de trabalho.
 - PDF também é entrada não confiável (pode vir de site de terceiros): toda falha do pdfminer vira `PdfInvalidoError` com o nome do arquivo, menos falta de memória, que passa como veio. O arquivo abre fora do `try`: inexistente ou sem permissão chega como `OSError`; um erro de disco no meio da leitura sai como "não é um PDF válido", com a causa no `from`. O `try` cobre só a biblioteca, nunca a nossa conversão. O que vem do pdfminer com tipo incerto (nome de fonte) é validado no adaptador. O PDF é lido uma página por vez.
 - O EPUB que o `importar-pdf` grava carrega texto do PDF: todo texto passa por `escape` e pela retirada do caractere que o XML 1.0 não aceita, e o `preparar` é o teste de contrato do que foi gravado.
@@ -143,13 +145,16 @@ src/earbook/
                 capitulos.py (capítulo e nível do título), conferencia.py (o conferir), direitos.py (página de direitos autorais),
                 metadados.py (título e autor do PDF), traducao.py (lote, pedido, resposta, modo),
                 glossario.py (candidatos a nome, termos declarados), conferencia_da_traducao.py,
+                adaptacao.py (grupo, lote que não parte frase, textos do montar), siglas.py (siglas
+                candidatas), fidelidade.py (número, termo raro e papel), conferencia_da_adaptacao.py,
                 capitular.py (a capitular devolvida), escuta.py (o minuto de cada segmento),
                 fora_do_audio.py (código, índice, marca d'água, destaque e bibliografia), cabecalho.py (cabeçalho de página),
                 colunas.py (a ordem de leitura da página em colunas)
   adaptadores/  xml_seguro.py (parser), pacote_epub.py (zip + OPF), xhtml.py, papel_do_bloco.py (o papel
-                pela marcação), pasta_de_trabalho.py,
+                pela marcação), pasta_de_trabalho.py (o layout), registros_da_pasta.py (o JSON
+                validado campo a campo),
                 pdf.py (pdfminer), epub_simples.py (grava o EPUB do PDF)
-  comandos/     preparar.py, importar_pdf.py, traduzir.py, montar.py (conferir e montar), roteiro.py
+  comandos/     preparar.py, importar_pdf.py, traduzir.py, adaptar.py, montar.py (conferir e montar), roteiro.py
                 (minuto), cli.py
 tests/          test_<módulo>.py, test_arquitetura.py, livro_de_teste.py (EPUB), pdf_de_teste.py (PDF),
                 linhas_de_teste.py (linhas do PDF já lidas, para os testes de blocos)

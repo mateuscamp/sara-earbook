@@ -153,7 +153,10 @@ montagem.
 
 `livros/trabalho/roteiro-de-escuta-<nome>.md`, com 8 a 10 paradas no livro inteiro (só na
 parte nova, quando houve amostra). Cada parada
-tem o ID, o minuto, o que ouvir e a pergunta para o Mateus. Os minutos vêm do comando:
+tem o ID, a frase de início e a de fim (o Mateus busca a frase no ElevenReader), o minuto
+aproximado contado do começo do capítulo, que é o tempo que o ElevenReader mostra, o que ouvir
+e a pergunta para o Mateus. O minuto do livro inteiro não serve (pedido do Mateus,
+2026-11-02). Os minutos vêm do comando:
 
 ```bash
 uv run earbook minuto livros/trabalho/<nome>.earbook c005-s0288 c006-s0022

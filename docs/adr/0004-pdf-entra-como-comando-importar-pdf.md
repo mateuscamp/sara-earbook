@@ -337,6 +337,15 @@ Registrados pela code-review, sem correção, porque não têm caso nos três PD
 - **o tamanho exato:** a sequência do número grande se conta pelo tamanho arredondado a 0,1 pt. Um PDF com o número entre 11,9 e 12,0 pt parte a sequência em duas, e a parte com menos de 3 páginas fica no áudio. No Dalgalarrondo, os 412 têm 12,0;
 - **sem a altura:** o número grande do alto e o do pé se contam juntos, e a altura não é cobrada. Um número de tabela, maior que o corpo, que acompanhe a paginação em 3 páginas na faixa da borda sairia como número de página.
 
+### Escuta do Dalgalarrondo (2026-11-03)
+
+O Mateus ouviu `dalgalarrondo-pagina.pronto.epub` no ElevenReader. Ouviu o capítulo "3" do começo até o minuto 5:29, o que passa do fim do item "2. Normalidade ideal". As palavras dele: "Está perfeito. A única questão é essa que eu já tratei anteriormente."
+
+- **Ordem e número de página:** a lista de "1. Psiquiatria legal ou forense" a "6. Prática clínica" sai inteira, sem o "32" no meio. Isso confirma as duas colunas e o número de página na escuta.
+- **Defeito:** o destaque de margem lido duas vezes ("O conceito de saúde e de normalidade em psicopatologia é questão de grande controvérsia", `c005-s0008` e `c005-s0009`). Vai para um ciclo próprio na limpeza.
+- **Sotaque:** no meio do capítulo, a voz passou a ler com sotaque de Portugal e, no fim, voltou ao do Brasil. Ele trocou de voz, e o sotaque continuou. O EPUB declara `pt-BR` no OPF e nas 88 marcas de língua dos XHTML, sem outra língua em trecho nenhum, então o defeito é do ElevenReader.
+- **O minuto:** o ElevenReader mostra o tempo do capítulo, não o do livro, e o roteiro dava o do livro (37 a 41). O capítulo dura 10:12 para 1.408 palavras. O trecho, de 755 palavras, coube até 5:29. São ~138 palavras por minuto, contra as 160 do `earbook minuto`. A partir de agora, o roteiro dá a frase de início e a de fim e o minuto aproximado do capítulo (skill `traduzir-livro`, passo 9).
+
 ## Consequências
 
 **Ganha:** um comando a mais na mesma esteira, sem repositório novo. Os defeitos de conversão são atacados onde nascem.

@@ -106,7 +106,10 @@ layers = ["earbook.comandos", "earbook.adaptadores", "earbook.dominio"]
 name = "domínio não conhece biblioteca de borda"
 type = "forbidden"
 source_modules = ["earbook.dominio"]
-forbidden_modules = ["lxml", "pdfminer"]
+forbidden_modules = [
+  "lxml", "pdfminer", "pydantic", "httpx",
+  "os", "socket", "subprocess", "urllib", "http",
+]
 
 # ADR-0004: a biblioteca de PDF só entra por adaptadores/pdf.py.
 [[tool.importlinter.contracts]]
@@ -115,3 +118,8 @@ type = "forbidden"
 source_modules = ["earbook.comandos"]
 forbidden_modules = ["pdfminer", "lxml"]
 allow_indirect_imports = true  # o caminho permitido é comandos → adaptadores → biblioteca
+
+# Desvio do trilho, com ADR aceito.
+[[tool.trilhos.desvios]]
+chave = "ruff.per-file-ignores:src/earbook/comandos/cli.py:T201"
+adr = "docs/adr/0002-trilho-python-on-rails.md"

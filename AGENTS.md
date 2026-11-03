@@ -29,6 +29,11 @@ ADRs em `docs/adr/`. O Claude Code traduz; o Python nunca chama o LLM (ADR-0001)
 - A skill `arquitetura-ai-first` orienta toda decisão estrutural; fronteira nova exige ADR antes do código.
 - Ao fim de toda implementação de código, nesta ordem: a skill `code-review` e, depois dela, a skill `code-audit` (pedido do Mateus, 2026-11-01).
 - O asset se julga **ouvindo no ElevenReader**, não lendo lado a lado.
+- **Uma escuta de teste só** é o que buscamos, não uma regra absoluta (pedido do Mateus, 2026-11-03).
+  - Defeito que a máquina acha se corrige antes da escuta: o inventário por script contra "O que atrapalha o ouvido", no livro montado. Defeito conhecido nunca vai para a escuta.
+  - Decisão de gosto (citação, sigla, o que sai do áudio) se toma por texto, com o antes e o depois escritos.
+  - A escuta de teste, antes do livro pronto, é só para o que é novo e que só o ouvido julga: uma etapa nova (o `adaptar`), o `tradutor.md` que mudou. O alvo é uma, num trecho que cobre cada decisão; uma segunda só quando a primeira reprovar algo que a máquina não mede.
+  - O roteiro do livro pronto não é escuta à parte: são as paradas da leitura que o Mateus já faz.
 - O repositório é público, e o `README.md` é a porta dele. Toda mudança de comando, de opção, do que sai do áudio ou da pasta de trabalho atualiza o README no mesmo commit (pedido do Mateus, 2026-11-02).
 - A sessão principal só orquestra (pedido do Mateus, 2026-11-01). Cada implementação roda numa sessão filha, com brief completo, e todo o processo deste arquivo vale nela. A filha usa esta mesma pasta, porque `livros/` e `.venv` ficam aqui, e roda uma por vez. Quando ela termina, o que importa volta para a principal: o commit, as medições, as decisões e os limites. Depois a filha é arquivada.
 
@@ -60,7 +65,7 @@ Saída de medição vai para `livros/trabalho/`, nunca para `/tmp` nem para o sc
 O Mateus diz o caminho do livro; a sessão o leva até `livros/prontos/`. O original fica onde está.
 1. PDF: `importar-pdf <pdf> --idioma <pt-BR|en> --epub livros/trabalho/<nome>.epub`. EPUB: direto ao passo 2.
 2. `preparar <epub> --pasta livros/trabalho/<nome>.earbook`. Leia o resumo: segmento suspeito fica no texto e é lido.
-3. PDF novo é onde mora a surpresa (cada diagramação é uma). Antes de seguir, peça a escuta de um trecho: o livro montado, se for pt-BR; o `montar --original`, se for en, porque defeito de diagramação traduzido se paga duas vezes.
+3. PDF novo é onde mora a surpresa (cada diagramação é uma). Antes de seguir, faça o inventário por script no livro montado (o `montar --original`, se for en, porque defeito de diagramação traduzido se paga duas vezes) e corrija o que ele achar, sem pedir escuta (ver "Uma escuta de teste só").
 4. Em inglês: a skill `traduzir-livro` (`.claude/skills/traduzir-livro/SKILL.md`) leva do `traduzir` ao livro pronto: glossário, `decisoes.md`, custo, tradutores em paralelo, rodada de correção, `montar --epub livros/prontos/<nome>.pronto.epub`, epubcheck e roteiro de escuta. Termo, nome e tom sem precedente vão ao Mateus por texto, na mesma mensagem do custo; a escuta é do livro pronto. A amostra só volta quando o `tradutor.md` mudou ou o livro traz uma escolha que só o ouvido julga e nenhum livro anterior decidiu (pedido do Mateus, 2026-11-02; ADR-0006).
 5. Em português: `conferir`, `montar --epub livros/prontos/<nome>.pronto.epub` (o padrão grava ao lado da pasta, em `livros/trabalho/`), epubcheck e `livros/trabalho/roteiro-de-escuta-<nome>.md`.
 - Defeito de código achado num livro: pare e relate. A correção é uma sessão filha, com o processo deste arquivo.
@@ -88,6 +93,9 @@ Verificadas só em revisão (`code-audit`):
 - Trecho lido duas vezes (`<p>` dentro de `<blockquote>`). Feito no `preparar`.
 - Número de página, cabeçalho repetido, sumário duplicado.
 - Índice remissivo, bloco de código e marca d'água repetida: feitos no `preparar` quando o EPUB marca o índice e o código (ADR-0008). O índice e o código do PDF importado ainda são lidos.
+- Destaque de margem que repete a frase do texto: feito no `importar-pdf` e no `preparar` (ADR-0004, ADR-0008). O destaque resumido ou reescrito ainda é lido.
+- Quadro do PDF que vira nota e vai para o fim do capítulo, longe do texto. Pendente.
+- Alternativa de exercício cuja letra só existe no CSS do `<ol>`: a voz lê "B e C" sem que nada tenha letra. Pendente.
 - Algarismo romano em título de capítulo ("Chapter IV").
 - Abreviação, URL, tabela e legenda de imagem.
 - Nome próprio traduzido de um jeito num capítulo e de outro no seguinte (precisa de glossário).

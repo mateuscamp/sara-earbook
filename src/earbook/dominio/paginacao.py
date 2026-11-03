@@ -7,8 +7,10 @@ fixa da página, e é isso que esta regra usa. Ela pega também o cabeçalho com
 capítulo e com letras espaçadas, medidos no spike.
 
 A faixa sozinha não basta (A1 da auditoria): título de capítulo e número de capítulo
-também caem nela. Por isso, só sai da faixa o que tem fonte de rodapé (não maior que a do
-corpo) e, além disso, ou é número que segue a paginação ou se repete no mesmo topo.
+também caem nela. Por isso, só sai da faixa o número que segue a paginação ou a linha com
+fonte de rodapé (não maior que a do corpo) que se repete no mesmo topo. O número maior que
+o corpo forma a sua própria sequência, com os do mesmo tamanho (ADR-0004, "Número de página
+maior que o corpo").
 """
 
 from __future__ import annotations
@@ -37,6 +39,8 @@ _VALOR_ROMANO = {"M": 1000, "D": 500, "C": 100, "L": 50, "X": 10, "V": 5, "I": 1
 
 type _Ocorrencia = tuple[int, int, Linha]
 """(número da página, posição da linha na página, linha)."""
+type _Sequencia = tuple[str, int, float | None]
+"""(sistema, deslocamento entre o número impresso e a página, tamanho do número grande)."""
 
 
 @dataclass(frozen=True)
@@ -58,9 +62,12 @@ def tirar_cabecalhos_e_rodapes(paginas: Sequence[Pagina]) -> PaginasLimpas:
     `tirar_cabecalhos_e_rodapes(paginas)` devolve as páginas sem essas linhas e uma
     remoção registrada por linha tirada.
     """
-    candidatas = _candidatas(paginas)
-    numeros = _numeros_de_pagina(candidatas)
-    repetidas = _repetidas(o for o in candidatas if (o[0], o[1]) not in numeros)
+    limite = tamanho_do_corpo(paginas) + FOLGA_DA_FONTE
+    na_borda = _na_borda_do_livro(paginas)
+    numeros = _numeros_de_pagina(na_borda, limite)
+    repetidas = _repetidas(
+        o for o in na_borda if o[2].tamanho <= limite and (o[0], o[1]) not in numeros
+    )
     motivos = dict.fromkeys(numeros, "número de página") | repetidas
     limpas: list[Pagina] = []
     remocoes: list[LinhaRemovida] = []
@@ -76,14 +83,13 @@ def tirar_cabecalhos_e_rodapes(paginas: Sequence[Pagina]) -> PaginasLimpas:
     return PaginasLimpas(tuple(limpas), tuple(remocoes))
 
 
-def _candidatas(paginas: Sequence[Pagina]) -> list[_Ocorrencia]:
-    """Linhas na faixa da borda com fonte de rodapé: no máximo o tamanho do corpo."""
-    limite = tamanho_do_corpo(paginas) + FOLGA_DA_FONTE
+def _na_borda_do_livro(paginas: Sequence[Pagina]) -> list[_Ocorrencia]:
+    """As linhas na faixa da borda, de qualquer tamanho: quem filtra a fonte é cada regra."""
     return [
         (pagina.numero, posicao, linha)
         for pagina in paginas
         for posicao, linha in enumerate(pagina.linhas)
-        if _na_borda(linha) and linha.tamanho <= limite
+        if _na_borda(linha)
     ]
 
 
@@ -91,25 +97,37 @@ def _na_borda(linha: Linha) -> bool:
     return linha.topo < FAIXA_DA_BORDA or linha.topo > 1 - FAIXA_DA_BORDA
 
 
-def _numeros_de_pagina(candidatas: Sequence[_Ocorrencia]) -> set[tuple[int, int]]:
+def _numeros_de_pagina(candidatas: Sequence[_Ocorrencia], limite: float) -> set[tuple[int, int]]:
     """Os números cujo deslocamento em relação à página se repete em 3 páginas ou mais.
 
     No Competente, o número impresso é a página - 7 em 398 de 398; no Hard Parts, - 18 em
     429 de 433. Um número sozinho ("2020.", "1.", "mix") não prova sequência e fica.
     """
-    impressos: list[tuple[int, int, str, int]] = []
+    impressos: list[tuple[int, int, _Sequencia]] = []
     for pagina, posicao, linha in candidatas:
         lido = _numero_impresso(linha.texto)
         if lido is not None:
-            impressos.append((pagina, posicao, lido[0], lido[1] - pagina))
+            sequencia = (lido[0], lido[1] - pagina, _tamanho_da_sequencia(linha, limite))
+            impressos.append((pagina, posicao, sequencia))
     # Conta páginas, não ocorrências: o número no alto e no pé da mesma página vale uma vez.
-    paginas_por_sequencia: defaultdict[tuple[str, int], set[int]] = defaultdict(set)
-    for pagina, _, sistema, deslocamento in impressos:
-        paginas_por_sequencia[sistema, deslocamento].add(pagina)
+    paginas_por_sequencia: defaultdict[_Sequencia, set[int]] = defaultdict(set)
+    for pagina, _, sequencia in impressos:
+        paginas_por_sequencia[sequencia].add(pagina)
     coerentes = {
         chave for chave, paginas in paginas_por_sequencia.items() if len(paginas) >= PAGINAS_MINIMAS
     }
-    return {(p, posicao) for p, posicao, sistema, desl in impressos if (sistema, desl) in coerentes}
+    return {(p, posicao) for p, posicao, sequencia in impressos if sequencia in coerentes}
+
+
+def _tamanho_da_sequencia(linha: Linha, limite: float) -> float | None:
+    """None para o número com fonte de rodapé, que se conta junto, de qualquer tamanho.
+
+    O maior que o corpo se conta só com os do mesmo tamanho (ADR-0004, "Número de página
+    maior que o corpo"): no Dalgalarrondo, os 412 números de página têm 12 pt, com o corpo de
+    10; o "3" de 48 pt de uma abertura de capítulo, sozinho no tamanho dele, não faz sequência
+    e fica (A1 da auditoria).
+    """
+    return None if linha.tamanho <= limite else round(linha.tamanho, 1)
 
 
 def _numero_impresso(texto: str) -> tuple[str, int] | None:

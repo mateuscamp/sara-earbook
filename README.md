@@ -23,7 +23,9 @@ A decisão está no [ADR-0001](docs/adr/0001-reescrever-com-claude-code-orquestr
   idêntico em metade ou mais dos arquivos do livro, como a marca d'água "OceanofPDF.com"
   ([ADR-0008](docs/adr/0008-codigo-e-indice-saem-do-audio.md)).
 - A capitular deslocada, que volta para a palavra quando o próprio livro prova que a palavra
-  existe ([ADR-0007](docs/adr/0007-a-proxima-traducao-sem-trabalho-a-mao.md)).
+  existe ([ADR-0007](docs/adr/0007-a-proxima-traducao-sem-trabalho-a-mao.md)). A letra que
+  abre a frase antes de palavra em minúscula, como o artigo em "desejo. A resultante", fica
+  onde está.
 
 Nada sai em silêncio: cada remoção fica registrada em `limpeza.json`, com o segmento de origem.
 
@@ -122,7 +124,8 @@ uv run earbook preparar livro.epub
 O `importar-pdf` grava `livro.epub` ao lado do PDF (ou onde `--epub` mandar), com o título e o
 autor do metadado do PDF (ou os de `--titulo` e `--autor`). O que ele faz:
 
-- tira o número de página e o cabeçalho repetido, pela posição na página;
+- tira o número de página, também o que é maior que o texto, e o cabeçalho repetido, pela
+  posição na página;
 - junta as linhas em parágrafos e devolve inteira a palavra partida no fim da linha;
 - lê a página em duas colunas coluna por coluna, pela calha entre elas, quando os dois lados
   são texto corrido. A tabela continua lida linha a linha;

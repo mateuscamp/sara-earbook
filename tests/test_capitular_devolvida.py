@@ -11,6 +11,8 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
+import pytest
+
 from earbook.dominio.capitular import CapitularDevolvida
 from earbook.dominio.limpeza import Juncao, LivroLimpo, limpar_para_o_ouvido
 from earbook.dominio.segmento import Papel, Segmento
@@ -50,6 +52,49 @@ def test_letra_que_abre_o_paragrafo_seguinte_sai_de_la() -> None:
     livro = _livro(["re we ready?”", "“Ready, sir.”", "A Lothar nodded. They are ready."])
     assert _textos(livro) == ["Are we ready?”", "“Ready, sir.”", "Lothar nodded. They are ready."]
     assert livro.capitulares == (CapitularDevolvida("c001-s0002", "c001-s0004", 0, "A"),)
+
+
+def test_letra_que_abre_frase_antes_de_maiuscula_volta_mesmo_com_o_artigo_no_livro() -> None:
+    # "A Lothar" abre frase, mas antes de nome; o "a" minúsculo do livro não a prende no lugar.
+    livro = _livro(["re we ready?”", "“Ready, sir.”", "A Lothar nodded. They are a band."])
+    assert _textos(livro) == ["Are we ready?”", "“Ready, sir.”", "Lothar nodded. They are a band."]
+
+
+@pytest.mark.parametrize(
+    ("capitulo", "outro"),
+    [
+        # Dalgalarrondo c006-s0019: "forma-" / [número de página] / "ção de compromisso".
+        (
+            ["ção de compromisso, um arranjo do desejo. A resultante desse arranjo é o sintoma."],
+            "A ação do desejo é forte, e a norma também.",
+        ),
+        # Dalgalarrondo c025-s0047: "espe-" / [número de página] / "lho"; a pista abre o seguinte.
+        (["lho, não via sua imagem.", "A noção de Eu é antiga."], "O alho e a cebola."),
+    ],
+    ids=["no mesmo paragrafo", "abrindo o seguinte"],
+)
+def test_artigo_que_abre_frase_antes_de_minuscula_nao_e_capitular(
+    capitulo: list[str], outro: str
+) -> None:
+    # O artigo "A" que abre a frase está no lugar dele, e o livro prova a palavra colada
+    # ("Ação", "Alho"): saía "Ação de compromisso" e "desejo. resultante", trocando palavra nas
+    # duas pontas (ADR-0007, "A letra que abre frase").
+    livro = _livro(capitulo, [outro])
+    assert _textos(livro) == capitulo
+    assert livro.capitulares == ()
+    assert [s.id for s in livro.suspeitas] == ["c001-s0002"]
+
+
+@pytest.mark.parametrize("fim", [".\u201d ", ".) ", "?\u2019 ", ": ", "; "])
+def test_artigo_depois_de_aspa_parentese_dois_pontos_ou_ponto_e_virgula_abre_frase(
+    fim: str,
+) -> None:
+    # Lote A da revisão: a aspa e o parêntese que fecham a frase, o ":" e o ";" também
+    # abrem a frase seguinte, e o artigo depois deles fica no lugar (ADR-0007).
+    texto = f"ção de compromisso, um arranjo do desejo{fim}A resultante desse arranjo é o sintoma."
+    livro = _livro([texto], ["A ação do desejo é forte, e a norma também."])
+    assert _textos(livro) == [texto]
+    assert livro.capitulares == ()
 
 
 def test_apostrofo_reto_e_tipografico_sao_o_mesmo_na_prova() -> None:

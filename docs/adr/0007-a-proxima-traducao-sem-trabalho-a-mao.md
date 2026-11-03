@@ -267,6 +267,87 @@ Remedido depois das correções, em pastas novas (`tides-adr0007-revisado.earboo
 `hard-parts-adr0007-revisado.earbook`): `limpos/` é idêntico ao da primeira medição nos dois
 livros. O registro do Tides é o mesmo, agora ordenado por ID.
 
+### A letra que abre frase (2026-11-02)
+
+No Dalgalarrondo (pt-BR, PDF em duas colunas), o número de página de 12 pt virava título
+(ADR-0004, "Número de página maior que o corpo"). O texto que vinha depois dele começava em
+minúscula, às vezes no meio de uma palavra ("ção de compromisso", de "forma-" na página
+anterior), e era marcado como capitular perdida. A pista achava o artigo "A" ou "O" que abre
+uma frase próxima, e o livro provava a palavra colada ("A" + "ção" = "Ação"). Foram 9
+capitulares devolvidas, todas falsas, que trocam palavra nas duas pontas, em silêncio:
+"desejo. A resultante" → "desejo. resultante", e "lho, não via" → "Alho, não via". O ADR-0004
+tira o gatilho, mas a regra tem de recusar esse caso sozinha, porque outro título falso
+(cabeçalho, rótulo) faria o mesmo.
+
+A diferença está na caixa: a maiúscula no começo da frase é a caixa normal da palavra, e a
+capitular deslocada é a maiúscula fora do lugar ("stirred, D unable", "vantage A point").
+
+Medido nas pistas, na base de hoje:
+- **Dalgalarrondo:** as 9 devolvidas abrem frase antes de palavra em minúscula ("diagnóstico.
+  A validade", "3. A prosopagnosia", "A noção de Eu"), assim como 120 das 136 suspeitas com
+  pista. "a", "o" e "e" aparecem milhares de vezes sozinhos e em minúscula.
+- **Tides, 24 devolvidas certas:** só "G demanded." (`c004-s0488`) abre frase antes de
+  minúscula, e "g" nunca aparece sozinho em minúscula no livro. "A Lothar", "N Dragonmaw" e
+  "A Daelin" vêm antes de maiúscula, e as outras 20 estão no meio da frase.
+- **Hard Parts:** nenhuma das 16 suspeitas com pista abre frase antes de minúscula ("saga A
+  long story" e as letras do índice, sem palavra depois).
+- **Huxley, Competente e Learning DDD:** nenhuma pista.
+
+**Decisão:** a letra da pista é palavra no lugar dela, e a capitular não volta, quando três
+coisas valem juntas:
+- **abre frase:** está no começo do segmento, depois das aspas e travessões, ou depois de fim
+  de frase (`. ! ? … : ;`, com aspa ou parêntese que fecha) e de espaço;
+- **a palavra seguinte** começa em minúscula;
+- **a letra é palavra minúscula no livro:** aparece sozinha, em minúscula, em algum lugar ("a",
+  "o", "e").
+
+O Mateus aprovou a regra, junto com a do número de página do ADR-0004 ("Sim, as duas").
+
+As três juntas porque cada uma sozinha recusa uma do Tides: sem a minúscula seguinte, "A
+Lothar" ficaria; sem a palavra minúscula, "G demanded." ficaria. É a mesma regra do ambíguo
+(seção 1): a letra no lugar é uma terceira leitura, e com duas leituras nada muda. A suspeita
+fica no registro com a pista, como hoje.
+
+O que se perde:
+- **A capitular de verdade que é palavra** e cai no começo de uma frase, antes de minúscula
+  ("…disse ele. O rei" com o "O" da capitular), fica suspeita. É a leitura que imita o artigo,
+  e o livro não a distingue; o "Perde" deste ADR já aceitava a letra que é palavra.
+- **A letra que aparece em minúscula por outro motivo** ("5 g de", "p. 32") conta como palavra:
+  a capitular nessa letra, no começo de frase antes de minúscula, também fica suspeita. Nenhum
+  caso nos livros medidos.
+- **Fica de fora:** o artigo antes de maiúscula ("A Maria disse") não é recusado e ainda vira
+  capitular falsa, se o livro provar a palavra colada. Nenhum caso medido; no Dalgalarrondo, as
+  9 vinham antes de minúscula.
+
+Medido depois do código, contra o HEAD `50cd35b` (o protótipo, numa cópia descartável, deu o
+mesmo):
+- **Só esta regra, no EPUB do Dalgalarrondo de hoje:** capitulares devolvidas 9 → 0; suspeitas
+  197 → 206 (as 9 voltam a suspeitas, com a pista).
+- **Com a regra do número de página do ADR-0004:** 0 devolvidas e 0 "capitular perdida?". As 9
+  palavras voltam certas pela emenda da página ("como uma “forma-” + “ção de compromisso”" →
+  "formação de compromisso"; "desejo. A resultante" fica como no livro).
+- **Tides, Huxley, Learning DDD, Competente e Hard Parts:** `segmentos/`, `limpos/`,
+  `limpeza.json` e `livro.json` idênticos. As traduções do Tides e do Learning DDD não ficam
+  velhas.
+
+Correções da code-review e da code-audit, aprovadas pelo Mateus ("A e B"):
+- **A, teste:** nenhum teste prendia a aspa e o parêntese que fecham a frase, nem o ":" e o
+  ";". Com o mutante que tirava a aspa, a suíte passava, e "…é o desejo.” A resultante" voltava
+  a trocar palavra. O comportamento já existia, e o teste passou na hora; ele reprova na
+  asserção com cada um dos dois mutantes (3 e 2 casos).
+- **B, simplificação:** a guarda recebe a pista, em vez de reler a letra no texto, e olha só o
+  fim do que vem antes da letra, em vez de varrer o parágrafo com uma expressão regular. Os
+  seis livros saem idênticos.
+
+Registrados, sem correção, porque não têm caso nos livros medidos:
+- o ponto de abreviação ("Sr. A") conta como fim de frase e recusa a capitular verdadeira
+  depois dele, o que é o lado seguro;
+- a guarda olha a letra, e não o parágrafo que a recebe. Num título falso, o artigo antes de
+  maiúscula ("compromisso, A Maria disse.") ainda vira "Ação…". A guarda no parágrafo que recebe
+  (o parágrafo antes do título não fecha a frase) atacaria a causa: medido, 8 das 9 falsas do
+  Dalgalarrondo tinham o anterior aberto, e os 21 do Tides que têm parágrafo antes do título o
+  tinham fechado.
+
 ## O resto da lista, para o Mateus escolher a ordem
 
 Defeitos que se ouvem e que ficam fora desta rodada:
@@ -306,7 +387,7 @@ Defeitos que se ouvem e que ficam fora desta rodada:
 
 | O que verifica | Mecanismo | Onde roda | Falha quando |
 |---|---|---|---|
-| Capitular devolvida e registrada | testes com EPUB sintético: letra no mesmo segmento, no seguinte, o "A" que é palavra, o "A" sem prova, o "I", a junção depois da devolução | portão | a letra fica solta, sai sem registro ou entra onde o livro não prova |
+| Capitular devolvida e registrada | testes com EPUB sintético: letra no mesmo segmento, no seguinte, o "A" que é palavra, o "A" sem prova, o "I", a junção depois da devolução, o artigo que abre frase antes de minúscula | portão | a letra fica solta, sai sem registro ou entra onde o livro não prova |
 | Contagens dos livros | `preparar` no Huxley e no Tides, comparado com o ADR-0003 | a cada mudança na limpeza | contagem diferente sem explicação |
 | Termo declarado | `conferir` no modo tradução | antes do `montar` (recusa) e testes | termo fora do glossário ou com forma diferente |
 | Conferir de um capítulo | teste: `--capitulo` mostra só os IDs e lotes do capítulo, e nenhum do glossário | portão | problema de outro capítulo aparece |

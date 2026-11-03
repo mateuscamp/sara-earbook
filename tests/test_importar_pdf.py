@@ -93,6 +93,32 @@ def test_pagina_em_duas_colunas_e_lida_uma_coluna_depois_da_outra(tmp_path: Path
     assert [bloco.texto for bloco in importacao.livro.blocos] == [" ".join(ESQUERDA + DIREITA)]
 
 
+PARAGRAFO_QUE_VIRA_A_PAGINA = (
+    ("O conceito de normalidade em psicopatologia", "é questão de grande controvérsia e segue"),
+    ("pela página seguinte, até chegar ao ponto", "final do parágrafo inteiro."),
+    ("Outro parágrafo abre a terceira página", "e fecha o livro."),
+)
+
+
+def test_numero_de_pagina_maior_que_o_corpo_sai_e_nao_parte_o_paragrafo(tmp_path: Path) -> None:
+    # Dalgalarrondo: o número de 12 pt no alto, com o corpo de 10 pt, virava título, era lido
+    # ("trinta e dois") e partia o parágrafo que vinha da página anterior (ADR-0004, "Número
+    # de página maior que o corpo").
+    paginas = [
+        [
+            LinhaDeTeste(str(numero), 72, 745, tamanho=12),
+            *(LinhaDeTeste(t, 72, 700 - n * ENTRELINHA, tamanho=10) for n, t in enumerate(linhas)),
+        ]
+        for numero, linhas in enumerate(PARAGRAFO_QUE_VIRA_A_PAGINA, 1)
+    ]
+    importacao = importar_pdf(montar_pdf(tmp_path / "livro.pdf", paginas), tmp_path / "livro.epub")
+    assert [bloco.texto for bloco in importacao.livro.blocos] == [
+        " ".join(PARAGRAFO_QUE_VIRA_A_PAGINA[0] + PARAGRAFO_QUE_VIRA_A_PAGINA[1]),
+        " ".join(PARAGRAFO_QUE_VIRA_A_PAGINA[2]),
+    ]
+    assert [r.motivo for r in importacao.remocoes] == ["número de página"] * 3
+
+
 def test_importar_pdf_recusa_epub_que_ja_existe_antes_de_ler_o_pdf(tmp_path: Path) -> None:
     # Um PDF de 500 páginas leva minutos: a recusa vem antes. Se o PDF fosse lido
     # primeiro, o erro seria de PDF inválido, não de arquivo existente.

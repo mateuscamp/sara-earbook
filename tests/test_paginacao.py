@@ -128,6 +128,32 @@ def test_numero_de_capitulo_grande_no_alto_fica() -> None:
     ]
 
 
+def test_numero_de_pagina_maior_que_o_corpo_sai_quando_segue_a_paginacao() -> None:
+    # Dalgalarrondo: o número tem 12 pt, e o corpo, 10 (ADR-0004, "Número de página maior
+    # que o corpo"). Aqui, 12,6 pt contra o corpo de 10,5, na mesma proporção.
+    limpas = _limpar(*[[_linha(str(n), ALTO, tamanho=12.6), _corpo(n)] for n in (1, 2, 3)])
+    assert [r.motivo for r in limpas.remocoes] == ["número de página"] * 3
+
+
+def test_numero_grande_nao_completa_a_sequencia_dos_numeros_de_rodape() -> None:
+    # O número grande forma a sua própria sequência: este "10" de 24 pt segue a paginação dos
+    # números do pé (página + 7), mas é o único do tamanho dele, e fica.
+    limpas = _limpar(*_paginas_numeradas((3, _linha("10", ALTO, tamanho=24))))
+    assert [(linha.texto, linha.tamanho) for linha in limpas.paginas[2].linhas] == [
+        (_corpo(3).texto, 10.5),
+        ("10", 24),
+    ]
+
+
+def test_numeros_de_rodape_de_tamanhos_diferentes_formam_uma_sequencia_so() -> None:
+    # Só o número maior que o corpo se conta por tamanho; o de rodapé, como antes, junto.
+    tamanhos = (9, 9, 8)
+    limpas = _limpar(
+        *[[_corpo(n), _linha(str(n + 7), PE, tamanho=t)] for n, t in enumerate(tamanhos, 1)]
+    )
+    assert [r.motivo for r in limpas.remocoes] == ["número de página"] * 3
+
+
 def test_romano_grande_no_alto_fica() -> None:
     limpas = _limpar(*_paginas_numeradas((2, _linha("IV", ALTO, tamanho=24))))
     assert "IV" in [linha.texto for linha in limpas.paginas[1].linhas]

@@ -75,7 +75,7 @@ Limites registrados pela auditoria, sem caso nos livros medidos:
 - **A5:** a faixa é medida na MediaBox, não na CropBox. Com sangria, o cabeçalho cai fora da faixa e fica (falso negativo).
 - **A8:** a marca de fonte monoespaçada vem do nome da fonte e erra nos dois sentidos (`MonotypeCorsiva` passa como mono, `CMTT10` não). Desde a montagem de blocos, a marca decide o que é código: o erro vira prosa lida como código (vai para `<pre>`, e o `preparar` a lê como parágrafo do mesmo jeito) ou código lido como prosa.
 - **P2 (pós-auditoria):** um PDF de ~1,5 KB, com coordenadas enormes, prendeu o pdfminer por mais de 120 s na análise de layout (`find_neighbors`). O comando `importar-pdf` existe e ainda não tem o limite de tempo por página: um PDF assim prende o comando até o Ctrl+C, que sai sem deixar EPUB. Continua registrado para o próximo ciclo.
-- **Revisão nº 4:** número de página com fonte maior que a do corpo + 0,5 pt (12 pt com corpo de 10,5) não sai, porque o filtro de fonte protege número e título de capítulo grandes (A1). É falso negativo aceito: o número fica no áudio.
+- **Revisão nº 4:** número de página com fonte maior que a do corpo + 0,5 pt (12 pt com corpo de 10,5) não sai, porque o filtro de fonte protege número e título de capítulo grandes (A1). É falso negativo aceito: o número fica no áudio. Resolvido em "Número de página maior que o corpo" (2026-11-02).
 
 Correções da revisão e da pós-auditoria (2026-11-01): o `try` do adaptador cobre só o pdfminer, com captura ampla nessa borda (P1: `AttributeError` escapava), e bug da nossa conversão continua aparecendo como bug; a sequência de números conta páginas, não ocorrências; alto e pé são agrupados separadamente antes da mediana do topo; o ponto deixou de ser separador de número ("1.2" virava 12).
 
@@ -298,6 +298,44 @@ Contra a primeira versão das colunas, o Competente e o Hard Parts saem idêntic
 Achados na medição, de outras regras, que a ordem certa deixou à vista:
 - **Número de página maior que o corpo:** 193 das 194 "capitular perdida?" que sobram no Dalgalarrondo vêm do número de página em 12 pt (corpo de 10), que a paginação não tira (limite "Revisão nº 4"). Ele vira título no alto de cada página, é lido ("32") e parte o parágrafo que vem da página anterior. Antes da regra das colunas, a causa era a mesma, só que escondida no meio do intercalado.
 - **Capitular falsa em português:** as 9 "capitulares devolvidas" do Dalgalarrondo são todas falsas, e na base já eram 4. Depois do número de página que virou título, a pista do ADR-0007 ("a primeira maiúscula sozinha, fora o I") acha o artigo "A" ou "O" de uma frase próxima e o cola no começo do parágrafo em minúscula: "lho, não via" vira "Alho, não via", e "desejo. A resultante" vira "desejo. resultante". O texto fica errado nas duas pontas.
+
+Os dois foram resolvidos em "Número de página maior que o corpo", abaixo, e no ADR-0007, "A letra que abre frase".
+
+### Número de página maior que o corpo (2026-11-02)
+
+No Dalgalarrondo, o número de página tem 12 pt, e o corpo, 10. A primeira regra só olha, na faixa da borda, a linha com fonte de rodapé (até o corpo + 0,5 pt), para não tirar o número de capítulo grande (A1), e por isso o número ficava (limite "Revisão nº 4"). Ele virava título no alto de 402 páginas, era lido ("trinta e dois") e partia o parágrafo que vinha da página anterior. Respondia pelas 194 "capitular perdida?" do livro (193 com o número sozinho; 1 com ele colado ao cabeçalho, "14 Prefácio da 1a edição") e era o gatilho das 9 capitulares falsas.
+
+Medido na faixa da borda dos três PDFs, contando só as linhas que são número:
+- **Dalgalarrondo:** 412 números maiores que o corpo + 0,5 pt, todos de 12 pt, a 0,069 do alto e com o número impresso igual à página do PDF. As 26 páginas sem número são a abertura do livro (p. 1–23), aberturas de parte e páginas em branco.
+- **Competente e Hard Parts:** nenhum. Os números deles são de 7,5 e 9 pt.
+- **Número de capítulo:** fica fora da faixa nos três (60 pt no Dalgalarrondo, 30 pt no Competente, 12 e 14 pt no Hard Parts).
+
+**Decisão: o número grande forma a sua própria sequência.** O número maior que o corpo + 0,5 pt também passa pela regra do número de página, mas a sequência dele se conta só entre os números do mesmo tamanho. Ele sai quando os números daquele tamanho, sozinhos, seguem a paginação com o mesmo deslocamento em 3 páginas ou mais. O número de rodapé, até o corpo + 0,5 pt, continua contado junto, de qualquer tamanho, como hoje. A linha repetida continua só com fonte de rodapé: "Capítulo N" em 20 pt no alto de três aberturas fica (A1). O "3" em 48 pt e o "IV" em 24 pt de uma abertura de capítulo também ficam, porque sozinhos no tamanho deles não fazem sequência; são os testes do A1, que continuam valendo.
+
+O que se perde: a seção numerada uma por página, com o número no alto num tamanho só dela e acompanhando a paginação (soneto, exercício, ficha), passa a sair como número de página e não é lida. Não há caso nos três PDFs. Hoje, o mesmo já acontece quando esse número tem o tamanho do corpo.
+
+Medido depois do código, junto com a regra do ADR-0007 ("A letra que abre frase"), contra o HEAD `50cd35b`, nas pastas `*-base-pagina` e `*-pagina` de `livros/trabalho/`. O protótipo, numa cópia descartável, tinha dado os mesmos números:
+
+| Livro | `importar-pdf` | `preparar` |
+|---|---|---|
+| *Dalgalarrondo* | número de página 0 → 412; títulos 586 → 222: saem os 402 títulos só de número, e o número sai também do começo de 6 títulos ("12 Prefácio à 2a edição"). Os 41 títulos de número que ficam são números de capítulo. Parágrafos 3.697 → 3.479; hífen tirado 10.890 → 10.962 | segmentos 4.454 → 3.872; junções 19 → 19; capitulares devolvidas 9 → 0; suspeitas 197 → 3 ("capitular perdida?" 194 → 0; ficam as 3 linhas curtas) |
+| *Competente*, *Hard Parts* | igual: o EPUB só muda no `dc:identifier`, sorteado a cada importação | `segmentos/`, `limpos/`, `limpeza.json` e `livro.json` idênticos (só muda o nome do EPUB de origem) |
+
+O que acontece com o texto que vinha depois dos 402 números que eram título:
+- **195 emendas certas:** o parágrafo partido pela página volta inteiro. Em 64 delas, o hífen da virada também volta a juntar a palavra ("que com- 24 preende" → "que compreende"). Em mais 8, volta certa a palavra que a capitular falsa tinha trocado ("como uma “forma- 37 Ação de compromisso”" → "como uma “formação de compromisso”"). Uma fica com o hífen no meio, pela regra do composto (B2): "não-correspon- 410 didos" → "não-correspon-didos".
+- **100 parágrafos novos,** quando a frase fecha no pé da página, e **79 títulos.**
+- **21 emendas no título de um quadro.** Quando a página termina num Quadro ou numa tabela (que viram nota, defeito fora deste ciclo), a continuação em minúscula retoma o título do quadro: "Semiotécnica simplificada da afasia nica, por conflitos interpessoais ou por imitação.". Na base, o mesmo pedaço já era um parágrafo solto depois do número lido ("239. nica, por conflitos…"). Nos dois casos, o começo da frase fica antes do quadro. O conserto é o do Quadro.
+- **6 junto ao destaque de margem repetido,** também fora deste ciclo, e 1 "(continuação)" de tabela.
+
+O Mateus aprovou as duas regras, esta e a do ADR-0007 ("Sim, as duas"), e aceitou as 21 emendas no título do quadro até o ciclo do Quadro.
+
+Ficam como limite conhecido:
+- **o cabeçalho de duas páginas:** "Prefácio da 1a edição", em 9 pt no alto das p. 14 e 15, não chega às 3 páginas da linha repetida e fica, como antes. Sem o número que o colava num título ("14 Prefácio da 1a edição"), ele entra no meio da frase partida pela página: "Bernard e Si- Prefácio da 1a edição mone Trouvé (1977)". As junções continuam 19 porque esta entra e uma sai: a de `c011`, "Sullivan (1983) afirmava que" + "o entrevistador desempenha", que é um dos 21 casos do quadro, abaixo. O começo da frase ("senciais da clínica…") vai para o título do quadro, e "o entrevistador desempenha…" fica depois do quadro, num parágrafo próprio;
+- **a continuação emendada no título do quadro:** quando a página termina num Quadro ou numa tabela, que viram nota, a continuação em minúscula da página seguinte retoma o título do quadro, e não o parágrafo de antes dele ("Semiotécnica simplificada da afasia nica, por conflitos interpessoais ou por imitação.", p. 239; "Exemplos de formulação diagnóstica satisfatoriamente o objeto pesquisado…", p. 44). Some com o conserto do Quadro, que precisa tirar o quadro do fluxo do parágrafo.
+
+Registrados pela code-review, sem correção, porque não têm caso nos três PDFs:
+- **o tamanho exato:** a sequência do número grande se conta pelo tamanho arredondado a 0,1 pt. Um PDF com o número entre 11,9 e 12,0 pt parte a sequência em duas, e a parte com menos de 3 páginas fica no áudio. No Dalgalarrondo, os 412 têm 12,0;
+- **sem a altura:** o número grande do alto e o do pé se contam juntos, e a altura não é cobrada. Um número de tabela, maior que o corpo, que acompanhe a paginação em 3 páginas na faixa da borda sairia como número de página.
 
 ## Consequências
 

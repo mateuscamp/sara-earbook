@@ -14,6 +14,10 @@ from typing import Protocol
 from earbook.dominio.segmento import ABRE_PARAGRAFO, PALAVRA
 
 _ANTES_DA_PALAVRA = re.compile(ABRE_PARAGRAFO)
+# O fim da frase antes da letra que abre a seguinte ("desejo. A", "3. A"), com a aspa ou o
+# parêntese que fecham a frase entre os dois ("desejo.” A").
+_FIM_DA_FRASE = tuple(".!?\u2026:;")
+_FECHA_A_FRASE = '"\u201d\u2019)'
 
 
 class _Pista(Protocol):
@@ -56,15 +60,23 @@ class Leitura:
 
 class Vocabulario:
     """As palavras e os pares de palavras do livro, sem caixa e com um apóstrofo só: é a
-    prova de que a palavra reconstruída existe ("Dawn", "Gul'dan", "a dark")."""
+    prova de que a palavra reconstruída existe ("Dawn", "Gul'dan", "a dark"). Guarda também
+    as letras que o livro usa sozinhas em minúscula ("a", "o", "e"): as que são palavra."""
 
     def __init__(self, textos: Iterable[str]) -> None:
         self._palavras: set[str] = set()
         self._pares: Counter[tuple[str, str]] = Counter()
+        self._letras_minusculas: set[str] = set()
         for texto in textos:
-            palavras = [_normal(p.group()) for p in PALAVRA.finditer(texto)]
+            cruas = [p.group() for p in PALAVRA.finditer(texto)]
+            self._letras_minusculas.update(p for p in cruas if len(p) == 1 and p.islower())
+            palavras = [_normal(p) for p in cruas]
             self._palavras.update(palavras)
             self._pares.update(itertools.pairwise(palavras))
+
+    def letra_e_palavra(self, letra: str) -> bool:
+        """`letra_e_palavra("A")` é True quando o livro tem "a" sozinho, em minúscula."""
+        return letra.lower() in self._letras_minusculas
 
     def leitura(self, letra: str, primeira: str, *, da_pista: bool) -> Leitura | None:
         """None quando nenhuma leitura existe ou quando as duas existem. Com `da_pista`, um
@@ -103,11 +115,37 @@ def leituras(
         primeira = primeira_palavra(suspeita.texto)
         pista = suspeita.pista
         depois = PALAVRA.search(textos[pista.id], pista.posicao + 1)
+        if _no_lugar(pista, textos[pista.id], depois, vocabulario):
+            continue
         da_pista = depois is not None and _normal(depois.group()) == _normal(primeira)
         leitura = vocabulario.leitura(pista.letra, primeira, da_pista=da_pista)
         if leitura is not None:
             propostas.append((suspeita, leitura))
     return propostas
+
+
+def _no_lugar(
+    pista: _Pista, texto: str, depois: re.Match[str] | None, vocabulario: Vocabulario
+) -> bool:
+    """A letra que abre frase, antes de palavra em minúscula, e que o livro usa como palavra:
+    é o artigo no lugar dele ("desejo. A resultante"), não a capitular (ADR-0007, "A letra que
+    abre frase"). "A Lothar" (antes de nome) e "G demanded." (o livro não tem "g") voltam.
+    `texto` é o do segmento da pista."""
+    return (
+        depois is not None
+        and depois.group()[0].islower()
+        and _abre_frase(texto, pista.posicao)
+        and vocabulario.letra_e_palavra(pista.letra)
+    )
+
+
+def _abre_frase(texto: str, posicao: int) -> bool:
+    """A letra está no começo do parágrafo, depois das aspas e travessões, ou depois de fim de
+    frase e de espaço. Só o fim do que vem antes dela importa (lote B da revisão)."""
+    if _inicio_da_palavra(texto) == posicao:
+        return True
+    antes = texto[:posicao].rstrip()
+    return len(antes) < posicao and antes.rstrip(_FECHA_A_FRASE).endswith(_FIM_DA_FRASE)
 
 
 def devolver_uma(

@@ -258,8 +258,9 @@ def _resumo_da_importacao(importacao: Importacao) -> str:
     linhas.append(
         f"Blocos: {titulos} títulos, {paragrafos} parágrafos, {codigo} de código, {notas} notas."
     )
+    tiradas = len(importacao.remocoes)
     linhas.append(
-        f"{len(importacao.remocoes)} linhas tiradas da página: a borda e o texto escondido."
+        f"{tiradas} linhas tiradas da página: a borda, o texto escondido e o texto repetido."
     )
     motivos = Counter(r.motivo for r in importacao.remocoes)
     linhas += [f"  {motivo}: {n}" for motivo, n in motivos.most_common()]

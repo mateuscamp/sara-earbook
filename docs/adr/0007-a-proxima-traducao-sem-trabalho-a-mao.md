@@ -243,6 +243,12 @@ O `preparar` rodou em pastas novas (`livros/trabalho/tides-adr0007.earbook` e
   `conferir` acusa 36 segmentos com "o texto em limpos/ mudou depois do pedido", em 24 lotes, e o
   `c004-s0488` como "traduzido, mas não está em limpos/". Refazer custaria 24 lotes. Por isso a
   pasta traduzida fica como está: o livro pronto já tem as capitulares certas.
+- **O Tides não se prepara de novo sem traduzir de novo** (medido em 2026-11-03, no HEAD
+  `56b7891`, na pasta `tides-base-curto`): um `preparar` novo dá um `limpos/` diferente do da pasta
+  traduzida em 4 capítulos (`c004` a `c007`): 36 segmentos com o texto mudado ("Dawn" no HEAD,
+  "awn" na traduzida) e o `c004-s0488`. A pasta `livros/trabalho/tides.earbook` é de antes da
+  capitular deste ADR. Preparar o Tides de novo exige traduzir de novo esses capítulos, ou os 24
+  lotes acima.
 
 ### Correções da revisão (2026-11-02)
 

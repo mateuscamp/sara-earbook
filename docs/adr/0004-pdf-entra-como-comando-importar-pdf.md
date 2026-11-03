@@ -598,7 +598,8 @@ O Mateus aprovou as seis regras, com o cabeçalho na forma estreita ("Aprovar").
   tiradas da página: a borda e o texto escondido".
 - **Medido nos três PDFs:** só os 3 da p. 275.
   - O texto repetido por cima, do mesmo tamanho, fica. É negrito feito à mão: "Conheça também"
-    no Dalgalarrondo (p. 2) e "Beijing" no Hard Parts (p. 5).
+    no Dalgalarrondo (p. 2) e "Beijing" no Hard Parts (p. 5). Desde 2026-11-03, a cópia sai por
+    outra regra ("Negrito feito à mão", abaixo).
   - A letra miúda sobreposta também fica: Hard Parts p. 462, de 0,7 a 3,6 pt.
 - **O que se perde:**
   - o texto escondido do tamanho do corpo continua;
@@ -731,11 +732,68 @@ commit"). Os seis livros saíram idênticos à medição acima.
 
 **Fila, achada nesta medição e fora do ciclo** (vai para um ciclo curto depois deste):
 - **"Conheça Conheça Conheça também…"** (`c001-s0002`, p. 2): negrito feito com o texto repetido
-  por cima, do mesmo tamanho. É lido cinco vezes;
+  por cima, do mesmo tamanho. É lido cinco vezes. Resolvido em "Negrito feito à mão", abaixo;
 - **o índice remissivo do Dalgalarrondo** (p. 433 em diante): continua lido. É "o índice do PDF
-  importado", já pendente no `AGENTS.md`;
+  importado", já pendente no `AGENTS.md`. Resolvido no ADR-0008, "Índice pelo conteúdo";
 - **a bibliografia do Competente** (p. 481 a 503): 118 referências ABNT partidas entre nota e
-  parágrafo, que nunca chegam a 10 seguidas. São 226 notas.
+  parágrafo, que nunca chegam a 10 seguidas. São 226 notas. Fica, por decisão do Mateus (ADR-0008,
+  "Índice pelo conteúdo", "A bibliografia do Competente").
+
+### Negrito feito à mão (2026-11-03)
+
+- **O defeito:** na p. 2 do Dalgalarrondo, "Conheça também" (24 pt) está desenhado cinco vezes,
+  deslocado de 0,5 a 1 pt, para engrossar a letra. O pdfminer devolve 9 linhas na mesma altura:
+  4 "Conheça", 4 "também" e 1 "Conheça também". A voz lia "Conheça Conheça Conheça também
+  Conheça Conheça também também também também" (`c001-s0002`).
+- **O mesmo defeito no Hard Parts,** também lido: na p. 5, as cidades da editora estão desenhadas
+  duas vezes, no mesmo lugar ("Beijing Beijing Boston Boston Farnham Sebastopol Farnham
+  Sebastopol Tokyo Tokyo", `c001-s0015`).
+- **Medido no HEAD `56b7891`** (pares de linhas na mesma altura que se sobrepõem na horizontal,
+  pastas `*-base-curto`):
+  - **Dalgalarrondo:** 20 pares do mesmo tamanho, com o texto de uma contido no da outra, todos na
+    p. 2;
+  - **Competente:** nenhum;
+  - **Hard Parts:** 4 pares na p. 5, idênticos e no mesmo x, e 3 pares "l"/"l" na p. 462. A
+    p. 462 é texto vertical, uma letra por linha ("O'Reilly Media, Inc. is a registered
+    trademark…"), e o "ll" de "Reilly" são duas linhas iguais, a 0,0014 de altura.
+- **A regra** (`dominio/texto_escondido.py`, no mesmo passo do texto escondido): sai a linha que é
+  cópia de outra. Uma linha é cópia quando:
+  - as duas estão na mesma altura (`MESMA_ALTURA`) e no mesmo tamanho (até 0,5 pt);
+  - o texto dela está contido no da outra;
+  - a outra cobre 90% ou mais da largura dela;
+  - ela tem 2 letras ou mais.
+
+  Entre duas iguais, fica a primeira na ordem da página, e a que contém as outras ("Conheça
+  também") sempre fica. O motivo é "texto repetido por cima: negrito feito à mão", e ele aparece
+  no resumo do `importar-pdf`.
+- **Recusado: deduplicar no adaptador** (`adaptadores/pdf.py`). O pdfminer já entrega as cópias
+  em linhas separadas, e a decisão é do domínio: o adaptador só traduz a biblioteca.
+- **O teste que mudou:** `test_texto_repetido_por_cima_do_mesmo_tamanho_fica`, de "O que ficou da
+  Fase 1", dizia que as duas cópias ficavam. Ele virou
+  `test_texto_repetido_por_cima_do_mesmo_tamanho_nao_e_escondido`: a guarda de que a cópia não é
+  texto escondido continua, e agora uma cópia sai, com o motivo do repetido.
+- **O que se perde:**
+  - a cópia de uma letra só fica (a guarda do texto vertical);
+  - a cópia deslocada mais de 10% da largura fica;
+  - uma linha contida noutra, do mesmo tamanho, na mesma altura e por cima dela, sairia. Não há
+    caso: no texto composto, duas linhas não ocupam o mesmo lugar.
+- **Medido depois do código** (pastas `*-curto`, idênticas ao protótipo `*-prototipo-curto`):
+  - **Dalgalarrondo:** saem 8 linhas, e "Conheça também" é lido uma vez;
+  - **Hard Parts:** saem 4 linhas, e fica "Beijing Boston Farnham Sebastopol Tokyo". O texto da
+    p. 462 não muda;
+  - **Competente:** o XHTML do EPUB é idêntico.
+
+O Mateus aprovou ("Aprovar"), junto com o índice pelo conteúdo do ADR-0008.
+
+Correções da code-review e da code-audit (2026-11-03), aprovadas pelo Mateus ("Sim, e
+commitar"). Os seis livros saíram idênticos à medição acima.
+- **R1, um registro só:** a cópia se procura entre as linhas que ficam depois do texto escondido.
+  O título escondido desenhado duas vezes saía duas vezes no registro, como escondido e como
+  repetido. Não há caso nos três PDFs. O teste novo foi visto falhar na asserção antes.
+- **R2, o resumo:** a linha do `importar-pdf` passa a "N linhas tiradas da página: a borda, o
+  texto escondido e o texto repetido.", com teste visto falhar antes.
+- **Pendência, guarda sem teste que não muda os três PDFs:** M6, a largura maior que zero da
+  cópia. E M7 é equivalente: entre duas cópias de texto igual, qual fica não muda o livro.
 
 ## Consequências
 
@@ -755,7 +813,8 @@ commit"). Os seis livros saíram idênticos à medição acima.
 | O portão continua leve | tempo do `make check` | a cada mudança no conversor; responsável: Mateus | passar de 30 s |
 | O destaque não cola no texto | testes (`tests/test_destaque.py`): a letra menor na virada de coluna abre parágrafo, para os dois lados; a mesma letra, ou meio ponto de diferença, segue; a letra menor sem virada segue; do PDF de ponta a ponta, a frase da p. 250 volta inteira | portão | o destaque cola na frase, ou um parágrafo sem destaque se parte |
 | O quadro fica no lugar | testes (`tests/test_quadro.py`): o conteúdo do quadro é parágrafo, não nota; a frase interrompida volta inteira, com o quadro depois, também quando o quadro acaba em linha de 9 pt; o quadro espera o destaque que parte a continuação; fica no lugar entre parágrafos, entra antes do título seguinte e não se perde no fim do livro; o rótulo seguido ("Quadro" ou "Tabela") e a linha de 11 pt continuam o quadro, e os quadros seguidos esperam juntos a frase acabar; a letra do corpo e o título o fecham, e o corpo colado à última linha do quadro abre bloco próprio; o código dentro do quadro não retoma o texto, e a linha em maiúscula depois do quadro também não; o título "Quadro clínico", sem número, não abre quadro; a menção no corpo não o abre; do PDF de ponta a ponta, as p. 43 e 44 | portão | conteúdo de quadro vira nota, a frase se emenda no quadro, ou um bloco de quadro some |
-| O que ficou da Fase 1 | testes: o versalete feito à mão é título e o continua a linha de maiúsculas seguinte, e as maiúsculas de um tamanho só, a minúscula e o símbolo maior não são versalete, e as maiúsculas depois de uma nota continuam nota (`tests/test_versalete.py`, com o adaptador lendo um PDF); a linha de título sobre outra de outro tamanho sai, e o texto repetido do mesmo tamanho, a linha ao lado e a letra miúda ficam; o `importar-pdf` não abre o capítulo falso (`tests/test_texto_escondido.py`); os verbetes justificados saem coluna a coluna, e a célula com alguma continuação sem margem comum segue linha a linha; o corpo depois da tabela de letra menor é outra faixa, e o destaque de um lado só não a corta, nem a letra menor dos dois lados sem o vão de parágrafo; a coluna de duas linhas ligadas pelo hífen vem antes da outra, e a de duas linhas sem o hífen segue linha a linha (`tests/test_colunas_curtas_e_justificadas.py`); o cabeçalho de duas páginas vizinhas sai, e o de duas com uma entre elas e a linha sem letra em duas vizinhas ficam (`tests/test_paginacao.py`) | portão | volta uma nota de versalete, o capítulo falso, a intercalação do glossário, ou muda um livro sem versalete, texto escondido nem cabeçalho de abertura |
+| O que ficou da Fase 1 | testes: o versalete feito à mão é título e o continua a linha de maiúsculas seguinte, e as maiúsculas de um tamanho só, a minúscula e o símbolo maior não são versalete, e as maiúsculas depois de uma nota continuam nota (`tests/test_versalete.py`, com o adaptador lendo um PDF); a linha de título sobre outra de outro tamanho sai, o texto repetido do mesmo tamanho não é texto escondido, e a linha ao lado e a letra miúda ficam; o `importar-pdf` não abre o capítulo falso (`tests/test_texto_escondido.py`); os verbetes justificados saem coluna a coluna, e a célula com alguma continuação sem margem comum segue linha a linha; o corpo depois da tabela de letra menor é outra faixa, e o destaque de um lado só não a corta, nem a letra menor dos dois lados sem o vão de parágrafo; a coluna de duas linhas ligadas pelo hífen vem antes da outra, e a de duas linhas sem o hífen segue linha a linha (`tests/test_colunas_curtas_e_justificadas.py`); o cabeçalho de duas páginas vizinhas sai, e o de duas com uma entre elas e a linha sem letra em duas vizinhas ficam (`tests/test_paginacao.py`) | portão | volta uma nota de versalete, o capítulo falso, a intercalação do glossário, ou muda um livro sem versalete, texto escondido nem cabeçalho de abertura |
+| Negrito feito à mão | testes (`tests/test_texto_repetido.py`): a cópia do mesmo tamanho sai e fica a primeira; a cópia do texto escondido tem um registro só; o resumo do comando diz o texto repetido; as 9 linhas da p. 2 do Dalgalarrondo viram "Conheça também"; a cópia de uma letra, a deslocada mais de 10%, a de outro tamanho, a de outra altura e o texto diferente ficam; do PDF montado em código, o `importar-pdf` lê a palavra uma vez | portão | a cópia volta a ser lida, ou sai uma linha que não repete outra |
 | A escuta ★ | rodar `importar-pdf` + `preparar` num PDF real em `livros/` e contar o que o `limpar` ainda precisa tirar | a cada mudança no conversor | a contagem sobe |
 
 Regra derivada no `AGENTS.md`: a biblioteca de PDF só entra em `adaptadores/`.

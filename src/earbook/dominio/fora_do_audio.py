@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """O que sai inteiro do texto lido (ADR-0008): pelo papel, o bloco de código e o índice
 remissivo; pela repetição, a marca d'água e o destaque de margem; pelo conteúdo de cada
-parágrafo, a bibliografia. A limpeza registra cada um, com o motivo daqui.
+parágrafo, a bibliografia e o índice remissivo sem marcação. A limpeza registra cada um, com o
+motivo daqui.
 """
 
 from __future__ import annotations
@@ -38,6 +39,18 @@ _HIFEN_NA_PALAVRA = re.compile(r"(?<=[^\W\d_])[-\u2010\u00ad]\s*(?=[^\W\d_])")
 # (as referências dele se partem entre nota e parágrafo); o Learning DDD, 0 (APA: "Evans, E.").
 REFERENCIAS_SEGUIDAS = 10
 MOTIVO_DA_BIBLIOGRAFIA = "bibliografia: referências no padrão ABNT"
+# O índice remissivo sem marcação (ADR-0008, "Índice pelo conteúdo"): cada parágrafo-entrada traz
+# números de página depois de vírgula e espaço, com até 8 palavras por número. Medido: os
+# parágrafos do índice têm no máximo 4,4 palavras por número (Dalgalarrondo) e 5,8 (Hard Parts);
+# fora do índice, as sequências não passam de 1 parágrafo (as referências soltas do Competente).
+ENTRADAS_SEGUIDAS = 10
+PALAVRAS_POR_PAGINA = 8
+MOTIVO_DO_INDICE_PELO_CONTEUDO = "índice remissivo: termos seguidos do número da página"
+# ", 346-347", ", 66", ", 200-203". A vírgula decimal ("2,0", as tabelas do Dalgalarrondo) não tem
+# espaço; o ano ("Porto Alegre, 2004") e o número antes do parêntese ("(Cummings, 20)") não contam.
+_PAGINA_DO_INDICE = re.compile(
+    r",\s+(?!(?:1[5-9]|20)\d\d\b)\d{1,4}(?:\s*[-\u2013]\s*\d{1,4})?(?=[\s,;.]|$)"
+)
 _AUTOR_ABNT = re.compile(r"[A-ZÀ-Ý][A-ZÀ-Ý'\u2019-]+(?:\s+[A-ZÀ-Ý(][A-ZÀ-Ý'\u2019()-]*)*[,.]\s")
 _ANO = re.compile(r"\b(?:1[5-9]|20)\d\d\b")
 # O número conta: o destaque com "3 a 25 segundos" não repete o texto com "5 a 30".
@@ -54,10 +67,66 @@ def bibliografia(capitulos: Sequence[tuple[str, Sequence[Segmento]]]) -> dict[st
     saem: dict[str, str] = {}
     for _, segmentos in capitulos:
         for inicio, fim in _sequencias_de_referencias(segmentos):
-            titulo_antes = inicio > 0 and segmentos[inicio - 1].papel is Papel.TITULO
-            primeiro = inicio - 1 if titulo_antes else inicio
-            saem |= {s.id: MOTIVO_DA_BIBLIOGRAFIA for s in segmentos[primeiro:fim]}
+            saem |= _com_o_titulo_antes(segmentos, inicio, fim, MOTIVO_DA_BIBLIOGRAFIA)
     return saem
+
+
+def _com_o_titulo_antes(
+    segmentos: Sequence[Segmento], inicio: int, fim: int, motivo: str
+) -> dict[str, str]:
+    """ID → `motivo` dos segmentos de `inicio` a `fim`, e do título logo antes, se houver."""
+    titulo_antes = inicio > 0 and segmentos[inicio - 1].papel is Papel.TITULO
+    primeiro = inicio - 1 if titulo_antes else inicio
+    return {s.id: motivo for s in segmentos[primeiro:fim]}
+
+
+def indice_pelo_conteudo(capitulos: Sequence[tuple[str, Sequence[Segmento]]]) -> dict[str, str]:
+    """ID → motivo de cada parágrafo das sequências de 10 ou mais parágrafos-entrada seguidos no
+    mesmo capítulo, das letras no meio delas ("A", "B"…, Hard Parts) e do título logo antes
+    (ADR-0008, "Índice pelo conteúdo").
+
+    É o índice que a marcação não diz: o do PDF importado e o do EPUB sem `epub:type`. Como na
+    bibliografia, o título ("Índice", "Index") nunca dispara a regra.
+    """
+    saem: dict[str, str] = {}
+    for _, segmentos in capitulos:
+        for inicio, fim in _sequencias_de_entradas(segmentos):
+            saem |= _com_o_titulo_antes(segmentos, inicio, fim, MOTIVO_DO_INDICE_PELO_CONTEUDO)
+    return saem
+
+
+def _sequencias_de_entradas(segmentos: Sequence[Segmento]) -> list[tuple[int, int]]:
+    """(início, fim) de cada sequência de `ENTRADAS_SEGUIDAS` ou mais entradas. A letra no meio
+    não parte a sequência; ela pode abrir a sequência, mas nunca a fecha."""
+    sequencias: list[tuple[int, int]] = []
+    inicio: int | None = None
+    fim = entradas = 0
+    for posicao, segmento in enumerate([*segmentos, None]):
+        entrada = segmento is not None and _entrada_de_indice(segmento)
+        if entrada or (segmento is not None and _letra_do_indice(segmento)):
+            inicio = posicao if inicio is None else inicio
+            if entrada:
+                fim, entradas = posicao + 1, entradas + 1
+            continue
+        if inicio is not None and entradas >= ENTRADAS_SEGUIDAS:
+            sequencias.append((inicio, fim))
+        inicio, entradas = None, 0
+    return sequencias
+
+
+def _entrada_de_indice(segmento: Segmento) -> bool:
+    """O parágrafo com número de página e até `PALAVRAS_POR_PAGINA` palavras por número. Ele não
+    precisa terminar no número: a entrada do Hard Parts termina na remissão ("(see also …)")."""
+    paginas = len(_PAGINA_DO_INDICE.findall(segmento.texto))
+    palavras = len(PALAVRA.findall(segmento.texto))
+    densa = paginas > 0 and palavras <= PALAVRAS_POR_PAGINA * paginas
+    return segmento.papel is Papel.PARAGRAFO and densa
+
+
+def _letra_do_indice(segmento: Segmento) -> bool:
+    """O título de uma letra só, que separa as letras do índice do Hard Parts."""
+    texto = segmento.texto.strip()
+    return segmento.papel is Papel.TITULO and len(texto) == 1 and texto.isalpha()
 
 
 def _sequencias_de_referencias(segmentos: Sequence[Segmento]) -> list[tuple[int, int]]:

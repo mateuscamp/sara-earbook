@@ -15,7 +15,11 @@ import pytest
 from earbook.comandos.importar_pdf import importar_pdf
 from earbook.dominio.pagina import Linha, Pagina
 from earbook.dominio.paginacao import LinhaRemovida
-from earbook.dominio.texto_escondido import MOTIVO_DO_ESCONDIDO, tirar_texto_escondido
+from earbook.dominio.texto_escondido import (
+    MOTIVO_DO_ESCONDIDO,
+    MOTIVO_DO_REPETIDO,
+    tirar_texto_escondido,
+)
 from tests.pdf_de_teste import LinhaDeTeste, montar_pdf
 
 
@@ -45,12 +49,17 @@ def test_titulo_debaixo_de_uma_linha_de_outro_tamanho_sai_registrado() -> None:
     )
 
 
-def test_texto_repetido_por_cima_do_mesmo_tamanho_fica() -> None:
+def test_texto_repetido_por_cima_do_mesmo_tamanho_nao_e_escondido() -> None:
     # Dalgalarrondo p. 2: "Conheça também", em 24 pt sobre 24 pt, é negrito feito com o texto
-    # repetido por cima; Hard Parts p. 5, "Beijing" duas vezes. Não é texto escondido.
+    # repetido por cima; Hard Parts p. 5, "Beijing" duas vezes. Não é texto escondido: uma cópia
+    # fica, e a outra sai como repetida (ADR-0004, "Negrito feito à mão"). Até 2026-11-03, este
+    # teste dizia que as duas ficavam; o Mateus aprovou tirar a cópia ("Aprovar").
     um = _linha("Conheça também", 66, 236, tamanho=24)
     outro = _linha("Conheça também", 66.5, 236.5, tamanho=24)
-    assert _tirar(um, outro) == (["Conheça também", "Conheça também"], ())
+    assert _tirar(um, outro) == (
+        ["Conheça também"],
+        (LinhaRemovida(275, MOTIVO_DO_REPETIDO, "Conheça também"),),
+    )
 
 
 def test_titulo_ao_lado_de_outra_linha_sem_sobrepor_fica() -> None:

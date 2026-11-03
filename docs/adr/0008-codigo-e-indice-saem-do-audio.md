@@ -10,7 +10,8 @@ a marcação do EPUB diz o que eles são, e o `limpar` os tira do texto, registr
 O `limpar` tira também o parágrafo idêntico que se repete em metade ou mais dos arquivos do
 spine (a marca d'água "OceanofPDF.com") e, desde 2026-11-03, o destaque de margem que repete,
 palavra por palavra, o texto vizinho (seção "Destaque de margem repetido"), e a bibliografia no
-padrão ABNT, reconhecida pelo conteúdo (seção "Bibliografia"). Inverte se a escuta mostrar que o
+padrão ABNT, reconhecida pelo conteúdo (seção "Bibliografia"), e o índice remissivo sem
+marcação, também pelo conteúdo (seção "Índice pelo conteúdo"). Inverte se a escuta mostrar que o
 ouvinte se perde sem o código ("depois da linha 7"), ou se um livro medido perder um texto que
 não é código, índice, marca d'água, destaque nem bibliografia.
 
@@ -172,7 +173,8 @@ dos arquivos. Nenhum parágrafo de verdade passa de 6 arquivos nem de 33%.
 O índice do Hard Parts continua lido, e o código do `importar-pdf` também. Marcar no
 `importar-pdf` o capítulo de título "Index" ou "Índice remissivo" com
 `<section epub:type="index">` faria o `preparar` tirá-lo pela regra acima, mas é outra
-mudança, no `importar-pdf`, e fica proposta para depois (ver "Fora desta decisão").
+mudança, no `importar-pdf`, e fica proposta para depois (ver "Fora desta decisão"). Desde
+2026-11-03, o índice do PDF sai pelo conteúdo, no `limpar` (seção "Índice pelo conteúdo").
 
 ## Medição (2026-11-02, depois do código)
 
@@ -419,6 +421,109 @@ idênticos.
 - **O que sairia:** um trecho de prosa com 10 parágrafos seguidos, cada um abrindo em maiúsculas
   com vírgula e um ano. Não há caso nos livros medidos.
 
+## Índice pelo conteúdo (2026-11-03)
+
+### Contexto
+
+O índice remissivo sai pela marcação do EPUB (seção "Índice remissivo" da Decisão), e o PDF
+importado não tem marcação. Medido no HEAD `56b7891` (pastas `*-base-curto` de
+`livros/trabalho/`), dois índices eram lidos no fim do livro:
+- **Dalgalarrondo** (p. 433 em diante): o título "Índice" e 18 parágrafos, um por letra, com
+  1.737 palavras ("Abuso e dependência de substâncias, 346-347 Afetividade, 155-173…");
+- **Hard Parts** (p. 443 a 459): o título "Index", 25 títulos de uma letra ("A", "B"…) e 26
+  parágrafos, com 5.507 palavras ("abstractness of codebase, 67 distance from main sequence,
+  69…").
+
+Reconhecer pelo título está proibido (alternativa C do índice): "Índice" é o sumário em português.
+
+### Alternativas
+
+| Opção | Ganha | Perde | Por que não |
+|---|---|---|---|
+| **A. Pelo conteúdo de cada parágrafo, no `limpar`** (escolhida) | não depende do título nem da marcação; pega também o EPUB sem marca | o índice com termo-pai sem página no meio se parte; o índice curto fica | — |
+| B. O `importar-pdf` marca `<section epub:type="index">` ("Fora desta decisão") | o `preparar` tira pelo papel, como o índice do EPUB | pelo título, é proibido; pelo conteúdo, o reconhecimento é o mesmo da A, mas no `importar-pdf`, que não vê os parágrafos juntados e não serve ao EPUB sem marca | a mesma regra num lugar pior |
+| C. A entrada termina em número de página | mais estreita | parte o índice do Hard Parts no "W", que termina na remissão "(see also distributed workflows)" | deixa parte do índice lida |
+
+### Decisão
+
+- **O parágrafo-entrada** traz números de página depois de vírgula e espaço (", 346-347", ", 66,
+  68", ", 12"), com **8 palavras ou menos por número**. Ele não precisa terminar no número.
+  - A vírgula decimal ("2,0 1,3", as tabelas do Dalgalarrondo) não tem espaço e não conta.
+  - O número com cara de ano (1500 a 2099) e o que vem antes de ")" não contam: "Porto Alegre,
+    2004", "(Cummings, 2004)", "(apud Evans, 1980)".
+- **Sai a sequência de 10 ou mais** parágrafos-entrada seguidos, no mesmo capítulo. O título de
+  **uma letra só** no meio não a parte e sai junto (os "A", "B"… do Hard Parts). Sai também o
+  título **logo antes** da sequência ("Índice", "Index"), que nunca dispara a regra, como na
+  bibliografia.
+- O motivo registrado é "índice remissivo: termos seguidos do número da página". A regra fica em
+  `fora_do_audio.indice_pelo_conteudo` e roda por último, depois da bibliografia.
+- O índice marcado no EPUB continua saindo pelo papel, como antes. Esta regra pega o resto.
+
+O Mateus aprovou ("Aprovar"), junto com o negrito feito à mão do ADR-0004.
+
+### Medição
+
+| Livro | Maior sequência de parágrafos-entrada | O que muda |
+|---|---|---|
+| *Dalgalarrondo* | 18 | saem o "Índice" e os 18 parágrafos: 19 remoções, 1.737 palavras |
+| *Hard Parts* | 26 | saem o "Index", as 25 letras e os 26 parágrafos: 52 remoções, 5.507 palavras. "About the Authors" e o colofão ficam |
+| *Competente* | 1 (10 referências soltas com o dia do mês, ", 16 set. 2026", nunca 2 seguidas) | nada |
+| *Huxley*, *Tides*, *Learning DDD* | 0 | nada |
+
+- **A folga:** os parágrafos dos dois índices têm no máximo 4,4 palavras por número de página
+  (Dalgalarrondo) e 5,8 (Hard Parts). Fora do índice, o Hard Parts não desce de 21.
+- Com o limite de 6 ou de 8 palavras, o resultado é o mesmo. Com 10, o Competente sobe para 28
+  referências soltas, ainda sem sequência.
+- **Depois do código** (pastas `*-curto`, idênticas ao protótipo `*-prototipo-curto`): o
+  Dalgalarrondo e o Hard Parts mudam só como acima, e mais o negrito feito à mão (ADR-0004). O
+  Competente, o Huxley, o Tides e o Learning DDD saem com `segmentos/`, `limpos/` e
+  `limpeza.json` idênticos, e o `limpos/` do Learning DDD é igual ao da pasta traduzida.
+
+### O que fica
+
+- **O índice com termo-pai sem página no meio** (num EPUB sem marca, uma entrada por parágrafo):
+  ele se parte, e os pedaços com menos de 10 entradas ficam lidos.
+- **O índice curto,** com menos de 10 parágrafos-entrada, fica.
+- **O que sairia:** 10 parágrafos seguidos com até 8 palavras por ", N". Não há caso. O mais
+  perto são as referências soltas do Competente.
+- **A página de 1500 a 2099** não conta como número de página, porque tem cara de ano (R3 da
+  code-review). No índice de um livro de mais de 1.500 páginas, a entrada que só aponta para
+  essas páginas parte a sequência, e os pedaços com menos de 10 entradas ficam lidos. Nenhum
+  livro medido passa de 503 páginas.
+- **A bibliografia do Competente** (p. 481 a 503) fica lida, por decisão do Mateus.
+  - Depois de "Referências" (`c023-s1864`) vêm 534 segmentos até o fim do livro: 308 parágrafos e
+    226 notas, 7.441 palavras de 154.293. Cada entrada se parte entre parágrafo e nota, às vezes
+    em pedaços soltos ("em: 13 out. 2026.", "cnbc.com/2026/06/30/…"), e a sequência ABNT da
+    seção "Bibliografia" nunca passa de 1.
+  - **Alternativa medida e recusada: a região tolerante.** Aceitar o autor ABNT ou um pedaço com
+    "Disponível em", "Acesso em", URL ou "www.", em parágrafo ou nota, com lacunas de até 2
+    segmentos que não casam, sem atravessar título, e exigir 10 referências ABNT com ano na
+    região. Ela tira 533 segmentos, só do Competente. A lacuna sozinha pegava também a lista de
+    posts do autor (`c023-s1332` a `s1506`, 151 segmentos), que tem 0 referência ABNT.
+  - **Por que não:** a causa nasce no `importar-pdf`, onde a linha da referência vira nota pela
+    fonte, e é lá que se conserta. A região seria a terceira camada de heurística, escrita para um
+    livro só, e ainda deixaria a entrada "A10K." e o título "Referências".
+- **Fila:** a lista de posts do Competente lê a URL inteira em voz alta ("https://www.
+  akitaonrails.com/2026/02/08/…"). É o item "URL" de "O que atrapalha o ouvido", no `AGENTS.md`.
+
+### Correções da revisão (2026-11-03)
+
+Aprovadas pelo Mateus ("Sim, e commitar"). Os seis livros saíram idênticos à medição acima.
+- **Lote A, três guardas que já existiam e ganharam teste próprio.** O teste "a vírgula decimal, o
+  ano e o ano entre parênteses não são página" tinha os três casos intercalados, e o do ano partia
+  a sequência sozinho. Os mutantes M14 (o número antes de ")" conta) e M15 (a vírgula sem espaço
+  conta) sobreviviam. O M15 muda o Hard Parts: a tabela do `c008`, com separador de milhar
+  ("Billing Payment ss.billing.payment 5 4,312 23"), sairia como índice falso. Agora cada caso
+  fica no meio de 10 entradas, num teste próprio, e cada teste passa no código e foi visto falhar
+  na asserção com o seu mutante (M13, M14 e M15) numa cópia.
+- **Lote B:** `_entrada_de_indice` roda uma vez por segmento (R6).
+- **Lote C:** a página de 1500 a 2099 entrou em "O que fica" (R3). **Pendências**, guardas sem
+  teste que não mudam os seis livros:
+  - **M17:** o título de uma letra só, e não de até 3 caracteres, é a letra do índice;
+  - **M18:** a letra depois da última entrada não fecha a sequência;
+  - **M20:** só o parágrafo é entrada;
+  - **M21:** a entrada precisa de um número de página.
+
 ## Consequências
 
 **Ganha:**
@@ -432,7 +537,9 @@ idênticos.
 - O livro montado perde o código também na tela: quem quiser ver o código abre o original.
 - Em 19 dos 65 blocos, o parágrafo seguinte cita a linha do código ("after line 7"), e o
   ouvinte não tem a linha.
-- O índice no EPUB sem marca (calibre de EPUB 2 antigo, PDF importado) continua lido.
+- O índice no EPUB sem marca (calibre de EPUB 2 antigo, PDF importado) continua lido. Desde
+  2026-11-03, sai pelo conteúdo quando tem 10 parágrafos-entrada seguidos ou mais (seção "Índice
+  pelo conteúdo").
 - O registro do índice em `limpeza.json` é grande (~3 mil palavras por arquivo).
 - O Gherkin vira uma linha só: "Given", "When" e "Then" sem pausa entre eles, a não ser a que o
   tradutor puser. E, como `paragrafo`, um parágrafo em minúscula logo depois dele seria juntado
@@ -461,19 +568,22 @@ idênticos.
 | Destaque sai, registrado, e a frase se emenda | testes (`tests/test_destaque.py`): o destaque ao lado do texto, no meio da frase, no meio da palavra partida, com hífen diferente e abrindo no meio da frase do texto sai com o motivo "destaque de margem: repete o texto vizinho"; do PDF de ponta a ponta, a frase da p. 250 volta inteira | portão | o destaque fica, ou a frase não se emenda |
 | O que não é destaque fica | testes: título como parágrafo, continuação em minúscula, pergunta com ":", pedaço que abre em algarismo, outro número, outra obra com uma palavra a menos, menos de 6 palavras, texto a mais de 3 segmentos ou em outro capítulo, citação e nota, gêmeos fora do meio da frase | portão | sai texto que o vizinho não repete |
 | Bibliografia sai, registrada, só pelo conteúdo | testes (`tests/test_bibliografia.py`): 10 referências ABNT seguidas e o título logo antes saem com o motivo "bibliografia: referências no padrão ABNT"; 9 ficam; a referência sem ano parte a sequência; a APA fica; o título sozinho não tira nada; o título longe das referências fica | portão | a bibliografia fica, ou o título sozinho tira texto |
+| Índice sai pelo conteúdo, registrado | testes (`tests/test_indice_pelo_conteudo.py`): 10 entradas seguidas e o título logo antes saem com o motivo "índice remissivo: termos seguidos do número da página"; 9 ficam; a letra no meio sai com o índice; a entrada que termina em remissão conta; mais de 8 palavras por número não é entrada; a vírgula sem espaço (decimal e milhar), o ano e o número antes do parêntese não são página, cada um no meio de 10 entradas; o título sozinho não tira nada | portão | o índice fica, ou sai texto que não é índice |
 | Nada a mais some | `preparar` no Huxley e no Tides, `importar-pdf` e `preparar` no Competente e no Hard Parts, comparados com o ADR-0003 e o ADR-0004 | a cada mudança na limpeza | `limpos/` diferente sem explicação |
 | Escuta ★ (manual) | o `montar --original` do DDD, num trecho com código e no fim do livro | depois desta mudança; responsável: Mateus | o ouvinte se perde onde o código saiu |
 
 Regras derivadas no `AGENTS.md`: em "O que atrapalha o ouvido", o índice remissivo e o bloco de
 código passam a feitos no `preparar` (quando o EPUB os marca), o Gherkin fica, e entra a marca
 d'água repetida em metade dos arquivos. Desde 2026-11-03, entram também o destaque de margem que
-repete o texto vizinho e a bibliografia ABNT.
+repete o texto vizinho e a bibliografia ABNT; e o índice do PDF importado passa a sair pelo
+conteúdo.
 
 ## Fora desta decisão (medido no DDD, para o Mateus escolher a ordem)
 
 - **O índice do PDF:** o `importar-pdf` marcaria o capítulo de título "Index" ou "Índice
   remissivo" com `epub:type="index"`. No Hard Parts, tira 6.198 palavras do áudio; nos outros
-  três PDFs medidos não há capítulo com esse título.
+  três PDFs medidos não há capítulo com esse título. Resolvido em 2026-11-03 pelo conteúdo, no
+  `limpar` (seção "Índice pelo conteúdo"; a marcação pelo título foi recusada).
 - **Tabela e legenda:** 217 células com 221 palavras, uma por segmento; 133 legendas "Figure N-N."
   e 3 "Table N-N.", com 1.228 palavras, lidas sem a imagem. Ficam para a escuta da amostra.
 - **O destaque marcado no EPUB** (`epub:type="pullquote"`, `role="doc-pullquote"`): sairia pela
@@ -486,6 +596,7 @@ repete o texto vizinho e a bibliografia ABNT.
 Autor: Mateus, com o Claude Code · Criado em: 2026-11-02 · Aprovado em: 2026-11-02 (pelo Mateus,
 na sessão principal: "Aceitar com a marca", que acrescentou a marca d'água à proposta). A seção
 "Destaque de margem repetido" foi aprovada em 2026-11-03 ("Aprovar"), e a seção "Bibliografia",
-no mesmo dia ("Aprovar").
+no mesmo dia ("Aprovar"). A seção "Índice pelo conteúdo" foi aprovada em 2026-11-03 ("Aprovar"),
+com a bibliografia do Competente de fora.
 O número 0008 estava reservado num rascunho para o `earbook adaptar`, que ainda não está no
 repositório: aquele ADR passa a ser o próximo número livre.

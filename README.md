@@ -24,13 +24,18 @@ A decisão está no [ADR-0001](docs/adr/0001-reescrever-com-claude-code-orquestr
 - O bloco de código e o índice remissivo que o EPUB marca como tais. Sai também o parágrafo
   idêntico em metade ou mais dos arquivos do livro, como a marca d'água "OceanofPDF.com"
   ([ADR-0008](docs/adr/0008-codigo-e-indice-saem-do-audio.md)).
+- O índice remissivo sem marcação, como o do PDF importado: 10 parágrafos seguidos ou mais de
+  termos seguidos do número da página ("Afetividade, 155-173"), com as letras do meio ("A", "B")
+  e o título logo antes deles
+  ([ADR-0008](docs/adr/0008-codigo-e-indice-saem-do-audio.md)). O índice curto fica.
 - O destaque de margem que repete, palavra por palavra, uma frase do texto ao lado dele. A frase
   que ele partia volta inteira ([ADR-0008](docs/adr/0008-codigo-e-indice-saem-do-audio.md)). O
   destaque que resume ou reescreve a frase fica.
 - A bibliografia no padrão ABNT ("ABDO, C. H. N. Diagnóstico… 1996."): 10 referências seguidas
   ou mais, com o título logo antes delas
   ([ADR-0008](docs/adr/0008-codigo-e-indice-saem-do-audio.md)). A bibliografia de outro padrão
-  (APA, numerada) e a lista curta ficam.
+  (APA, numerada), a lista curta e a bibliografia que o PDF partiu entre nota e parágrafo (a do
+  Competente) ficam.
 - A capitular deslocada, que volta para a palavra quando o próprio livro prova que a palavra
   existe ([ADR-0007](docs/adr/0007-a-proxima-traducao-sem-trabalho-a-mao.md)). A letra que
   abre a frase antes de palavra em minúscula, como o artigo em "desejo. A resultante", fica
@@ -136,7 +141,10 @@ autor do metadado do PDF (ou os de `--titulo` e `--autor`). O que ele faz:
 - tira o número de página, também o que é maior que o texto, e o cabeçalho repetido, pela
   posição na página. O cabeçalho que aparece só nas duas páginas de uma abertura também sai;
 - tira o texto escondido: a linha em letra de título desenhada por cima de uma linha de outro
-  tamanho, na mesma altura. O resumo conta essas linhas junto com as da borda;
+  tamanho, na mesma altura;
+- lê uma vez só o negrito feito à mão: o mesmo texto desenhado de novo por cima, no mesmo
+  tamanho, quase no mesmo lugar ("Conheça também"). A cópia de uma letra só fica. O resumo
+  conta o texto escondido e o repetido junto com as linhas da borda, cada um com o seu motivo;
 - junta as linhas em parágrafos e devolve inteira a palavra partida no fim da linha;
 - lê a página em duas colunas coluna por coluna, pela calha entre elas, quando os dois lados
   são texto corrido, também o de verbetes justificados (glossário, bibliografia). A tabela
@@ -151,7 +159,8 @@ autor do metadado do PDF (ou os de `--titulo` e `--autor`). O que ele faz:
 - divide os capítulos pelo tamanho dos títulos.
 
 O EPUB serve para ouvir, não para ler na tela. Sai sem imagem e sem estilo, e cada linha de
-tabela vira um parágrafo. O índice remissivo e o bloco de código do PDF ainda são lidos. PDF
+tabela vira um parágrafo. O bloco de código do PDF ainda é lido; o índice remissivo sai no
+`preparar`, pelo conteúdo. PDF
 escaneado, sem camada de texto, é recusado, porque não há OCR.
 
 ## Desenvolvimento

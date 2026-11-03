@@ -30,6 +30,11 @@ HIFEN_TIPOGRAFICO = "\u2010"
 HIFENS_DA_QUEBRA = ("-", HIFEN_TIPOGRAFICO, HIFEN_SUAVE)
 """O hífen da quebra de linha: o "-", o U+2010 do Hard Parts e o hífen suave do Competente."""
 _PRIMEIRA_LETRA = re.compile(r"[^\W\d_]")
+# A letra de título e a folga do tamanho, pelas quais o `blocos`, o `capitulos` e o `quadro`
+# comparam a letra da linha com a do corpo (ADR-0004). Moram aqui para o `quadro` não importar o
+# `blocos`, que o importa.
+RAZAO_DO_TITULO = 1.2
+DIFERENCA_DE_TAMANHO = 0.5
 
 
 @dataclass(frozen=True)

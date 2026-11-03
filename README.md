@@ -136,6 +136,9 @@ autor do metadado do PDF (ou os de `--titulo` e `--autor`). O que ele faz:
   são texto corrido. A tabela continua lida linha a linha;
 - separa do texto o destaque de margem, que fica numa coluna estreita ao lado dele e tem letra
   de outro tamanho, para que o `preparar` o tire;
+- deixa o quadro no lugar. O quadro abre no rótulo "Quadro 5.1" ou "Tabela 5.1" em letra de
+  título, e o conteúdo dele, em letra menor, é lido como parágrafo, e não como nota no fim do
+  capítulo. Ele entra depois da frase que interrompe, e a frase volta a ser uma só;
 - divide os capítulos pelo tamanho dos títulos.
 
 O EPUB serve para ouvir, não para ler na tela. Sai sem imagem e sem estilo, e cada linha de

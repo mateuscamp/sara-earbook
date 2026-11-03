@@ -331,7 +331,7 @@ O Mateus aprovou as duas regras, esta e a do ADR-0007 ("Sim, as duas"), e aceito
 
 Ficam como limite conhecido:
 - **o cabeçalho de duas páginas:** "Prefácio da 1a edição", em 9 pt no alto das p. 14 e 15, não chega às 3 páginas da linha repetida e fica, como antes. Sem o número que o colava num título ("14 Prefácio da 1a edição"), ele entra no meio da frase partida pela página: "Bernard e Si- Prefácio da 1a edição mone Trouvé (1977)". As junções continuam 19 porque esta entra e uma sai: a de `c011`, "Sullivan (1983) afirmava que" + "o entrevistador desempenha", que é um dos 21 casos do quadro, abaixo. O começo da frase ("senciais da clínica…") vai para o título do quadro, e "o entrevistador desempenha…" fica depois do quadro, num parágrafo próprio;
-- **a continuação emendada no título do quadro:** quando a página termina num Quadro ou numa tabela, que viram nota, a continuação em minúscula da página seguinte retoma o título do quadro, e não o parágrafo de antes dele ("Semiotécnica simplificada da afasia nica, por conflitos interpessoais ou por imitação.", p. 239; "Exemplos de formulação diagnóstica satisfatoriamente o objeto pesquisado…", p. 44). Some com o conserto do Quadro, que precisa tirar o quadro do fluxo do parágrafo.
+- **a continuação emendada no título do quadro:** quando a página termina num Quadro ou numa tabela, que viram nota, a continuação em minúscula da página seguinte retoma o título do quadro, e não o parágrafo de antes dele ("Semiotécnica simplificada da afasia nica, por conflitos interpessoais ou por imitação.", p. 239; "Exemplos de formulação diagnóstica satisfatoriamente o objeto pesquisado…", p. 44). Some com o conserto do Quadro, que precisa tirar o quadro do fluxo do parágrafo. Resolvido em "Quadro no lugar" (2026-11-03), que contou 33 casos.
 
 Registrados pela code-review, sem correção, porque não têm caso nos três PDFs:
 - **o tamanho exato:** a sequência do número grande se conta pelo tamanho arredondado a 0,1 pt. Um PDF com o número entre 11,9 e 12,0 pt parte a sequência em duas, e a parte com menos de 3 páginas fica no áudio. No Dalgalarrondo, os 412 têm 12,0;
@@ -390,6 +390,167 @@ Fica como limite o destaque colado sem virada de coluna, abaixo do texto na mesm
 no Dalgalarrondo (`c019-s0048`, `c011-s0025`). Vai, com os outros destaques que ficam, para o
 `adaptar` (ADR-0008).
 
+### Quadro no lugar (2026-11-03)
+
+O Dalgalarrondo tem 81 quadros: 79 "Quadro N.N" e 2 "Tabela N.N". O rótulo vem numa linha
+própria de 12 pt (o corpo tem 10), a legenda em 9 pt e o conteúdo em 8 e 9 pt. O `blocos` lia o
+rótulo como título, a legenda e o cabeçalho de coluna (9 pt) como parágrafo e o conteúdo (8 pt)
+como nota. O `montar` leva a nota para "Notas", no fim do capítulo (ADR-0005), longe do texto.
+
+Medido no HEAD `4135b24`, nas pastas `*-base-quadro` de `livros/trabalho/`:
+- **o conteúdo em "Notas":** os 81 quadros dão 334 blocos, 206 parágrafos e 128 notas. Com mais
+  4 notas de quadro das p. 275 e 324 (ver os limites), são 132 das 171 notas do livro;
+- **a frase partida:** em 33 das 64 regiões de quadro (rótulos seguidos contam como uma), o texto
+  de antes não fecha a frase e a continuação vem em minúscula depois. Em 29, a continuação se
+  emendava no quadro: 28 pela retomada do `blocos` (a legenda ou o cabeçalho de 9 pt era o
+  parágrafo aberto quando a nota interrompia) e 1 pela junção do `limpar`. Exemplos: "Exemplos
+  de formulação diagnóstica satisfatoriamente o objeto pesquisado…" (p. 44) e "Semiotécnica
+  simplificada da afasia nica, por conflitos interpessoais…" (p. 239). Nas outras 4, ela ficava
+  num parágrafo solto em minúscula, depois do quadro. A seção "Número de página maior que o
+  corpo", acima, contava 21, só as emendadas no título;
+- **o Competente e o Hard Parts:** nenhum rótulo em letra de título. No Competente, 49 das 337
+  notas são legendas "Figura N.N" em 8,5 pt. No Hard Parts, "Table 1-1." (76) e "Figure 1-1."
+  (261) vêm no tamanho do corpo, e as 10 notas são direitos autorais, rótulos de diagrama e 1
+  rodapé.
+
+**Decisão**, em três partes, num protótipo antes do código:
+1. **Como se reconhece: pelo rótulo e pela letra.** O quadro abre na linha em letra de título
+   (1,2 vez o corpo ou mais) que começa com "Quadro" ou "Tabela" e um número
+   (`_ROTULO_DO_QUADRO`). Ele segue enquanto a letra não é a do corpo (mais de 0,5 pt de
+   diferença) nem a de título, e outro rótulo também o continua ("Quadro 8.2" na página
+   seguinte, a continuação). A primeira linha do tamanho do corpo, ou o primeiro título que não
+   é rótulo ("Questões de revisão", número de capítulo), o fecha. Dentro dos quadros do
+   Dalgalarrondo há linhas de 8, 9 e 11 pt, nunca de 10. A menção no corpo ("Tabela 19.1, são
+   apresentados…", p. 223) tem a letra do corpo e não abre quadro.
+2. **Na pasta de trabalho, sem papel novo.** O rótulo sai `<hN>`, como antes, e a legenda e o
+   conteúdo saem `<p>`. A letra menor do quadro deixa de ser nota, e cada linha do quadro vira
+   um parágrafo, separada da seguinte pelo vão, como no corpo. O contrato da pasta de trabalho e
+   os papéis do `preparar` não mudam.
+3. **Onde entra na leitura: depois da frase que ele interrompe.** Os blocos do quadro esperam e
+   entram antes do próximo título ou do próximo parágrafo do corpo, ou maior, que não começa em
+   minúscula. A continuação em minúscula retoma o parágrafo de antes do quadro, como a nota no
+   meio do parágrafo (Competente p. 33).
+
+| Opção | Ganha | Perde | Por que não |
+|---|---|---|---|
+| **Rótulo + letra** (escolhida) | só o Dalgalarrondo muda; usa o que a `Linha` já tem | o quadro sem rótulo, ou com rótulo do tamanho do corpo, não é reconhecido | — |
+| Pela moldura (o retângulo do pdfminer) | pega o quadro sem rótulo | o destaque e as "Questões de revisão" também têm fundo (p. 44); o adaptador passaria a entregar retângulos, e a `Pagina` mudaria | não separa o quadro do resto |
+| Só pela letra menor | dispensa o rótulo | pega o destaque, a legenda, as "Questões de revisão" e o versalete de 7,4 pt, e muda o Competente (legendas de 8,5 pt) | muda os livros que já estavam bons |
+| Papel novo `quadro` na pasta de trabalho | o `adaptar` acharia o quadro pelo papel | o `preparar` precisaria de uma marca no XHTML. O `<aside data-type="sidebar">` mudaria os 3 do Learning DDD (o `limpos/` e a tradução ficariam velhos), e uma marca própria seria convenção de um comando que ainda não tem ADR. O `<aside>` arrisca o ElevenReader pular o quadro (ADR-0005) | fica para o ADR do `adaptar`, se ele precisar |
+| O parágrafo retomado volta à posição dele, antes do quadro (o mecanismo da nota) | uma regra a menos | quando um destaque parte a continuação ("os pri-" \| destaque \| "meiros três minutos", p. 70), o resto da frase caía depois do quadro: 3 destaques voltavam a ser lidos duas vezes, e a palavra ficava partida | perde o que o destaque ganhou |
+
+Medido e recusado também: partir o parágrafo do quadro quando a letra muda (9 pt para 8 pt).
+Separa só 2 blocos no livro inteiro.
+
+Medido depois do código, contra o HEAD `4135b24`, nas pastas `*-quadro` de `livros/trabalho/`.
+O Dalgalarrondo sai idêntico ao protótipo:
+
+| Livro | `importar-pdf` | `preparar` |
+|---|---|---|
+| *Dalgalarrondo* | parágrafos 3.747 → 4.524; **notas 171 → 44**; hífen tirado 10.962 → 10.973 | segmentos 4.140 → 4.790; destaques 238 → 242; junções 193 → 237; suspeitas 9 → 23. Montado: 3.708 → 4.310 segmentos; **notas em "Notas" 170 → 43** |
+| *Competente*, *Hard Parts* | igual: o XHTML do EPUB é idêntico | `segmentos/`, `limpos/`, `limpeza.json` e `livro.json` idênticos (fora a origem) |
+| *Huxley*, *Tides*, *Learning DDD* | — | idênticos: as traduções não ficam velhas |
+
+- **As 33 frases voltam inteiras,** e o quadro vem logo depois do parágrafo. "…capaz de
+  identificar satisfatoriamente o objeto pesquisado (de certo modo, mais próximo da “verdade”)."
+  vem antes do Quadro 5.1. O caso de Sullivan (`c011`, abaixo, no limite do cabeçalho de duas
+  páginas) sai num parágrafo só.
+- **Nenhuma palavra se perde:** contando o `limpos/` e os destaques tirados, são 167.765 → 167.749
+  palavras. A diferença são 16 palavras partidas que voltam inteiras ("pri-" + "meiros", "es-" +
+  "senciais", "hu-" + "mor", "inves-" + "tigar"): 11 pelo hífen do fim da linha e 5 pela junção.
+- **Destaques:** os 238 continuam saindo, e saem mais 4, que o quadro partia ou separava do texto
+  ("Denomina-se amnésia…", "Somatização é um termo…", "Sempre que o examinador…",
+  "Denomina-se alexitimia…").
+- **Junções:** 199 fora do quadro (+6, as metades de frase que o destaque tirado deixa lado a
+  lado) e 38 entre linhas do mesmo quadro, a célula que quebra linha. Nenhuma junta quadro e
+  corpo.
+- **As 14 suspeitas novas** estão todas dentro de quadro: célula curta sem pontuação seguida de
+  minúscula ("sensorial", "motora", "vida (%)"). Ficam no texto e só aparecem no registro.
+- **1.058 segmentos** são de quadro: cada linha dele é uma pausa, onde antes havia uma nota de até
+  27 linhas coladas.
+
+Para caber nas 400 linhas do ADR-0001, o `blocos.py` foi dividido pelo assunto, sem mudar o
+comportamento: o dicionário do hífen da quebra foi para `dominio/hifen_da_quebra.py`, e as
+regras do quadro (o rótulo, a letra do quadro e a linha que o solta) para `dominio/quadro.py`. A
+letra de título (`RAZAO_DO_TITULO`) e a folga do tamanho (`DIFERENCA_DE_TAMANHO`) passaram para
+`dominio/pagina.py`, para o `quadro` não importar o `blocos`, que o importa. O estado (se a
+linha está num quadro e os blocos que esperam) continua no `blocos`.
+
+O Mateus aprovou a decisão inteira e os limites abaixo ("Aprovar").
+
+Ficam como limite:
+- **4 pedaços de quadro continuam em "Notas",** por defeitos de outras regras:
+  - na p. 275, há texto escondido debaixo do Quadro 22.4 ("24" em 60 pt e "A inteligência e" em
+    22 pt). Ele se junta à linha do quadro na mesma altura, vira título do tamanho do capítulo,
+    abre um capítulo falso (`c026`, 16 segmentos, já na base) e fecha o quadro. Ficam 3 notas;
+  - na p. 324, a tabela do Quadro 29.1 tem célula que quebra linha, e o `colunas` a lê como duas
+    colunas. A coluna da direita vem depois do texto do corpo e fica fora do quadro: 1 nota;
+- as 14 suspeitas e as 38 junções dentro de quadro, acima;
+- o quadro desce para depois do destaque ou da epígrafe de 9 pt e do parágrafo em minúscula que
+  vierem antes da frase acabar. É de propósito;
+- o quadro sem rótulo, o rótulo em inglês ("Table", "Box") e o rótulo do tamanho do corpo não são
+  reconhecidos. Nos livros medidos, nenhum rótulo em inglês vem em letra de título;
+- o quadro é lido como lista de linhas ("Eixo 1. Diagnóstico do Transtorno Mental Esquizofrenia
+  paranóide…"). Virar prosa é o trabalho do `adaptar`;
+- **o destaque de 9 pt logo depois do quadro entra no quadro:** a extensão é só pela letra, e o
+  destaque que vem antes da continuação do corpo vira o último bloco do quadro e espera com ele,
+  longe do texto que repete. Medido: 1 caso (p. 383, depois dos Quadros 37.2 e 37.3), e ele
+  ainda sai, porque os vizinhos seguintes o cobrem. Com um quadro mais longo, ou com o texto
+  repetido só antes do quadro, seria lido duas vezes (code-review).
+
+Fica como dívida, sem caso nos livros medidos: **dois mecanismos para a interrupção no meio da
+frase.** A nota e o código voltam o parágrafo retomado à posição dele (Competente p. 33), e o
+quadro espera até a frase acabar. A legenda seguida de um destaque que parte a continuação teria
+o defeito que o quadro tinha no primeiro protótipo: o resto da frase cairia depois da legenda.
+Unificar os dois exige medir de novo as legendas do Competente (code-review).
+
+Achados na medição, para a fila da próxima filha, sem correção aqui:
+- **subtítulo em versalete de 7,4 pt:** são 39 no Dalgalarrondo ("DELÍRIO DE GRANDEZA (DE
+  ENORMIDADE)", "TRANSTORNO DA PERSONALIDADE ESQUIZÓIDE"), que viram nota e vão para "Notas",
+  longe da seção que nomeiam. São 39 das 43 notas que sobram;
+- **o capítulo falso da p. 275** (`c026`, "24 transgressão ou violência…");
+- **a ordem do `colunas` nas p. 324 e 384:** a tabela do Quadro 29.1 lida em colunas no meio do
+  corpo, e a lista curta intercalada com o texto ("é classi- 1. perda da memória de fixação").
+
+Correções da code-review e da code-audit (2026-11-03), aprovadas pelo Mateus ("A, B e C"), sem
+mudar a saída: os seis livros saem idênticos à medição acima.
+- **A1, a fronteira do quadro:** sem a quebra entre a última linha do quadro e a primeira do
+  corpo, o corpo colava no quadro quando vinha logo abaixo, sem vão e depois de linha sem frase
+  fechada. Um mutante que a tirava mudava 5 blocos do Dalgalarrondo ("…Cultura Assim, desde
+  Aristóteles…", p. 29) e passava pela suíte. O comportamento já existia e ganhou teste, visto
+  falhar na asserção com o mutante plantado;
+- **A2, a retomada dentro do quadro:** a guarda que não deixa a linha do quadro retomar o texto
+  do corpo só faz diferença com código monoespaçado dentro do quadro, que não aparece nos livros
+  medidos. Ela também ganhou teste, visto falhar na asserção com o mutante da guarda;
+- **lote A, do resto da revisão:** o comentário da retomada passou a citar o quadro, o nome
+  `fora` virou `do_corpo`, e a abertura do bloco novo saiu do `acrescentar` (`_abrir`). Com isso,
+  o `blocos.py` passaria de 400 linhas, e as regras do quadro foram para `dominio/quadro.py`
+  (acima);
+- **lote B:** a contagem de segmentos de quadro foi corrigida (1.060, medida num protótipo que
+  ainda partia o parágrafo do quadro quando a letra mudava, para 1.058), e o destaque depois do
+  quadro e os dois mecanismos de interrupção foram registrados acima.
+
+Pós-auditoria das correções (2026-11-03), lote D aprovado pelo Mateus ("Fazer o D"), sem mudar a
+saída. Dois comportamentos que já existiam ganharam teste, cada um visto falhar na asserção com o
+mutante plantado:
+- **P1, quadros seguidos:** o rótulo do segundo quadro não solta o primeiro, porque a frase que
+  eles interrompem ainda não acabou. Sem a guarda, mudavam 15 posições do Dalgalarrondo ("tigar
+  detidamente os impulsos suicidas…" descia para depois do Quadro 17.2, p. 181);
+- **P2, a "Tabela":** o rótulo "Tabela 19.1" abre o quadro como o "Quadro". Sem ele, as 2 tabelas
+  do Dalgalarrondo deixavam de ser quadro, e 2.430 posições do livro mudavam.
+
+A pós-auditoria do lote D achou mais duas guardas sem teste. O Mateus aprovou o lote E e o commit
+sem outra rodada de mutantes ("E e commitar"). As duas guardas já existiam e ganharam teste, cada
+um visto falhar na asserção com o mutante plantado:
+- **P3, a minúscula da retomada:** só a linha que começa em minúscula retoma o parágrafo
+  interrompido, depois do quadro e depois da nota (o teste da nota fica em
+  `tests/test_blocos_retomada.py`). A linha em maiúscula abre parágrafo novo. A
+  regra vem da retomada da nota (Competente p. 33) e não tinha teste nem lá. Sem ela, os três
+  PDFs mudavam: o Dalgalarrondo de 4.790 para 4.778 blocos, o Competente de 5.083 para 4.997 (o
+  sumário) e o Hard Parts de 3.345 para 3.323;
+- **P4, o número do rótulo:** "Quadro clínico" em letra de título, sem número, não abre quadro.
+  Sem a guarda, os três PDFs saíam iguais.
+
 ## Consequências
 
 **Ganha:** um comando a mais na mesma esteira, sem repositório novo. Os defeitos de conversão são atacados onde nascem.
@@ -407,6 +568,7 @@ no Dalgalarrondo (`c019-s0048`, `c011-s0025`). Vai, com os outros destaques que 
 | A biblioteca de PDF só entra pelo adaptador | import-linter: `dominio` e `comandos` não importam a biblioteca de PDF | portão | contrato quebrado |
 | O portão continua leve | tempo do `make check` | a cada mudança no conversor; responsável: Mateus | passar de 30 s |
 | O destaque não cola no texto | testes (`tests/test_destaque.py`): a letra menor na virada de coluna abre parágrafo, para os dois lados; a mesma letra, ou meio ponto de diferença, segue; a letra menor sem virada segue; do PDF de ponta a ponta, a frase da p. 250 volta inteira | portão | o destaque cola na frase, ou um parágrafo sem destaque se parte |
+| O quadro fica no lugar | testes (`tests/test_quadro.py`): o conteúdo do quadro é parágrafo, não nota; a frase interrompida volta inteira, com o quadro depois, também quando o quadro acaba em linha de 9 pt; o quadro espera o destaque que parte a continuação; fica no lugar entre parágrafos, entra antes do título seguinte e não se perde no fim do livro; o rótulo seguido ("Quadro" ou "Tabela") e a linha de 11 pt continuam o quadro, e os quadros seguidos esperam juntos a frase acabar; a letra do corpo e o título o fecham, e o corpo colado à última linha do quadro abre bloco próprio; o código dentro do quadro não retoma o texto, e a linha em maiúscula depois do quadro também não; o título "Quadro clínico", sem número, não abre quadro; a menção no corpo não o abre; do PDF de ponta a ponta, as p. 43 e 44 | portão | conteúdo de quadro vira nota, a frase se emenda no quadro, ou um bloco de quadro some |
 | A escuta ★ | rodar `importar-pdf` + `preparar` num PDF real em `livros/` e contar o que o `limpar` ainda precisa tirar | a cada mudança no conversor | a contagem sobe |
 
 Regra derivada no `AGENTS.md`: a biblioteca de PDF só entra em `adaptadores/`.

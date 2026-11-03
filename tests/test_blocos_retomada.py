@@ -58,3 +58,19 @@ def test_paragrafo_interrompido_por_codigo_e_legenda_e_retomado() -> None:
         ("codigo", "make check"),
         ("nota", "Figura 2. A saída do comando."),
     ]
+
+
+def test_linha_em_maiuscula_depois_da_nota_nao_retoma_o_paragrafo() -> None:
+    # A retomada é da continuação da frase, que começa em minúscula: a linha em maiúscula depois
+    # da legenda abre parágrafo novo (P3 da pós-auditoria do quadro, ADR-0004, "Quadro no lugar").
+    pagina = [
+        *texto_corrido(0.1),
+        linha("O parágrafo segue", 0.3, RECUO),
+        linha("Figura 2. A saída do comando.", 0.3 + ENTRELINHA, tamanho=8.5),
+        linha("Outro parágrafo começa aqui.", 0.3 + ENTRELINHA * 2),
+    ]
+    assert resumo(montar(pagina))[-3:] == [
+        ("paragrafo", "O parágrafo segue"),
+        ("nota", "Figura 2. A saída do comando."),
+        ("paragrafo", "Outro parágrafo começa aqui."),
+    ]

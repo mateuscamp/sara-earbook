@@ -10,7 +10,9 @@ As regras vêm da medição no Competente (pt-BR) e no Hard Parts (en):
 - o verbete (linha toda em negrito menor que o corpo) abre parágrafo depois de frase fechada, e
   a linha comum seguinte abre outro: o termo do glossário sai fora da definição (Competente);
 - a palavra partida no fim da linha volta inteira, a não ser que o livro escreva a mesma
-  palavra com hífen em outro lugar (`non-productive`, `anti-pattern`).
+  palavra com hífen em outro lugar (`non-productive`, `anti-pattern`);
+- o quadro abre no rótulo ("Quadro 5.1") e entra na leitura depois da frase que ele interrompe
+  (Dalgalarrondo; ADR-0004, "Quadro no lugar").
 """
 
 from __future__ import annotations
@@ -24,30 +26,30 @@ from itertools import pairwise
 from typing import final
 
 from earbook.dominio.colunas import linhas_visuais
+from earbook.dominio.hifen_da_quebra import Dicionario, dicionario_do_livro, no_dicionario
 from earbook.dominio.pagina import (
+    DIFERENCA_DE_TAMANHO,
     HIFEN_SUAVE,
-    HIFEN_TIPOGRAFICO,
+    RAZAO_DO_TITULO,
     Linha,
     Pagina,
     comeca_em_minuscula,
     corpo_em_negrito,
     tamanho_do_corpo,
 )
+from earbook.dominio.quadro import abre_o_quadro, letra_de_quadro, solta_o_quadro
 
-RAZAO_DO_TITULO = 1.2
 RAZAO_DA_NOTA = 0.85
 RAZAO_DO_ESPACO = 1.35
 RECUO_MINIMO = 3.0
 """Em pontos. Medido: parágrafo recua 13 (Competente) e 18 (Hard Parts); item de lista, 4 e 5;
 nenhuma linha de corpo entre 1 e 3."""
-DIFERENCA_DE_TAMANHO = 0.5
 # O subtítulo em negrito vai do corpo para cima, com esta folga: o cabeçalho de tabela do Hard
 # Parts tem 10 pt, com corpo de 10,5; o cabeçalho de tabela menor e o rodapé de seção, 9 pt
 # (ADR-0004).
 FOLGA_DO_SUBTITULO = 0.5
 # Com 3 pedaços ou mais na mesma altura, é linha de tabela; com 2, linha justificada partida.
 CELULAS_DA_TABELA = 3
-_PONTUACAO_DA_PONTA = ".,;:!?\"'()[]\u201c\u201d\u2018\u2019"
 _FIM_DE_FRASE = tuple('.!?:\u201d"')
 _HIFEN_NO_FIM = re.compile(r"\w[-\u2010]$")
 # Norma brasileira: o hífen do composto se repete no começo da linha de baixo.
@@ -87,16 +89,6 @@ class LivroMontado:
 
 
 @dataclass(frozen=True)
-class _Dicionario:
-    """O que o próprio livro diz sobre as palavras: decide o hífen da quebra de linha."""
-
-    com_hifen: frozenset[str]
-    """Escritas com hífen no meio da linha (`non-productive`)."""
-    palavras: frozenset[str]
-    """Escritas inteiras, sem hífen (`oriented`, `perguntou`)."""
-
-
-@dataclass(frozen=True)
 class _Medidas:
     corpo: float
     entrelinha: float
@@ -118,11 +110,13 @@ class _Aberto:
     """Recebeu célula na mesma altura: é linha de tabela, e a próxima altura abre outra."""
     negrito: bool = False
     """Parágrafo aberto por linha toda em negrito: é verbete, e a 1ª linha comum abre outro."""
+    quadro: bool = False
+    """Bloco de quadro: espera em `_Montador._quadro` e não mexe na retomada do texto."""
 
 
 def montar_blocos(paginas: Sequence[Pagina]) -> LivroMontado:
     """Junta as linhas, página por página e de cima para baixo, em blocos do livro."""
-    montador = _Montador(_medir(paginas), _dicionario(paginas))
+    montador = _Montador(_medir(paginas), dicionario_do_livro(paginas))
     for pagina in paginas:
         anterior: Linha | None = None
         for linha, pedacos in linhas_visuais(pagina.linhas):
@@ -174,72 +168,83 @@ def _medir(paginas: Sequence[Pagina]) -> _Medidas:
     return _Medidas(corpo, entrelinha, destaca)
 
 
-def _dicionario(paginas: Sequence[Pagina]) -> _Dicionario:
-    """As palavras do livro, com e sem hífen no meio: o dicionário do hífen da quebra."""
-    com_hifen: set[str] = set()
-    inteiras: set[str] = set()
-    for pagina in paginas:
-        for linha in pagina.linhas:
-            for palavra in linha.texto.split():
-                limpa = _no_dicionario(palavra)
-                if "-" in limpa.strip("-"):
-                    com_hifen.add(limpa)
-                elif limpa.isalpha():
-                    inteiras.add(limpa)
-    return _Dicionario(frozenset(com_hifen), frozenset(inteiras))
-
-
-def _no_dicionario(palavra: str) -> str:
-    """A forma que o dicionário do hífen guarda: sem pontuação na ponta, com "-", minúscula."""
-    return palavra.strip(_PONTUACAO_DA_PONTA).replace(HIFEN_TIPOGRAFICO, "-").casefold()
-
-
 @final
 class _Montador:
-    def __init__(self, medidas: _Medidas, dicionario: _Dicionario) -> None:
+    def __init__(self, medidas: _Medidas, dicionario: Dicionario) -> None:
         self._medidas = medidas
         self._dicionario = dicionario
         self._prontos: list[Bloco] = []
         self._aberto: _Aberto | None = None
         self._hifens_tirados = 0
         self._hifens_mantidos = 0
-        # Parágrafo fechado sem terminar a frase, seguido só de nota ou código: a linha
+        # Parágrafo fechado sem terminar a frase, seguido só de nota, código ou quadro: a linha
         # minúscula que vier depois o retoma (legenda no meio do parágrafo, Competente p. 33).
         self._interrompido: tuple[_Aberto, int] | None = None
         self._posicao_do_aberto: int | None = None
+        # Os blocos do quadro esperam a frase que ele interrompe acabar (ADR-0004, "Quadro no
+        # lugar"): entram antes do próximo título ou parágrafo do corpo que abre frase.
+        self._no_quadro = False
+        self._quadro: list[Bloco] = []
 
     def acrescentar(self, pagina: int, linha: Linha, anterior: Linha | None, pedacos: int) -> None:
         medidas = self._medidas
-        tipo = _tipo(linha, medidas.corpo, negrito_destaca=medidas.negrito_destaca)
+        tipo, saiu_do_quadro = self._no_quadro_ou_fora(
+            linha, _tipo(linha, medidas.corpo, negrito_destaca=medidas.negrito_destaca)
+        )
         de_tabela = tipo is TipoDeBloco.PARAGRAFO and pedacos >= CELULAS_DA_TABELA
         aberto = self._aberto
-        if tipo is TipoDeBloco.PARAGRAFO and not de_tabela and self._retomar(linha):
+        retoma = tipo is TipoDeBloco.PARAGRAFO and not de_tabela and not self._no_quadro
+        if retoma and self._retomar(linha, saiu_do_quadro=saiu_do_quadro):
             return
         if (
             de_tabela
             or aberto is None
             or aberto.tipo is not tipo
+            or aberto.quadro is not self._no_quadro
             or self._quebra(aberto, linha, anterior)
         ):
-            self._fechar()
-            negrito = tipo is TipoDeBloco.PARAGRAFO and self._verbete(linha)
-            self._aberto = _Aberto(
-                tipo,
-                pagina,
-                linha.tamanho,
-                [linha.texto],
-                linha.x,
-                tabela=de_tabela,
-                negrito=negrito,
-            )
+            self._abrir(pagina, linha, tipo, tabela=de_tabela)
         else:
             if _virou_a_coluna(linha, anterior):
                 aberto.x_do_corpo = linha.x
             self._continuar(aberto, linha)
 
+    def _abrir(self, pagina: int, linha: Linha, tipo: TipoDeBloco, *, tabela: bool) -> None:
+        """Fecha o bloco aberto, solta o quadro que espera, se for a hora, e abre outro."""
+        self._fechar()
+        self._soltar_o_quadro(linha, tipo)
+        negrito = tipo is TipoDeBloco.PARAGRAFO and self._verbete(linha)
+        self._aberto = _Aberto(
+            tipo,
+            pagina,
+            linha.tamanho,
+            [linha.texto],
+            linha.x,
+            tabela=tabela,
+            negrito=negrito,
+            quadro=self._no_quadro,
+        )
+
     def livro(self) -> LivroMontado:
         self._fechar()
+        self._prontos.extend(self._quadro)
         return LivroMontado(tuple(self._prontos), self._hifens_tirados, self._hifens_mantidos)
+
+    def _no_quadro_ou_fora(self, linha: Linha, tipo: TipoDeBloco) -> tuple[TipoDeBloco, bool]:
+        """O tipo da linha e se ela fecha o quadro (`dominio/quadro.py`). A letra menor do quadro
+        é o conteúdo dele, e não nota, que iria para "Notas" (ADR-0005)."""
+        rotulo = abre_o_quadro(linha, titulo=tipo is TipoDeBloco.TITULO)
+        segue = rotulo or (self._no_quadro and letra_de_quadro(linha, self._medidas.corpo))
+        saiu, self._no_quadro = self._no_quadro and not segue, segue
+        return (TipoDeBloco.PARAGRAFO if segue and tipo is TipoDeBloco.NOTA else tipo), saiu
+
+    def _soltar_o_quadro(self, linha: Linha, tipo: TipoDeBloco) -> None:
+        """Os blocos do quadro entram na leitura quando a frase que ele interrompe acaba."""
+        titulo, paragrafo = tipo is TipoDeBloco.TITULO, tipo is TipoDeBloco.PARAGRAFO
+        solta = solta_o_quadro(linha, self._medidas.corpo, titulo=titulo, paragrafo=paragrafo)
+        if solta and not self._no_quadro:
+            self._prontos.extend(self._quadro)
+            self._quadro.clear()
 
     def _quebra(self, aberto: _Aberto, linha: Linha, anterior: Linha | None) -> bool:
         """A linha começa bloco novo, embora seja do mesmo tipo do bloco aberto?"""
@@ -342,31 +347,21 @@ class _Montador:
         """Tira o hífen da quebra, a não ser que o livro use a palavra com hífen."""
         antes = aberto.partes[-1].rsplit(maxsplit=1)[-1]
         depois = texto.split(maxsplit=1)[0]
-        if self._mantem_o_hifen(_no_dicionario(antes[:-1]), _no_dicionario(depois)):
+        if self._dicionario.mantem_o_hifen(no_dicionario(antes[:-1]), no_dicionario(depois)):
             self._hifens_mantidos += 1
             return texto
         self._hifens_tirados += 1
         aberto.partes[-1] = aberto.partes[-1][:-1]
         return texto
 
-    def _mantem_o_hifen(self, antes: str, depois: str) -> bool:
-        """`antes` e `depois` são as metades da palavra partida, já sem o hífen da quebra."""
-        if "-" not in antes and "-" not in depois:
-            return f"{antes}-{depois}" in self._dicionario.com_hifen
-        # A2 da auditoria: palavra que já tem outro hífen ("--no-agent-state", "proof-of-
-        # concepts") é composta, e a quebra caiu num hífen dela. A não ser que as metades
-        # vizinhas à quebra formem palavra do livro: então caiu numa sílaba ("ser-" +
-        # "vice-based", "pergun-" + "tou-me"; B2 da pós-auditoria).
-        silaba = antes.rsplit("-", 1)[-1] + depois.split("-", 1)[0]
-        return silaba not in self._dicionario.palavras
-
-    def _retomar(self, linha: Linha) -> bool:
-        """Retoma o parágrafo interrompido por nota ou código, se a linha o continua."""
+    def _retomar(self, linha: Linha, *, saiu_do_quadro: bool) -> bool:
+        """Retoma o parágrafo interrompido por nota, código ou quadro, se a linha o continua."""
         if self._interrompido is None or self._aberto is None:
             return False
-        # Revisão nº 1: só nota e código interrompem. Com título aberto, a linha colava no
+        # Revisão nº 1: só nota, código e quadro interrompem. Com título aberto, a linha colava no
         # parágrafo de antes dele, e o título ia parar depois do texto.
-        interrompe = self._aberto.tipo in {TipoDeBloco.NOTA, TipoDeBloco.CODIGO}
+        nota_ou_codigo = self._aberto.tipo in {TipoDeBloco.NOTA, TipoDeBloco.CODIGO}
+        interrompe = saiu_do_quadro or nota_ou_codigo
         if not interrompe or not comeca_em_minuscula(linha.texto):
             return False
         interrompido, posicao = self._interrompido
@@ -382,6 +377,9 @@ class _Montador:
         if aberto is None:
             return
         bloco = Bloco(aberto.tipo, "".join(aberto.partes), aberto.pagina, aberto.tamanho)
+        if aberto.quadro:
+            self._quadro.append(bloco)
+            return
         posicao = len(self._prontos) if self._posicao_do_aberto is None else self._posicao_do_aberto
         self._prontos.insert(posicao, bloco)
         self._posicao_do_aberto = None

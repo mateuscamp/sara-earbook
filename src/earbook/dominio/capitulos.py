@@ -9,7 +9,8 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import replace
 
-from earbook.dominio.blocos import DIFERENCA_DE_TAMANHO, Bloco, TipoDeBloco
+from earbook.dominio.blocos import Bloco, TipoDeBloco
+from earbook.dominio.pagina import DIFERENCA_DE_TAMANHO
 
 PAGINAS_DO_CAPITULO = 3
 

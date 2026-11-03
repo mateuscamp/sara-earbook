@@ -94,7 +94,7 @@ Verificadas só em revisão (`code-audit`):
 - Número de página, cabeçalho repetido, sumário duplicado.
 - Índice remissivo, bloco de código e marca d'água repetida: feitos no `preparar` quando o EPUB marca o índice e o código (ADR-0008). O índice e o código do PDF importado ainda são lidos.
 - Destaque de margem que repete a frase do texto: feito no `importar-pdf` e no `preparar` (ADR-0004, ADR-0008). O destaque resumido ou reescrito ainda é lido.
-- Quadro do PDF que vira nota e vai para o fim do capítulo, longe do texto. Pendente.
+- Quadro do PDF que vira nota e vai para o fim do capítulo, longe do texto: feito no `importar-pdf` (ADR-0004, "Quadro no lugar"). O quadro sem rótulo "Quadro N.N" ou "Tabela N.N" em letra de título ainda não é reconhecido.
 - Alternativa de exercício cuja letra só existe no CSS do `<ol>`: a voz lê "B e C" sem que nada tenha letra. Pendente.
 - Algarismo romano em título de capítulo ("Chapter IV").
 - Abreviação, URL, tabela e legenda de imagem.
@@ -133,7 +133,8 @@ Verificadas só em revisão (`code-audit`):
 src/earbook/
   dominio/      segmento.py (Segmento, IDs), trabalho.py (LivroPreparado), limpeza.py (regras do ouvido),
                 pagina.py (Pagina, Linha e letra espaçada do PDF), paginacao.py (cabeçalho do PDF
-                pela posição), blocos.py (parágrafo, título, código e nota do PDF),
+                pela posição), blocos.py (parágrafo, título, código, nota e quadro do PDF),
+                hifen_da_quebra.py (o hífen do fim da linha do PDF), quadro.py (o Quadro do PDF),
                 capitulos.py (capítulo e nível do título), conferencia.py (o conferir), direitos.py (página de direitos autorais),
                 metadados.py (título e autor do PDF), traducao.py (lote, pedido, resposta, modo),
                 glossario.py (candidatos a nome, termos declarados), conferencia_da_traducao.py,

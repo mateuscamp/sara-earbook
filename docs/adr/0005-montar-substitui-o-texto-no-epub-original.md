@@ -96,7 +96,8 @@ a garantia de que nada sumiu entre a origem e o livro montado.
 - A marcação interna (itálico, negrito, link) some do texto montado. Na tela, o livro fica mais
   pobre; no áudio, nada muda.
 - O livro do `importar-pdf` (ADR-0004) leva para "Notas" tudo que tem letra pequena: no
-  Competente, também as legendas e a bibliografia.
+  Competente, também as legendas e a bibliografia. O conteúdo do quadro com rótulo ("Quadro
+  5.1") deixou de ser nota e fica no lugar (ADR-0004, "Quadro no lugar", 2026-11-03).
 
 **Aceito conscientemente:** a nota que mora num arquivo próprio do EPUB (nota de fim de livro)
 fica onde está, porque o fim do "capítulo" dela já é ela mesma.

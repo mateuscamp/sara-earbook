@@ -538,6 +538,260 @@ tradutores corrigiram tudo numa rodada, em 16 e 26 segundos.
 A escuta do livro inteiro tem roteiro próprio (`livros/trabalho/roteiro-de-escuta-tides.md`, 9
 paradas, só na parte nova) e espera o Mateus.
 
+### Amostra do Learning DDD (2026-11-02)
+
+O terceiro livro, e o primeiro técnico: *Learning Domain-Driven Design* (Vlad Khononov, O'Reilly,
+EPUB), preparado de novo em `livros/trabalho/learning-ddd.earbook` com o código do ADR-0008. A
+pasta é idêntica à `ddd-v3`: 2.883 segmentos mantidos e 73.328 palavras. O `traduzir` exportou 319
+lotes, um por arquivo do spine, porque o lote não atravessa capítulo e o EPUB vem partido em 321
+arquivos.
+
+**Política de termos, aprovada pelo Mateus antes da amostra.** O glossário deste livro é de
+termos de DDD, e não de nomes. A regra é o vocabulário da edição brasileira, *Aprenda
+Domain-Driven Design* (Alta Books, 2024, tradução de Aline Amaral), lido no capítulo de amostra da
+editora. Ficam em inglês só os termos que ela também deixa: *domain-driven design*, *event
+sourcing*, EventStorming e CQRS.
+
+Onde as fontes divergiam, o Mateus escolheu:
+- *core subdomain* → "subdomínio principal", como na edição; a skill dele dizia "núcleo";
+- *domain expert* → "especialista do domínio"; a edição diz "de domínio";
+- *shared kernel* → "núcleo compartilhado";
+- *event-sourced* → "com event sourcing". A edição diz "orientado a eventos", que é também o
+  *event-driven*;
+- *transaction script* e *active record* → "script de transação" e "registro ativo", como na
+  edição, com a escuta para julgar;
+- *data mesh* → "malha de dados";
+- *event store* → "armazenamento de eventos", e *big ball of mud* → "grande bola de lama".
+
+Pôr o original entre vírgulas na primeira vez não foi possível sem código: o `conferir` acusa
+"ficou no original" sempre que o termo inglês aparece ao lado da tradução. O glossário tem 105
+entradas: 76 termos, no singular e no plural, 8 de estrutura ("Figure" → "Figura", "Part II" →
+"Parte 2") e 21 que ficam como no original (DDD, Gherkin e 19 nomes). A política mora em `decisoes.md`.
+
+**Amostra.** Foram 18 lotes, 193 segmentos e 5.907 palavras (8,1% do livro):
+- a abertura e a Parte 1;
+- o começo do capítulo 1, com a Figura 1-1 e a Tabela 1-1;
+- o Gherkin `c044-s0007` e "What Is a Bounded Context?";
+- o começo do capítulo 5, onde o texto fala da "line 7" de um código que saiu;
+- o fim do livro.
+
+Ficou num subagente `tradutor` só (Opus, o modelo da sessão):
+
+| | Amostra do Tides | Amostra do DDD |
+|---|---|---|
+| Lotes, segmentos, palavras | 6, 133, 5.944 | 18, 193, 5.907 |
+| Tempo | 8,8 min (676 palavras por minuto) | 9,7 min (609 palavras por minuto) |
+| Respostas do modelo / chamadas de ferramenta | 16 / 18 | 23 / 50 |
+| Contexto no fim | 110.212 | 124.552 |
+| Tokens de saída | 60.062 (10,1 por palavra) | 73.472 (12,4 por palavra) |
+| Cache lido / cache criado | 934.492 / 106.334 | 1.373.664 / 120.701 |
+| Medidor semanal | 66% → 66% | 71% depois (antes não foi lido) |
+
+O DDD gastou mais por palavra que as outras amostras. Isso vem de três coisas:
+- **os 18 lotes pequenos:** foram 50 chamadas de ferramenta para o mesmo número de palavras que
+  o Tides traduziu com 18, porque cada lote custa uma leitura, uma resposta e uma declaração;
+- **as decisões de termo:** o tradutor declarou 104 termos e nomes em `termos/`;
+- **a rodada do `conferir`.**
+
+A tradução tem 6.467 palavras, 9,5% a mais que o original, contra 3,6% no Tides: o português
+técnico repete o substantivo que o inglês junta ("core, supporting, and generic subdomains").
+
+**Conferência e montagem.**
+- **`conferir --amostra`:** "nada faltando, sobrando ou repetido". O tradutor teve uma rodada só:
+  os títulos "Subdomínios principais…" saíam com maiúscula, que o glossário não reconhece, e
+  viraram "Os subdomínios principais".
+- **`montar --amostra`:** 0,5 s, 193 segmentos e 1 nota no fim do capítulo. O OPF declara `pt-BR`,
+  mas o `dc:title` continua em inglês (ADR-0007, "O resto da lista", item 3).
+- **Releitura pelo `preparar`:** 194 segmentos, que são os 193 e o título "Notas", com 0 remoção e
+  0 trecho fora de segmento. Dos 321 arquivos, 303 ficam sem texto. Isso só acontece na amostra.
+- **epubcheck:** 1.665 RSC-005 e 1 RSC-007, os dois tipos que já vêm no original (11.961 RSC-005).
+
+**Estimativa do resto,** pela régua do livro inteiro: são 67.421 palavras em 301 lotes.
+- **Saída:** ~430 mil tokens a 6,4 por palavra. Se o excesso da amostra se repetir no livro
+  (12,4 contra 10,1 no Tides), são ~530 mil.
+- **Medidor:** de 1,5 a 2 pontos.
+- **Tempo:** um tradutor por capítulo de verdade, que é o `partNNNN` do arquivo, dá 19
+  tradutores. O maior é o capítulo 6, com 5.367 palavras: de 5 a 9 minutos de relógio, entre a
+  régua de 1.160 palavras por minuto e a velocidade da amostra.
+
+A escuta tem roteiro próprio (`livros/trabalho/roteiro-de-escuta-learning-ddd-amostra.md`, 10
+paradas). O Mateus não a ouviu antes do resto: ela vai junto com a do livro pronto (ver abaixo).
+
+### A amostra deixa de ser o caminho padrão (2026-11-02)
+
+Decisão do Mateus, depois da amostra do DDD: "A gente não precisa mais fazer esse ciclo de
+amostra, não, porque já passamos por uma tradução anterior". Três livros passaram pela amostra.
+As duas escutas feitas (Huxley e Tides) aprovaram as paradas. O que elas mudaram foi o glossário
+e as decisões do livro (no Tides, os títulos de capítulo e o sumário do fim), não o `tradutor.md`.
+
+- **Muda:** a escuta passa a ser do livro pronto, pelo roteiro. A amostra volta só quando o
+  `tradutor.md` muda ou quando o livro traz uma escolha que só o ouvido julga e nenhum livro
+  anterior decidiu (dialeto, registro falado, um jeito novo de a voz ler código, sigla ou número).
+- **Fica:** termo, nome e tom sem precedente continuam com o Mateus, por texto, antes de
+  traduzir, na mesma mensagem do custo. O sim do custo continua. A escuta do PDF novo antes de
+  traduzir (`montar --original`, passo 3 do "Livro novo") também continua, porque defeito de
+  diagramação traduzido se paga duas vezes.
+- **Perde:** o defeito que a amostra pegaria aparece no livro inteiro. Termo, nome ou tom se
+  corrige pelo glossário: o `conferir` acusa cada segmento, e o tradutor reescreve só esses. A
+  exceção cara é a limpeza: uma remoção nova muda `limpos/`, e o `conferir` acusa "tradução
+  velha" nos lotes daquele texto, que se traduzem de novo.
+- **Ganha:** cada livro custa uma mensagem ao Mateus antes de traduzir, e não uma escuta.
+  Também deixa de pagar o custo extra da amostra, que gasta de 9,4 a 12,4 tokens por palavra,
+  contra 6,4 no livro inteiro.
+
+### O Learning DDD inteiro (2026-11-02)
+
+O Mateus aprovou o resto sem ouvir a amostra, pelo custo estimado: 301 lotes, 67.421 palavras, de
+430 a 530 mil tokens de saída e de 1,5 a 2 pontos do medidor. O medidor semanal estava em 71%.
+
+**Antes de distribuir.**
+- **Glossário, de 105 para 199 entradas:** entraram os termos que a amostra declarou.
+- **Dez ficaram de fora,** porque o glossário cobra a palavra, com a caixa, em todo segmento onde
+  o original aparece:
+  - "When" começa 72 frases;
+  - "lead" é também o verbo *lead to*;
+  - "ticket" é "chamado" no exemplo do suporte e "ingresso" no dos shows;
+  - "design patterns" está dentro de "domain-driven design patterns";
+  - o resto muda de forma com a frase: Scenario, Given, Then, off-the-shelf, committing e
+    "Cutting corners".
+
+  A sessão os tirou das declarações da amostra. A forma de cada um foi para `decisoes.md`, numa
+  seção nova, "O que se declara em `termos/`": o nome próprio e o termo técnico, nunca o verbo, o
+  adjetivo que muda de gênero nem a palavra de dois sentidos.
+- **O `conferir --amostra`** continuou passando.
+
+**Distribuição.** Foram 19 subagentes `tradutor` numa mensagem só, um por capítulo de verdade
+(o `partNNNN` do arquivo), com o brief curto da skill e um laço de `conferir --capitulo`:
+
+| Tradutor | Arquivos | Lotes | Palavras | Tempo | Saída (por palavra) | Cache lido | Contexto máximo |
+|---|---|---|---|---|---|---|---|
+| Abertura, prefácio e introdução | `c006–c017` | 12 | 3.816 | 9,9 min | 69.113 (18,1) | 2.611.775 | 140.734 |
+| Capítulo 1 (resto) | `c024–c030` | 7 | 2.278 | 6,7 min | 48.107 (21,1) | 1.331.585 | 95.351 |
+| Capítulo 2 | `c031–c047` | 16 | 3.228 | 10,3 min | 68.226 (21,1) | 2.669.542 | 126.215 |
+| Capítulo 3 | `c048–c066` | 18 | 3.811 | 9,5 min | 64.361 (16,9) | 2.030.703 | 120.915 |
+| Capítulo 4 | `c067–c083` | 17 | 2.854 | 7,6 min | 54.381 (19,1) | 1.938.116 | 101.186 |
+| Parte 2 e capítulo 5 | `c084–c095` | 8 | 1.614 | 4,9 min | 32.694 (20,3) | 1.469.759 | 81.044 |
+| Capítulo 6 | `c096–c103` | 9 | 5.367 | 12,2 min | 85.073 (15,9) | 3.687.049 | 160.195 |
+| Capítulo 7 | `c104–c118` | 15 | 3.718 | 8,8 min | 63.242 (17,0) | 2.386.320 | 125.885 |
+| Capítulo 8 | `c119–c143` | 25 | 4.305 | 10,6 min | 74.930 (17,4) | 1.752.814 | 135.881 |
+| Capítulo 9 | `c144–c153` | 10 | 3.275 | 9,6 min | 69.511 (21,2) | 2.447.427 | 121.871 |
+| Parte 3 e capítulo 10 | `c154–c166` | 13 | 2.283 | 6,6 min | 48.421 (21,2) | 1.033.546 | 91.528 |
+| Capítulo 11 | `c167–c191` | 25 | 4.425 | 10,2 min | 68.859 (15,6) | 2.540.918 | 138.235 |
+| Capítulo 12 | `c192–c213` | 22 | 3.100 | 5,3 min | 37.664 (12,1) | 922.375 | 78.964 |
+| Capítulo 13 | `c214–c226` | 13 | 4.223 | 8,5 min | 62.196 (14,7) | 1.514.230 | 112.968 |
+| Parte 4 e capítulo 14 | `c227–c244` | 18 | 3.826 | 8,1 min | 58.529 (15,3) | 1.777.796 | 105.245 |
+| Capítulo 15 | `c245–c259` | 15 | 3.404 | 10,4 min | 71.551 (21,0) | 1.846.905 | 122.425 |
+| Capítulo 16 | `c260–c276` | 17 | 3.779 | 14,5 min | 83.673 (22,1) | 4.658.649 | 138.045 |
+| Apêndice A | `c287–c299` | 13 | 4.865 | 10,4 min | 75.937 (15,6) | 1.479.481 | 130.856 |
+| Palavras finais, Apêndice B e fim | `c277–c286`, `c300–c317` | 28 | 3.250 | 13,8 min | 88.346 (27,2) | 3.216.405 | 155.778 |
+| **Total** | | 301 | 67.421 | 14,5 min de relógio | 1.224.814 (18,2) | 41.315.395 | — |
+
+Os tokens são do registro de cada subagente, uma conta por resposta do modelo; o tempo é o do
+aviso de fim.
+
+**Real contra a estimativa.** Desta vez a estimativa errou para baixo:
+- **Saída:** 1,22 milhão de tokens, contra 430 a 530 mil, ou seja, 18,2 por palavra, contra 6,4
+  no Tides. O livro inteiro gastou mais por palavra que a própria amostra (12,4). A régua de
+  "Muda/Ganha", logo acima, não vale para este livro.
+- **Raciocínio:** 61% da saída, com a rodada de correção: 767 mil de 1,26 milhão.
+- **Cache lido:** 41,3 milhões, contra ~15 milhões.
+- **Tempo:** 14,5 minutos de relógio, contra 5 a 9. Somados em série, os 19 dariam 178 minutos:
+  379 palavras por minuto por tradutor, contra 1.160 no Tides.
+- **Medidor semanal:** de 71% para 74%, contra 1,5 a 2 pontos previstos. A rodada de correção e o
+  trabalho da sessão estão no meio.
+
+O excesso vem de três coisas:
+- **o lote pequeno:** a média foi de 224 palavras por lote, contra ~1.940 no Tides. Foram 562
+  respostas do modelo para 301 lotes, e cada lote custa a leitura do pedido, o raciocínio, a
+  resposta, a declaração e o `conferir` do arquivo;
+- **a decisão de termo:** o livro técnico pede uma escolha a cada parágrafo. Os tradutores
+  gravaram 236 arquivos em `termos/`, com 693 termos fora do glossário;
+- **o pior caso:** o grupo do fim (27,2 por palavra) tem 28 lotes de 116 palavras em média, quase
+  só referências bibliográficas.
+
+Para o próximo livro técnico partido em arquivos pequenos, a régua é a deste: ~18 tokens por
+palavra, ~380 palavras por minuto por tradutor e ~1 ponto do medidor a cada 22 mil palavras.
+
+**Glossário, de 199 para 884 entradas.**
+- **685 entradas novas:** 674 tinham uma forma só e 11 tinham duas. Destas, a sessão escolheu:
+  - "casos de borda", "projeto brownfield", "domínios do problema" (como o singular);
+  - "vantagem competitiva" para *competitive edge*;
+  - "pesquisa e desenvolvimento" para *R&D*, para a voz não ler "P e D";
+  - o título do Evans em caixa de frase;
+  - os títulos das referências traduzidos (ver abaixo).
+- **Ficaram de fora mais 8,** pelo mesmo motivo dos 10 de antes: command (dentro de "command
+  execution model"), insight no singular, use case no singular, ownership, testing pyramid
+  (o `c162-s0002` corrige um erro do autor), EventStorming session, Campaign e Big Ball of Mud.
+
+**Rodada de correção.** O `conferir` acusou 69 problemas:
+- **14 declarações** com a forma que perdeu;
+- **55 segmentos.** A maior parte vem do glossário que compara com caixa: o termo no começo de um
+  título ("Transações distribuídas implícitas"), o termo com uma palavra no meio ("comunicação
+  síncrona e assíncrona") e o termo em outro número ("ciclo de vida dos leads").
+
+Os mesmos 18 tradutores corrigiram tudo, por `SendMessage`, em 15 segundos a 2,7 minutos cada:
+82 respostas e 38 mil tokens de saída. Junto, entraram três decisões da sessão, que não têm
+precedente e esperam o Mateus:
+- **a WolfDesk é feminina,** como as outras empresas do exemplo. Foram 11 segmentos;
+- **a referência bibliográfica que vem como parágrafo, e não como nota,** traduz o título, pela
+  edição brasileira quando ela existe. Com o título em inglês, o `conferir` acusava "igual ao
+  original" ou "parece inglês", e os tradutores tinham contornado de três jeitos;
+- **"ticket" é "chamado"** na prosa, e a classe fica: "o agregado Ticket".
+
+**Conferência e montagem.**
+- **`conferir`:** "nada faltando, sobrando ou repetido".
+- **Tradução:** 81.003 palavras, 10,5% a mais que o original.
+- **`montar --epub livros/prontos/learning-ddd.pronto.epub`:** 4,7 s, 321 capítulos, 2.883
+  segmentos e 14 notas levadas para o fim do capítulo.
+- **epubcheck:** 3.424 RSC-005 e 1 RSC-007, contra 11.961 RSC-005, 1 RSC-007 e 1 PKG-006 no
+  original.
+  - O PKG-006 (o `mimetype` fora do lugar no zip) some, porque o `montar` grava o zip de novo.
+  - Uma mensagem é nova: "body incompleto", em 307 arquivos. O original põe o texto dentro de
+    `<section>`, que o XHTML 1.1 do EPUB 2 não aceita. A marca d'água "OceanofPDF.com" era o
+    único bloco válido do `<body>`, e o ADR-0008 a tira. O leitor não vê diferença.
+
+**O que os tradutores devolveram como dúvida**, sem que o `conferir` acusasse nada:
+- **Os exercícios sem as letras:** as alternativas são um `<ol>` com as letras no CSS
+  (`list-style-type: lower-alpha`). A voz não as lê, e "B e C" fica sem referência nos exercícios
+  de quase todo capítulo e no gabarito do Apêndice B. Pôr a letra no texto é limpeza.
+- **A Tabela 7-1 (`c105`):** 151 células com nomes de pessoas, telefones, datas ISO e status em
+  inglês ("PENDING_PAYMENT").
+- **Caractere invisível:** o `c150-s0008` trazia um U+2060 no meio de "CampaignActivated". O
+  tradutor o tirou, mas a limpeza deixa esse caractere passar.
+- **Erros do original traduzidos pelo sentido:**
+  - `c024-s0011`: o "same" que falta;
+  - `c053-s0007`: a frase truncada;
+  - `c112-s0008`: "event sources" no lugar de *event sourcing*;
+  - `c162-s0002`: "testing pyramid" onde o sentido é o diamante de testes;
+  - `c237-s0004`: "Campaign" onde a entidade é Lead;
+  - `c252-s0007`: AdsOptimization onde o contexto é Reporting;
+  - `c266-s0007`: "anything by" no lugar de "but";
+  - `c301-s0004`: "interactions" no lugar de "iterations".
+- **Erros do original mantidos:**
+  - as citações de capítulo trocadas: "Capítulo 2" em `c054-s0002` e `c085-s0003`, e "Capítulo
+    1" em `c057-s0011`;
+  - S1 e S2 trocados nas alternativas do `c259`, que o gabarito repete.
+- **Contornos do glossário:**
+  - "aggregate" como verbo (`c100-s0076`, `c147`, `c291-s0003`), que o glossário cobra como
+    "agregado";
+  - os títulos com artigo, que nem todo capítulo seguiu. O capítulo 5 ficou sem: "Script de
+    transação";
+  - "Na Parte 1", no `c287-s0003`, quer dizer a parte do estudo de caso.
+- **Termos que ficaram em inglês:** lead, insights, upstream, downstream, brownfield,
+  greenfield, snapshot, payload, data warehouse, data lake, product owners, workshop e backlog.
+  Ficou também "sistemas operacionais" (*operational systems*), que soa como Windows.
+- **Endereço na legenda:** o `c221-s0007` traz "https://unsplash.com/…", que a voz lê.
+
+**Processo.** Os tradutores dividem o scratchpad. Três tiveram o script de gravação sobrescrito
+por outro, no meio do trabalho, e refizeram os lotes numa subpasta própria: o capítulo 13, o 14 e
+o 16 (no 16, o `c266` não chegou a ser gravado). Nenhum lote errado chegou ao `conferir`, que
+acusa o ID fora do lote. O brief do próximo livro deve pedir uma subpasta por tradutor.
+
+A escuta tem roteiro próprio (`livros/trabalho/roteiro-de-escuta-learning-ddd.md`, 10 paradas):
+- as três paradas da amostra que pesam: a Tabela 1-1, o Gherkin e o código que saiu;
+- as novas: os exercícios sem as letras, a Tabela 7-1, "o agregado Ticket", o sinal de igual, as
+  referências e "sistemas operacionais".
+
 ## Consequências
 
 **Ganha:**
@@ -587,7 +841,7 @@ o Tides inteiro não couber em uma semana de uso (ADR-0001).
 | Escuta ★ | `conferir`: vazio, igual ao original, parece inglês, glossário | idem | qualquer achado |
 | Idioma do livro | teste de contrato: livro montado em modo tradução declara pt-BR | portão | OPF ou `lang` com o idioma do original |
 | Python não chama LLM | `test_arquitetura.py` (sem `subprocess`, `http`, `socket`) e suíte offline | portão | algum módulo importa |
-| Escuta ★ (manual) | roteiro de escuta no ElevenReader | a cada mudança em `.claude/agents/tradutor.md`; responsável: Mateus | tropeço audível |
+| Escuta ★ (manual) | roteiro de escuta no ElevenReader | a cada livro pronto; a amostra, a cada mudança em `.claude/agents/tradutor.md` ou escolha sem precedente; responsável: Mateus | tropeço audível |
 
 Regra derivada no `AGENTS.md`: a tradução entra por `earbook traduzir` e pela resposta do
 lote; o agente nunca escreve em `limpos/` nem em `pedidos/`.
@@ -596,4 +850,4 @@ lote; o agente nunca escreve em `limpos/` nem em `pedidos/`.
 
 Autor: Mateus, com o Claude Code · Criado em: 2026-11-01 · Aprovado em: 2026-11-01 ·
 Atualizado em: 2026-11-02 (escuta da amostra e medição do livro inteiro; amostra do Tides; o
-Tides inteiro)
+Tides inteiro; amostra do DDD; a amostra deixa de ser o caminho padrão; o DDD inteiro)

@@ -1,6 +1,6 @@
 ---
 name: traduzir-livro
-description: Roteiro da sessão que traduz um livro inteiro do earbook do inglês para o pt-BR - glossário, amostra e escuta, decisões do livro, estimativa de custo, divisão em tradutores paralelos, rodada de correção, montagem em livros/prontos, epubcheck e roteiro de escuta (ADR-0006 e ADR-0007). Use quando o Mateus pedir para traduzir um livro, continuar uma tradução, distribuir os lotes, estimar o custo de uma tradução ou montar o roteiro de escuta.
+description: Roteiro da sessão que traduz um livro inteiro do earbook do inglês para o pt-BR - glossário, decisões do livro, amostra só quando a escuta decide, estimativa de custo, divisão em tradutores paralelos, rodada de correção, montagem em livros/prontos, epubcheck e roteiro de escuta (ADR-0006 e ADR-0007). Use quando o Mateus pedir para traduzir um livro, continuar uma tradução, distribuir os lotes, estimar o custo de uma tradução ou montar o roteiro de escuta.
 ---
 
 # Traduzir um livro
@@ -10,8 +10,8 @@ O passo a passo da sessão que leva um livro em inglês de `livros/trabalho/<nom
 (`.claude/agents/tradutor.md`). O Python exporta, confere e monta, e nunca chama o LLM
 (ADR-0001).
 
-Antes de começar: o livro já passou pelo `preparar` (e pelo `importar-pdf`, se veio de PDF), e o
-Mateus ouviu o `montar --original` (passo 3 do "Livro novo" no `AGENTS.md`). A capitular
+Antes de começar: o livro já passou pelo `preparar`. Se veio de PDF, passou pelo `importar-pdf`
+e o Mateus ouviu o `montar --original` (passo 3 do "Livro novo" no `AGENTS.md`). A capitular
 deslocada já foi corrigida no `preparar` (ADR-0007). Se o resumo listar suspeita de capitular,
 ela é a que o livro não provou: decida com o Mateus antes de traduzir.
 
@@ -35,20 +35,38 @@ comando cria com as seções em branco. Rodar de novo não refaz nada.
 - O glossário compara palavra inteira com maiúscula: plural e variação de caixa precisam de
   entrada própria (`warlock` e `warlocks`, `warchief` e `Warchief`).
 
-## 3. Amostra e escuta
+## 3. Decisões do livro, por texto
 
-- **Amostra:** de 5 a 7 lotes num tradutor só: o rosto, os prólogos, o começo do capítulo 1 e
-  o fim. Se o livro tem fala em dialeto, um lote com ela; no Tides, a amostra não tinha, e cada
-  tradutor decidiu o dialeto por conta própria.
-- **Conferir e montar:** `conferir --amostra`, `montar --amostra` e um roteiro de escuta com as
-  paradas (ver o passo 9).
-- **Depois da escuta:** escreva `decisoes.md` com o que o Mateus aprovou e com o que o tradutor da
-  amostra decidiu e ninguém reprovou. Ali entram a política de nome fora do glossário, o tom, o
-  dialeto, os títulos e a caixa, o tratamento ("Sir", "Lord", "you" plural) e as escolhas da
-  amostra.
-- **Glossário:** os termos que a amostra declarou em `termos/` entram nele antes do resto.
+- **`decisoes.md`, antes de distribuir:** a política de nome fora do glossário, a de termo, o
+  tom, o dialeto, os títulos e a caixa e o tratamento ("Sir", "Lord", "you" plural).
+- **Com precedente, a sessão decide:** a edição brasileira, a localização oficial ou outro livro
+  já traduzido aqui. Anote a fonte.
+- **Sem precedente, o Mateus decide por texto,** na mesma mensagem do custo (passo 4): uma
+  mensagem, um sim. No DDD, a política de termos foi uma tabela com a contagem de cada termo, a
+  forma da edição brasileira e a proposta.
 
-O brief do resto não copia nada disso: o tradutor lê `decisoes.md`.
+O brief não copia nada disso: o tradutor lê `decisoes.md`.
+
+### A amostra, só quando a escuta decide
+
+Desde 2026-11-02 (pedido do Mateus, ADR-0006), a escuta é do livro pronto, pelo roteiro do
+passo 9, e a amostra não é o caminho padrão. Ela volta quando:
+
+- o `.claude/agents/tradutor.md` mudou (a régua é a amostra do Huxley, pelo `AGENTS.md`);
+- o livro traz uma escolha que só o ouvido julga e nenhum livro anterior decidiu: dialeto,
+  registro falado, um jeito novo de a voz ler código, sigla ou número.
+
+Quando houver amostra:
+
+- **Os lotes:** de 5 a 7 lotes num tradutor só, com o trecho da escolha em dúvida.
+- **Conferir e montar:** `conferir --amostra`, `montar --amostra` e um roteiro com as paradas.
+- **Depois da escuta:** o aprovado entra em `decisoes.md`, e os termos que a amostra declarou
+  em `termos/` entram no glossário antes do resto.
+
+Sem amostra, o defeito aparece no livro inteiro. Termo, nome ou tom se corrige pelo glossário e
+pela rodada do passo 6. A limpeza é a exceção cara: uma remoção nova muda `limpos/`, o
+`conferir` acusa "tradução velha", e esses lotes se traduzem de novo (apagar o pedido e a
+resposta e rodar `traduzir`).
 
 ## 4. Custo, antes do sim do Mateus
 
@@ -61,7 +79,20 @@ concentra as decisões e erra para cima (10,1 tokens por palavra no Tides, contr
 | Tempo por tradutor | ~1.160 palavras por minuto | o maior capítulo ÷ 1.160 é o tempo de relógio |
 | Medidor semanal | o Tides inteiro (89 mil palavras) moveu no máximo 2 pontos | ~1 ponto a cada 45 mil palavras |
 
-Mostre ao Mateus os lotes, as palavras e a estimativa, e espere o sim.
+Essa é a régua do romance, com lote cheio. O livro técnico partido em arquivos pequenos custa
+quase o triplo (ADR-0006, "O Learning DDD inteiro"): cada lote paga a leitura, a resposta e o
+`conferir`, e quase todo parágrafo pede uma escolha de termo. Use a régua do DDD quando as
+palavras pendentes divididas pelos lotes pendentes derem menos de ~1.000 (o DDD deu 224, o Tides
+~1.940):
+
+| Medida | Régua do livro técnico |
+|---|---|
+| Tokens de saída | ~18 por palavra (de 12 a 27 por capítulo; o pior são as referências bibliográficas) |
+| Tempo por tradutor | ~380 palavras por minuto |
+| Medidor semanal | ~1 ponto a cada 22 mil palavras |
+
+Mostre ao Mateus os lotes, as palavras, a estimativa e as decisões sem precedente do passo 3, e
+espere o sim.
 
 ## 5. Distribuir
 
@@ -75,7 +106,9 @@ O brief é curto e igual para todos, mudando só o capítulo:
 ```
 Traduza os lotes <c005-l001 … c005-l011> da pasta livros/trabalho/<nome>.earbook,
 seguindo .claude/agents/tradutor.md. Leia glossario.json e decisoes.md antes do primeiro
-lote. Grave a resposta e os termos de cada lote assim que terminá-lo. No fim, rode
+lote. Grave a resposta e os termos de cada lote assim que terminá-lo. Script ou arquivo
+temporário vai numa subpasta com o nome do capítulo (c005/), porque há outros tradutores
+rodando ao mesmo tempo. No fim, rode
 uv run earbook conferir livros/trabalho/<nome>.earbook --amostra --capitulo c005.
 ```
 
@@ -118,7 +151,8 @@ montagem.
 
 ## 9. Roteiro de escuta
 
-`livros/trabalho/roteiro-de-escuta-<nome>.md`, com 8 a 10 paradas, só na parte nova. Cada parada
+`livros/trabalho/roteiro-de-escuta-<nome>.md`, com 8 a 10 paradas no livro inteiro (só na
+parte nova, quando houve amostra). Cada parada
 tem o ID, o minuto, o que ouvir e a pergunta para o Mateus. Os minutos vêm do comando:
 
 ```bash

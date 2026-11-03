@@ -15,6 +15,17 @@ etapa() { printf '\n== %s\n' "$1"; }
 etapa "lock em dia com o pyproject"
 uv lock --check
 
+etapa "trilhos"
+# O juiz fica fora do projeto, na pasta da skill: não há cópia para editar nem etapa em bash para
+# calar. Ele confere supressões, configuração paralela e todo afrouxamento do portão. Sem ele o
+# portão não aprova. O CI baixa o mesmo script numa versão fixa (assets/ci.yml).
+conferir="$HOME/.claude/skills/python-on-rails/scripts/conferir_trilho.py"
+if [[ ! -f "$conferir" ]]; then
+  echo "Falta $conferir: instale a skill python-on-rails. O portão não aprova sem o conferir_trilho."
+  exit 2
+fi
+uv run --locked python -I "$conferir"
+
 etapa "formatação"
 uv run --locked ruff format --check .
 

@@ -67,6 +67,14 @@ max-complexity = 8
 [tool.ruff.lint.flake8-tidy-imports]
 ban-relative-imports = "all"
 
+# Config lida num lugar só: fora do config.py, ler o ambiente reprova. Repassar o ambiente a um
+# subprocesso é legítimo e leva `# noqa: TID251  # motivo: ...`.
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"os.environ".msg = "Só o config.py lê o ambiente; o resto recebe o objeto de config."
+"os.environb".msg = "Só o config.py lê o ambiente; o resto recebe o objeto de config."
+"os.getenv".msg = "Só o config.py lê o ambiente; o resto recebe o objeto de config."
+"os.getenvb".msg = "Só o config.py lê o ambiente; o resto recebe o objeto de config."
+
 [tool.basedpyright]
 typeCheckingMode = "recommended"  # o modo mais estrito pensado para uso diário
 pythonVersion = "3.14"            # igual ao .python-version

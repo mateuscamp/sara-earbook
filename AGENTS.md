@@ -29,6 +29,7 @@ ADRs em `docs/adr/`. O Claude Code traduz; o Python nunca chama o LLM (ADR-0001)
 - A skill `arquitetura-ai-first` orienta toda decisão estrutural; fronteira nova exige ADR antes do código.
 - Ao fim de toda implementação de código, nesta ordem: a skill `code-review` e, depois dela, a skill `code-audit` (pedido do Mateus, 2026-11-01).
 - O asset se julga **ouvindo no ElevenReader**, não lendo lado a lado.
+- O repositório é público, e o `README.md` é a porta dele. Toda mudança de comando, de opção, do que sai do áudio ou da pasta de trabalho atualiza o README no mesmo commit (pedido do Mateus, 2026-11-02).
 - A sessão principal só orquestra (pedido do Mateus, 2026-11-01). Cada implementação roda numa sessão filha, com brief completo, e todo o processo deste arquivo vale nela. A filha usa esta mesma pasta, porque `livros/` e `.venv` ficam aqui, e roda uma por vez. Quando ela termina, o que importa volta para a principal: o commit, as medições, as decisões e os limites. Depois a filha é arquivada.
 
 ## Livros de medição (o original fica em `~/Documentos/livros/ingles/`)

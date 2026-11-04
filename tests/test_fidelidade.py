@@ -199,3 +199,8 @@ def test_intervalo_de_datas_antes_de_1500_e_citacao() -> None:
     fonte = "O filósofo Roger Bacon (1214-1294) escreveu."
     assert _faltas([fonte], "O filósofo Roger Bacon escreveu.") == []
     assert so_funciona_no_papel(fonte) == ["citação '(1214-1294)'"]
+
+
+def test_numero_omitido_nao_e_cobrado() -> None:
+    fonte = "Karl Jaspers (1883-1969) (1979) disse."
+    assert _faltas([fonte], "Karl Jaspers disse.", ("1979",)) == []

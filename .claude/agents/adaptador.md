@@ -56,7 +56,8 @@ destes:
 - `"descarte": "rotulo"`: só o "Quadro 27.1", o "Tabela 19.1" ou o número do capítulo repetido.
 - `"descarte": "decisao: <seção de decisoes.md>"`: o que as decisões do livro mandam tirar.
 - `"omitidos": [{"termo", "motivo"}]`, junto do `texto`: o termo técnico das fontes que você
-  deixou de fora de propósito, com o motivo. A sessão lê cada um.
+  deixou de fora de propósito, com o motivo. A sessão lê cada um. Número só se omite com motivo
+  `citação`, `data`, `ordinal`, `potência` ou `unidade`, e nunca porcentagem nem dose.
 
 Cada ID do pedido entra em exatamente um grupo, e um grupo nunca junta IDs de lotes diferentes.
 JSON válido em UTF-8, com as aspas tipográficas do português (“ ” e ‘ ’), que não precisam de

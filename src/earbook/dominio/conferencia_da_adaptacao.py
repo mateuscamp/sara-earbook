@@ -8,13 +8,21 @@ from collections import Counter
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
-from earbook.dominio.adaptacao import Grupo, MotivoDoDescarte, RespostaDaAdaptacao, TipoDoGrupo
+from earbook.dominio.adaptacao import (
+    Grupo,
+    MotivoDoDescarte,
+    Omitido,
+    RespostaDaAdaptacao,
+    TipoDoGrupo,
+)
 from earbook.dominio.conferencia import Problema, conferir_textos
 from earbook.dominio.fidelidade import (
     Raridade,
+    eh_numero,
     eh_rotulo,
     faltas_de_fidelidade,
     numeros_que_faltam,
+    problemas_do_numero_omitido,
     so_funciona_no_papel,
     termos_que_faltam,
 )
@@ -65,13 +73,17 @@ def avisos_da_adaptacao(respostas: Sequence[RespostaDaAdaptacao]) -> tuple[Probl
     e o descarte por decisão do livro (ADR-0009)."""
     avisos: list[Problema] = []
     for grupo in (grupo for resposta in respostas for grupo in resposta.grupos):
-        avisos += [
-            Problema(grupo.fontes[0], f"omitiu '{o.termo}': {o.motivo}") for o in grupo.omitidos
-        ]
+        avisos += [Problema(grupo.fontes[0], _aviso_do_omitido(o)) for o in grupo.omitidos]
         base, _, secao = grupo.descarte.partition(":")
         if base.strip() == MotivoDoDescarte.DECISAO and secao.strip():
             avisos.append(Problema(grupo.fontes[0], f"descartado por decisão: {secao.strip()}"))
     return tuple(avisos)
+
+
+def _aviso_do_omitido(omitido: Omitido) -> str:
+    if eh_numero(omitido.termo):
+        return f"omitiu o número {omitido.termo}: {omitido.motivo}"
+    return f"omitiu '{omitido.termo}': {omitido.motivo}"
 
 
 def conferir_sumario(
@@ -165,6 +177,12 @@ def _grupo(
     textos = [fonte.texto for fonte in fontes]
     omitidos = [omitido.termo for omitido in grupo.omitidos]
     motivos = faltas_de_fidelidade(textos, ouvido, omitidos, regua.raridade)
+    motivos += [
+        problema
+        for o in grupo.omitidos
+        if eh_numero(o.termo)
+        for problema in problemas_do_numero_omitido(o.termo, o.motivo, textos, " ".join(ouvido))
+    ]
     motivos += regua.nomes.motivos(" ".join(textos), " ".join(ouvido))
     motivos += [motivo for paragrafo in ouvido for motivo in so_funciona_no_papel(paragrafo)]
     return problemas + [Problema(primeiro, motivo) for motivo in motivos]

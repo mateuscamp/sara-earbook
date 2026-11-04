@@ -12,7 +12,7 @@ from __future__ import annotations
 import re
 import unicodedata
 from collections import Counter
-from collections.abc import Iterable, Iterator, Sequence
+from collections.abc import Collection, Iterable, Iterator, Sequence
 
 from earbook.dominio.segmento import Segmento
 
@@ -56,6 +56,13 @@ _PAPEL: tuple[tuple[re.Pattern[str], str], ...] = (
     (re.compile(r"[\u2013_]{3,}"), "linha de formulário"),
     (re.compile(r"\[(?:\.\.\.|\u2026)\]"), "'[...]'"),
 )
+
+
+# Medido no livro: 138 porcentagens, 34 faixas e nenhuma dose com unidade; "por cento" só com o
+# número por extenso, 9 vezes (ADR-0009, "O número omitido"). A faixa conta pelo número que a abre.
+_FIM_DA_FAIXA = r"(?:\s*(?:a|e|ou|[\u2013-])\s*\d+(?:[.,]\d+)*)?"
+_MEDIDA = rf"{_FIM_DA_FAIXA}\s*(?:%|por cento|(?:mg|ml|mcg|\u00b5g|\u03bcg|UI|g)(?![^\W\d_]))"
+MOTIVOS_DO_NUMERO = frozenset({"citação", "data", "ordinal", "potência", "unidade"})
 
 
 class Raridade:
@@ -102,18 +109,42 @@ def radical(palavra: str) -> str:
 
 
 def faltas_de_fidelidade(
-    fontes: Sequence[str], texto: Sequence[str], omitidos: Iterable[str], raridade: Raridade
+    fontes: Sequence[str], texto: Sequence[str], omitidos: Collection[str], raridade: Raridade
 ) -> list[str]:
     """O que o texto adaptado perdeu ou inventou em relação às fontes do grupo."""
     corrido = " ".join(texto)
+    declarados = set(omitidos)
     motivos = [
-        f"o número {n} das fontes não está no texto" for n in numeros_que_faltam(fontes, corrido)
+        f"o número {n} das fontes não está no texto"
+        for n in numeros_que_faltam(fontes, corrido)
+        if n not in declarados
     ]
     motivos += [f"o número {n} não está nas fontes" for n in _numeros_inventados(fontes, corrido)]
     return motivos + [
         f"o termo '{forma}' das fontes não está no texto nem em omitidos"
         for forma in termos_que_faltam(fontes, corrido, omitidos, raridade)
     ]
+
+
+def eh_numero(termo: str) -> bool:
+    return _NUMERO.fullmatch(termo) is not None
+
+
+def problemas_do_numero_omitido(
+    numero: str, motivo: str, fontes: Sequence[str], corrido: str
+) -> list[str]:
+    """A guarda do número omitido (ADR-0009): só com motivo da lista, nunca porcentagem nem
+    dose, e só o que as fontes têm e o texto de fato deixou de dizer."""
+    if motivo.partition(":")[0].strip() not in MOTIVOS_DO_NUMERO:
+        return [f"o número {numero} foi omitido com motivo fora da lista: {motivo!r}"]
+    vezes = sum(_numeros(fonte).count(numero) for fonte in fontes)
+    if not vezes:
+        return [f"o número {numero} foi omitido, mas as fontes não o têm"]
+    if any(re.search(rf"(?<![\d.,]){re.escape(numero)}{_MEDIDA}", fonte) for fonte in fontes):
+        return [f"o número {numero} é porcentagem ou dose e não se omite"]
+    if _numeros_do_texto(corrido)[numero] >= vezes:
+        return [f"o número {numero} foi declarado omitido, mas continua no texto"]
+    return []
 
 
 def numeros_que_faltam(fontes: Sequence[str], corrido: str) -> list[str]:

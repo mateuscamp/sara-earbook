@@ -215,3 +215,95 @@ def test_item_do_sumario_juntado_num_paragrafo_so_e_acusado() -> None:
     assert motivos == [
         ("c001-s0002", "item do sumário não sai nem se junta: use igual ou um texto só dele")
     ]
+
+
+_FONTE = Segmento("c002-s0001", Papel.PARAGRAFO, "Em 30 pessoas, 51,1% com 5 mg e 2 g/m2.")
+
+
+def _omitindo(texto: str, numero: str, motivo: str, fonte: Segmento = _FONTE) -> list[str]:
+    grupo = Grupo(
+        (fonte.id,), TipoDoGrupo.TEXTO, texto=(texto,), omitidos=(Omitido(numero, motivo),)
+    )
+    problemas = conferir_adaptacao(
+        [CapituloLimpo("c002", (fonte,))],
+        [Pedido("c002-l001", (fonte,))],
+        [RespostaDaAdaptacao("c002-l001", (grupo,))],
+        (),
+        amostra=False,
+    )
+    return [p.motivo for p in problemas]
+
+
+def test_numero_omitido_com_motivo_da_lista_passa_e_vira_aviso() -> None:
+    texto = "Em pessoas, 51,1% com 5 mg e 2 g/m2."
+    assert _omitindo(texto, "30", "citação") == []
+    grupo = Grupo(("c002-s0001",), TipoDoGrupo.TEXTO, texto=(texto,))
+    grupo = replace(grupo, omitidos=(Omitido("30", "citação: ano partido"),))
+    avisos = avisos_da_adaptacao([RespostaDaAdaptacao("c002-l001", (grupo,))])
+    assert [(p.id, p.motivo) for p in avisos] == [
+        ("c002-s0001", "omitiu o número 30: citação: ano partido")
+    ]
+
+
+def test_numero_omitido_com_motivo_fora_da_lista_e_problema() -> None:
+    texto = "Em pessoas, 51,1% com 5 mg e 2 g/m2."
+    assert _omitindo(texto, "30", "ficou melhor assim") == [
+        "o número 30 foi omitido com motivo fora da lista: 'ficou melhor assim'"
+    ]
+
+
+def test_porcentagem_e_dose_nunca_se_omitem() -> None:
+    assert _omitindo("Em 30 pessoas, com 5 mg e 2 g/m2.", "51,1", "citação") == [
+        "o número 51,1 é porcentagem ou dose e não se omite"
+    ]
+    assert _omitindo("Em 30 pessoas, 51,1% e 2 g/m2.", "5", "unidade") == [
+        "o número 5 é porcentagem ou dose e não se omite"
+    ]
+
+
+def test_numero_omitido_que_continua_no_texto_e_problema() -> None:
+    assert _omitindo("Em 30 pessoas, 51,1% com 5 mg e 2 g/m2.", "30", "data") == [
+        "o número 30 foi declarado omitido, mas continua no texto"
+    ]
+
+
+def test_numero_omitido_que_as_fontes_nao_tem_e_problema() -> None:
+    texto = "Em 30 pessoas, 51,1% com 5 mg e 2 g/m2."
+    assert _omitindo(texto, "77", "data") == ["o número 77 foi omitido, mas as fontes não o têm"]
+
+
+def test_motivo_do_numero_pode_trazer_detalhe_depois_dos_dois_pontos() -> None:
+    texto = "Em pessoas, 51,1% com 5 mg e 2 g/m2."
+    assert _omitindo(texto, "30", "citação: ano partido pela quebra") == []
+
+
+def test_numero_dentro_de_porcentagem_maior_nao_e_a_porcentagem() -> None:
+    fonte = replace(_FONTE, texto="Em 1 caso, 51,1% melhoraram.")
+    assert _omitindo("Em um caso, 51,1% melhoraram.", "1", "ordinal", fonte) == []
+
+
+def test_numero_que_abre_faixa_de_porcentagem_ou_dose_nao_se_omite() -> None:
+    faixas = (
+        "De 5 a 15% dos adultos.",
+        "De 5 e 15% dos adultos.",
+        "De 5 ou 15% dos adultos.",
+        "De 5-15% dos adultos.",
+        "De 5 a 10 mg ao dia.",
+    )
+    for texto in faixas:
+        fonte = replace(_FONTE, texto=texto)
+        assert _omitindo(texto.replace("5 ", "", 1), "5", "data", fonte) == [
+            "o número 5 é porcentagem ou dose e não se omite"
+        ]
+
+
+def test_numero_seguido_de_outro_numero_sem_medida_ainda_se_omite() -> None:
+    fonte = replace(_FONTE, texto="De 5 a 15 pessoas.")
+    assert _omitindo("De 15 pessoas.", "5", "data", fonte) == []
+
+
+def test_numero_seguido_de_por_cento_nao_se_omite() -> None:
+    fonte = replace(_FONTE, texto="Cerca de 5 por cento dos adultos.")
+    assert _omitindo("Cerca de dos adultos.", "5", "data", fonte) == [
+        "o número 5 é porcentagem ou dose e não se omite"
+    ]

@@ -159,7 +159,10 @@ No livro em adaptação, o `conferir` cobra a fidelidade de cada grupo:
 - nada que só funciona no papel: `•`, "Quadro 27.1", "(Autor, ano)", "et al.", "p. ex.",
   pontilhado de sumário, linha de formulário e a sigla que o glossário manda por extenso.
 
-O termo omitido e o descarte por decisão saem como avisos, que não recusam o livro. O `montar`
+O `omitidos` também aceita número, com motivo `citação`, `data`, `ordinal`, `potência` ou
+`unidade`: é para a forma que o `conferir` não reconhece. Porcentagem e dose nunca se omitem, e o
+número omitido não pode continuar no texto. O termo omitido, o número omitido e o descarte por
+decisão saem como avisos, que não recusam o livro. O `montar`
 põe o primeiro parágrafo do grupo no elemento do primeiro ID, cada parágrafo a mais num elemento
 irmão logo depois, e tira as outras fontes. `--original` monta o texto limpo, sem a adaptação.
 

@@ -439,6 +439,8 @@ palavras. O `c039`, que parecia típico pelas regras do `conferir`, dá 56% na o
 | Cache lido | 1,24 milhão | 0,98 milhão |
 | Palavras em `igual` | 22% | 30% |
 
+A contagem de tokens desta tabela está dobrada: ver "O livro inteiro".
+
 Do `c033`:
 - **`conferir`:** nada a corrigir, com 2 avisos: os termos "caracterizam" e "comporta", que só
   existiam no destaque ou partidos por ele;
@@ -524,6 +526,161 @@ pego.
 No `c033`, os grupos `c033-s0094` e `c033-s0096` foram refeitos pelas decisões novas: "Georg Miller
 Beard, em 1869," e "Segundo Kirmayer e colaboradores,". O `c031` não mudou: o `conferir` novo não
 acusou nada nele.
+
+### O número omitido, com guarda (2026-11-03)
+
+Adaptar o livro inteiro mostrou que o `conferir` não reconhece toda forma de citação: 19 problemas
+em 14 IDs, nenhum de conteúdo ("Karl Jaspers (1883-1969) (1979)", "(1973, p. 134)", citação partida
+pela quebra de página ou por colunas misturadas). Três casos passavam e soavam errados: 10⁹ que veio
+como "109", "kg/m2" e um ordinal no meio do segmento. A pergunta foi "Aprova o número omitido com
+motivo, e com a guarda?", e a resposta, "Aprovar com a guarda":
+- `omitidos` aceita número só com motivo da lista fechada: citação, data, ordinal, potência ou
+  unidade. Motivo fora da lista é problema, não aviso.
+- Porcentagem e dose nunca se omitem, mesmo com motivo: o número seguido de `%`, "por cento", mg,
+  ml, g, mcg, µg ou UI, e também o que abre uma faixa ("5 a 15%"; a pergunta foi "Corrijo a faixa e
+  sigo até o livro pronto?", e a resposta, "Sim, seguir"). Medido no livro: 138 porcentagens, 34
+  faixas, nenhuma dose com unidade, e "por cento" 9 vezes, só com o número por extenso, que a
+  guarda de algarismos não alcança (`c038`, conferidos à mão). A dose por extenso fica como limite.
+- Todo número omitido sai como aviso, com o ID, o número e o motivo.
+- O número omitido não pode continuar no texto, nem ser um que as fontes não têm: a potência e a
+  unidade têm de deixar o valor certo ("dez elevado a nove"), sem número errado no áudio.
+
+### O livro inteiro (2026-11-03)
+
+O Mateus liberou o livro inteiro com o medidor semanal em 84%: "Não tem problema, não. Pode fazer a
+preparação completa do livro. Deixar ele como pronto." O `c031` e o `c033` já estavam prontos.
+
+**Antes de distribuir.** O glossário foi de 11 para 41 entradas, pelas siglas de `siglas.json`.
+
+**Distribuição.** Foram 30 subagentes `adaptador`, um por capítulo, com o capítulo pequeno junto
+de um vizinho. O limite é de 20 em paralelo: os 10 últimos entraram conforme as vagas abriam.
+
+| Adaptador | Lotes | Palavras | Tempo | Saída (por palavra) | Cache lido |
+|---|---|---|---|---|---|
+| `c001`, `c002` | 3 | 2.419 | 4,7 min | 17.970 (7,4) | 505.054 |
+| `c003`, `c004` | 2 | 3.152 | 1,8 min | 11.759 (3,7) | 263.625 |
+| `c005`, `c006` | 2 | 2.750 | 2,0 min | 13.063 (4,8) | 328.722 |
+| `c007` | 2 | 2.228 | 1,4 min | 9.501 (4,3) | 242.939 |
+| `c008`, `c009` | 5 | 5.511 | 6,0 min | 24.406 (4,4) | 1.234.287 |
+| `c010`, `c012` | 2 | 2.430 | 1,8 min | 12.290 (5,1) | 209.279 |
+| `c011` | 5 | 7.534 | 6,1 min | 41.198 (5,5) | 947.437 |
+| `c013` | 4 | 5.926 | 6,3 min | 27.542 (4,6) | 879.590 |
+| `c014` | 2 | 2.761 | 4,3 min | 15.094 (5,5) | 412.003 |
+| `c015`, `c016` | 2 | 3.789 | 2,1 min | 13.742 (3,6) | 464.907 |
+| `c017` | 5 | 7.939 | 3,9 min | 26.123 (3,3) | 828.174 |
+| `c018` | 4 | 7.541 | 9,2 min | 33.553 (4,4) | 1.016.829 |
+| `c019` | 5 | 7.772 | 5,6 min | 36.835 (4,7) | 1.226.231 |
+| `c020` | 5 | 7.307 | 3,4 min | 24.386 (3,3) | 549.665 |
+| `c021` | 3 | 5.250 | 2,9 min | 19.367 (3,7) | 428.271 |
+| `c022` | 6 | 10.954 | 7,2 min | 34.717 (3,2) | 986.304 |
+| `c023` | 3 | 5.174 | 5,6 min | 24.024 (4,6) | 752.861 |
+| `c024` | 3 | 5.378 | 3,5 min | 21.989 (4,1) | 703.523 |
+| `c025` | 5 | 7.783 | 5,0 min | 33.188 (4,3) | 893.870 |
+| `c026`, `c027` | 4 | 5.205 | 4,6 min | 30.760 (5,9) | 546.488 |
+| `c028`, `c029` | 3 | 3.401 | 3,8 min | 28.114 (8,3) | 485.589 |
+| `c030`, `c032` | 2 | 2.476 | 3,5 min | 23.362 (9,4) | 583.001 |
+| `c034` | 2 | 2.200 | 3,7 min | 25.449 (11,6) | 312.190 |
+| `c035`, `c036` | 2 | 3.168 | 2,7 min | 18.622 (5,9) | 410.026 |
+| `c037` | 2 | 2.886 | 1,9 min | 12.159 (4,2) | 262.610 |
+| `c038` | 3 | 4.246 | 2,7 min | 18.270 (4,3) | 468.319 |
+| `c039` | 2 | 2.566 | 5,0 min | 16.076 (6,3) | 604.752 |
+| `c040` | 2 | 2.245 | 2,8 min | 18.995 (8,5) | 308.863 |
+| `c041` | 3 | 4.207 | 8,1 min | 43.958 (10,4) | 929.059 |
+| `c042` | 6 | 10.165 | 4,3 min | 28.455 (2,8) | 678.807 |
+
+| Medida | Previsto | Medido |
+|---|---|---|
+| Lotes, segmentos, grupos | 103 lotes | 103, 4.136, 3.158 (2.037 com texto, 1.009 `igual`, 112 descartes) |
+| Palavras | 151.858 | 151.858 nos pedidos; 148.041 no EPUB, em 4.657 parágrafos |
+| Saída, contagem certa | não medido assim | ~0,75 milhão: 704.967 dos 30, mais `c031` e `c033` |
+| Saída, contagem dobrada | ~2,7 milhões (2,1 a 3,3) | ~1,73 milhão |
+| Cache lido dos 30 | não previsto | 18,5 milhões |
+| Medidor | ~6,6 pontos (5,1 a 8,0) | de 84% para 86%, com a rodada de correção |
+| Relógio | ~20 min | 12 min 12 s; 126 min somados |
+| Palavras em `igual` | 22% a 30% | 27% |
+
+O áudio dá 17 horas e 53 minutos a 138 palavras por minuto.
+
+**A contagem de tokens das duas medições anteriores estava dobrada.** O arquivo do subagente grava
+uma linha por bloco de conteúdo, e cada linha repete o uso da mensagem inteira. A soma de 53.362
+tokens do `c033` conta a mesma mensagem mais de uma vez: por mensagem, são 23.287, ou 7,0 tokens
+por palavra, e não 16,1. O `c031`, de 55.572, deve ter o mesmo erro, mas o arquivo dele não foi
+identificado e o número não foi refeito. A tabela acima conta por mensagem. Na contagem antiga, os
+30 somam 1.621.589, que é a coluna a comparar com a estimativa: o livro ficou abaixo do piso dela.
+A proporção do medidor concorda: ~0,75 milhão em ~2 pontos dá a mesma ordem do DDD (1,22 milhão em
+~3 pontos). Isso sugere que a régua do DDD contava certo, mas ela não foi recontada, e o medidor é
+arredondado e inclui a sessão principal.
+
+**A primeira passada do `conferir`:** 19 problemas em 14 IDs e 125 avisos, nenhum de conteúdo. Todos
+eram número que o adaptador tirou com razão e que a regra ainda não aceitava. Daí saiu "O número
+omitido, com guarda". Depois dela, os 14 IDs e 3 casos:
+- `c008-s0007`: "dez elevado a nove" e "dez elevado a vinte e sete", no lugar do 10⁹ e do 10²⁷ que
+  o PDF entregou como "109" e "1027";
+- `c036-s0031`: "quilogramas por metro quadrado";
+- `c011-s0165`: a sublista perde a numeração, e as opções do formulário ficam;
+- `c032-s0047`: o "12" repetido pelo destaque não cabe em motivo nenhum, e o destaque virou
+  `descarte: repetido`, com o áudio igual.
+
+**A uniformização.** "Parte 2." e "Parte 3." como a Parte 1; "parte" solto sai; número de capítulo
+sempre `igual`; "psilobicina" vira "psilocibina", e "sensu strictu", "sensu stricto", em todo o
+livro. As formas "(a)" e "(s)" foram por extenso ("nervoso ou nervosa") ou viraram "você", como já
+fazia o `c025`; são 35 no `c019`, `c022` e `c028`. "A seguir" a mais de 150 palavras do Quadro virou
+"mais adiante", em 8 lugares.
+
+**O que o inventário achou, com o livro montado.** Três vírgulas dobradas da regra da sigla, três
+formas "(s)" e o glossário do `c042`, com blocos de até 627 palavras, que viraram 671 parágrafos,
+um por verbete, com as palavras iguais. O resto veio zero: URL, marcador, símbolo, pontilhado,
+colchete, chamada de nota, citação, remissão, abreviação, caixa alta, hífen solto. Os 27 achados de
+"acima", "abaixo" e "ao lado" são do sentido da frase, e nenhum aponta para a página.
+
+**O `conferir` final** passa, com 158 avisos, todos lidos:
+- 119 termos: erro do original, pedaço de palavra partida, cabeçalho de coluna, aviso de página. Os
+  que dizem "não saiu" foram provados por script no texto do capítulo;
+- 25 números: 17 de citação, 5 ordinais (`c011-s0162`, os quatro da sublista; `c034-s0003`, a
+  chamada de nota), 2 potências (`c008-s0007`), 1 unidade (`c036-s0031`) e nenhuma data;
+- 14 descartes por decisão: os 10 do `c001`, o "parte" solto de `c008-s0135` e `c026-s0162`, e os
+  dois destaques gêmeos, `c019-s0240` e `c041-s0117`, com a frase achada no texto de `c019-s0234` e
+  `c041-s0083`.
+
+**À mão, contra a página, número por número:** Tabela 19.1 (p. 224), escala de Glasgow (p. 101, as
+15 respostas e as 4 faixas), Tabela 25.1 (p. 302, as 11 linhas), Quadro 34.1 (p. 354, com os 9 "por
+cento" por extenso, que a guarda não vê) e Minimental (p. 384, a soma dá 30). Antes, os Quadros 27.1
+e 29.1. Nada errado, nada na coluna errada.
+
+**Os seis livros** ficaram idênticos ao código de `d81aa54`, de ponta a ponta: `segmentos/`,
+`limpos/`, `limpeza.json`, `livro.json`, o EPUB e o `conferir` das pastas traduzidas, fora o UUID e a
+data do OPF. Esta rodada só mudou o `conferir` do modo adaptação.
+
+**O livro:** `livros/prontos/dalgalarrondo.pronto.epub`, epubcheck sem erro nem advertência. O
+roteiro está em `livros/trabalho/roteiro-de-escuta-dalgalarrondo.md`, com 11 paradas.
+
+**Decidido pela forma mais fiel, para o Mateus olhar:**
+- `c042-s0157`: "Para os depoimentos colhidos por Nucci, foi utilizada a abreviatura MN." ficou sem
+  referente, porque o "(MN)" sai. Virou "Parte dos depoimentos foi colhida por Nucci."
+- `c011-s0178`: PA e IMC por extenso, porque o formulário não dá o nome em lugar nenhum;
+- `c036-s0031`: "menor que 15%" fica literal, embora o texto diga "15% abaixo do esperado";
+- `c008-s0007`: "10 bilhões de neurônios (10⁹)" fica, com a incoerência do livro. O mesmo vale para
+  "quatro fases" com três itens (`c018-s0038`), "15 itens" com 16 (`c018-s0216`) e QI "70 a 85" e
+  "70 a 84" (`c026`);
+- `c024-s0034`, `c024-s0040`, `c024-s0063` e `c032-s0004`: o ano entre colchetes saiu, porque ali é
+  a edição brasileira ou está dentro de uma citação;
+- palavra acrescentada para a forma: "estudo 1" a "estudo 4" (Tabela 19.1), `c026-s0130`,
+  `c034-s0054`, `c019-s0103`, as setas e as cruzes (`c032`, `c028`);
+- troca pelo sentido: "tegumentar" por "tegmentar" (`c037-s0004`), "objetivos" por "objetos"
+  (`c024-s0045`), "experienciado" por "vivenciado" (`c013-s0098`);
+- "tipo II" fica em romano, e é uma parada do roteiro.
+
+**Limites achados, fora desta rodada:**
+- o `importar-pdf` errou a ordem de colunas (`c011`, `c016`, `c021`, `c025`, `c026`), o que o
+  adaptador refez pela página, e fecha mal o hífen de fim de linha ("Citálos");
+- o `conferir` não prova a ordem, toma pedaço de palavra por termo e não acha o termo dentro de
+  palavra composta. Sobram avisos falsos, mas nenhum número passa;
+- a guarda não vê dose nem porcentagem por extenso;
+- `siglas.json` traz sigla com extenso errado, e `decisoes.md` errava a numeração em alguns
+  capítulos;
+- o comando `minuto` conta a 160 palavras por minuto, e a medição do ElevenReader é 138: o roteiro
+  usa 138, contado do texto montado;
+- o pontilhado com espaços segue na fila, para uma rodada própria.
 
 ## Consequências
 

@@ -20,6 +20,7 @@ ADRs em `docs/adr/`. O Claude Code traduz; o Python nunca chama o LLM (ADR-0001)
 - Código, índice e marca d'água (ADR-0008): o `<pre>` que se declara código e o índice que o EPUB marca (`epub:type`, `role`, `data-type`; nunca pelo título nem pelo nome do arquivo) saem no `limpar`, registrados; o Gherkin fica, como parágrafo. Sai também o parágrafo idêntico em metade ou mais dos arquivos do spine, e em 10 ou mais ("OceanofPDF.com").
 - Termo e decisão do livro (ADR-0007): o tradutor declara em `termos/<lote>.json` o que decidiu fora do glossário, e o `conferir` cobra. O que a amostra decidiu mora em `decisoes.md`, que todo tradutor lê.
 - Entrada: EPUB. PDF entra pelo comando `importar-pdf` (ADR-0004), só para ouvir: sem fidelidade visual, sem OCR, e a biblioteca de PDF só em `adaptadores/`.
+- Romance de fã (ADR-0010): sem código novo. O Calibre, antes do `preparar`, resolve metadado, títulos, capítulos e frase partida; o `adaptar` é só transporte de um script que grava `adaptados/`; o original em inglês é mapa de parágrafos, nunca texto.
 - Motor: o Claude Code na sessão, pela assinatura, com um subagente por capítulo. O limite de uso conta.
 - Notas de rodapé: o marcador sai do meio da frase e o texto da nota vai para o fim do capítulo.
 - Saída: um EPUB **só com a tradução**. O modo bilíngue é proibido, porque o TTS lê as duas línguas.
@@ -70,6 +71,12 @@ O Mateus diz o caminho do livro; a sessão o leva até `livros/prontos/`. O orig
 3. PDF novo é onde mora a surpresa (cada diagramação é uma). Antes de seguir, faça o inventário por script no livro montado (o `montar --original`, se for en, porque defeito de diagramação traduzido se paga duas vezes) e corrija o que ele achar, sem pedir escuta (ver "Uma escuta de teste só").
 4. Em inglês: a skill `traduzir-livro` (`.claude/skills/traduzir-livro/SKILL.md`) leva do `traduzir` ao livro pronto: glossário, `decisoes.md`, custo, tradutores em paralelo, rodada de correção, `montar --epub livros/prontos/<nome>.pronto.epub`, epubcheck e roteiro de escuta. Termo, nome e tom sem precedente vão ao Mateus por texto, na mesma mensagem do custo; a escuta é do livro pronto. A amostra só volta quando o `tradutor.md` mudou ou o livro traz uma escolha que só o ouvido julga e nenhum livro anterior decidiu (pedido do Mateus, 2026-11-02; ADR-0006).
 5. Em português: `conferir`, `montar --epub livros/prontos/<nome>.pronto.epub` (o padrão grava ao lado da pasta, em `livros/trabalho/`), epubcheck e `livros/trabalho/roteiro-de-escuta-<nome>.md`.
+6. Formato ou marcação que o `preparar` leria errado (metadado falso, título em `<p>`, `<p>` que é linha de página, parágrafo que o PDF perdeu): **só caminho, sem código** (ADR-0010; os scripts estão na pasta de notas, `warcraft-mapa/`).
+   - Antes do `preparar`: `ebook-convert <entrada> <epub> --language pt-BR --authors A --title T --search-replace <receita.sr> --chapter '//h:h1' --chapter-mark pagebreak --page-breaks-before '//h:h1' --level1-toc '//h:h1' --use-auto-toc --no-default-epub-cover --flow-size 0`. A receita promove o título a `<h1>`.
+   - `<p>` que é linha: acrescente `--enable-heuristics --html-unwrap-factor 0.4` e desligue as outras (`--disable-markup-chapter-headings --disable-italicize-common-cases --disable-fix-indents --disable-delete-blank-paragraphs --disable-format-scene-breaks --disable-dehyphenate --disable-renumber-headings`).
+   - Depois dele: `ebook-meta <epub> -l pt-BR --author-sort "Sobrenome, Nome"`, porque o `ebook-convert` grava `pt`.
+   - Depois do `preparar`: `adaptar`, script que grava `adaptados/`, `conferir`, `montar`. Fim com a prova palavra a palavra: 0 trecho não declarado. Termo raro trocado vai em `omitidos`.
+   - Calibre e script nunca entram em `src/`. O que pedir o mesmo caminho num terceiro livro volta a ser decisão de código.
 - Defeito de código achado num livro: pare e relate. A correção é uma sessão filha, com o processo deste arquivo.
 - Conversão sem tradução roda na sessão principal; tradução de livro inteiro, numa filha.
 - Custo de referência (ADR-0006, Huxley inteiro): ~8 tokens de saída por palavra e ~850 palavras por minuto por subagente; as 16 mil palavras gastaram menos de 1% da semana.
@@ -102,6 +109,8 @@ Verificadas só em revisão (`code-audit`):
 - Bibliografia: feita no `preparar` para a do padrão ABNT, 10 referências seguidas ou mais (ADR-0008, "Bibliografia"). A de outro padrão, a lista curta e a do Competente, partida entre nota e parágrafo, ainda são lidas; a do Competente se conserta no `importar-pdf`, onde nasce (decisão do Mateus, 2026-11-03).
 - Negrito feito à mão (o mesmo texto desenhado de novo por cima, no mesmo tamanho): feito no `importar-pdf` (ADR-0004, "Negrito feito à mão"). A cópia de uma letra só ainda é lida.
 - Alternativa de exercício cuja letra só existe no CSS do `<ol>`: a voz lê "B e C" sem que nada tenha letra. Pendente.
+- `<p>` que é linha de página e parágrafo que o PDF perdeu: sem código, pelo Calibre e pelo mapa do original (ADR-0010). O `importar-pdf` ainda funde os parágrafos do PDF sem recuo, sem avisar.
+- Hífen do fim da linha do PDF tirado sem prova ("abri-|los" vira "abrilos"; ADR-0010, "Fila"). Pendente.
 - Algarismo romano em título de capítulo ("Chapter IV").
 - Abreviação, URL, tabela e legenda de imagem. A lista de posts do Competente lê a URL inteira.
 - Nome próprio traduzido de um jeito num capítulo e de outro no seguinte (precisa de glossário).

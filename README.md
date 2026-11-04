@@ -210,6 +210,31 @@ tabela vira um parágrafo. O bloco de código do PDF ainda é lido; o índice re
 `preparar`, pelo conteúdo. PDF
 escaneado, sem camada de texto, é recusado, porque não há OCR.
 
+### Romance de fã: Calibre antes, mapa depois
+
+Este é um caminho sem código no `earbook`, feito à mão pela sessão
+([ADR-0010](docs/adr/0010-romance-de-fa-se-conserta-sem-codigo-novo.md)). Serve para o livro que o
+`preparar` leria errado: metadado falso, título em parágrafo comum, `<p>` que é linha de página ou
+parágrafo que o PDF perdeu. O [Calibre](https://calibre-ebook.com) não é dependência do pacote.
+
+```bash
+ebook-convert entrada.epub livro.epub --language pt-BR --authors "Autor" --title "Título" \
+  --search-replace titulos.sr --chapter '//h:h1' --chapter-mark pagebreak \
+  --page-breaks-before '//h:h1' --level1-toc '//h:h1' --use-auto-toc \
+  --no-default-epub-cover --flow-size 0
+ebook-meta livro.epub -l pt-BR --author-sort "Sobrenome, Nome" --cover capa.jpg
+```
+
+O `titulos.sr` traz, em linhas alternadas, a expressão regular e a troca que transformam o título
+em `<h1>`. Quando cada `<p>` é uma linha de página, acrescente `--enable-heuristics` e
+`--html-unwrap-factor 0.4`, com as outras heurísticas desligadas. O `ebook-meta` vem depois da
+conversão, porque o `ebook-convert` grava `pt` no lugar de `pt-BR`.
+
+Depois do `preparar`, o `adaptar` serve de transporte: um script grava `adaptados/` com o parágrafo
+cortado, o nome trocado pelo glossário e o que sai do áudio, e o `conferir` cobra tudo isso. Quando
+a tradução segue o original frase a frase, o original serve de mapa dos parágrafos e nunca entra no
+livro.
+
 ## Desenvolvimento
 
 ```bash

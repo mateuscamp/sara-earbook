@@ -792,6 +792,90 @@ A escuta tem roteiro próprio (`livros/trabalho/roteiro-de-escuta-learning-ddd.m
 - as novas: os exercícios sem as letras, a Tabela 7-1, "o agregado Ticket", o sinal de igual, as
   referências e "sistemas operacionais".
 
+### A *Crônica*, Volume 1 (2026-11-04)
+
+Primeiro livro traduzido que veio de OCR (ADR-0011). Sem amostra e sem escuta de teste: o
+`tradutor.md` não mudou. Medidor semanal: 92% antes da tradução, 93% depois, com a rodada de correção.
+
+| Tradutor | Palavras | Lotes | Tokens de saída | Por palavra | Minutos |
+|---|---|---|---|---|---|
+| c001 a c004 | 2.322 | 4 | 30.645 | 13,2 | 4,2 |
+| c005 | 3.201 | 2 | 35.599 | 11,1 | 4,7 |
+| c006 | 15.275 | 8 | 122.830 | 8,0 | 15,5 |
+| c007 | 13.635 | 7 | 114.983 | 8,4 | 14,6 |
+| c008 | 19.138 | 10 | 156.533 | 8,2 | 19,5 |
+| Total | 53.571 | 31 | 460.590 | 8,6 | 19,5 de relógio |
+
+Cada mensagem contada uma vez só, pelo `id`: o arquivo grava uma linha por bloco. Cache lido 6,66
+milhões; cache criado 1,03 milhão. A régua do romance previa 343 mil tokens: este livro de história,
+denso em nomes, custa 8,6 por palavra, contra 6,4, e ~960 palavras por minuto, contra ~1.160.
+
+**Glossário:** 158 do Tides → 424 com as tabelas do jogo → 718 depois da rodada. Os 300 termos declarados
+entraram quase sem conflito: um só, *constellar*. Saíram 6 entradas que flexionam: *titan*, *constellar*,
+*flesh-shaping*, *infernals*, *satyr* e *satyrs*.
+
+**Rodada de correção:**
+- 73 falsos alarmes de *titan*: a palavra inteira casa antes do hífen de *titan-forged*, e "titãs" não é
+  "titã". A entrada saiu, e `decisoes.md` guarda a forma. Conferido por script no texto traduzido: 0
+  "titan"; 88 "forjado(s)/forjada(s) pelos titãs" e nenhuma outra forma.
+- 12 termos trocados pela forma oficial, das tabelas do jogo (Grã-magistra, Inigualáveis, parlágua, Cordilheira
+  das Torres de Pedra, Dique Lapidado). Os tradutores tinham escrito de memória.
+- "insectoides" virou "insetoides" no livro inteiro.
+- Sem mensagem a tradutor: a sessão corrigiu por script, e o `conferir` deu "nada faltando".
+
+**O que veio do OCR:** os tradutores acharam ~35 erros que a lista não pegou, quase todos "2" no lugar de
+"a", "I n" e "F or". Traduziram pelo sentido e relataram.
+
+**Defeitos da fonte que ficaram:**
+- `c008-s0250`: o título "The War of the Shifting Sands" saiu trocado do script. Corrigido na tradução, partido
+  em dois blocos ("A Guerra", "das Areias Cambiantes"), porque refazer a fonte mudaria os IDs.
+- `c006-s0195` e `c007-s0161`: quadro lateral antes de uma frase que depende do parágrafo anterior.
+- `c003-s0007`: a assinatura de Christie Golden colada ao início do texto de Knaak.
+
+**Livro montado:** 54 mil palavras, 8 capítulos, epubcheck com 0 erro, `conferir` limpo. O sumário e o
+`<title>` saem em português por `fecha_epub.py`: o `montar` só traduz o sumário que aponta para um ID.
+Roteiro: `livros/trabalho/roteiro-de-escuta-cronicas-1.md`, 10 paradas.
+
+### A *Crônica*, Volume 2 (2026-11-04)
+
+Segue o Volume 1, sem amostra. Medidor semanal: 93% antes, 94% depois, com a rodada de correção. A
+projeção do custo saiu do Volume 1: 642 mil tokens previstos, 592 mil reais.
+
+| Tradutor | Palavras | Lotes | Tokens de saída | Por palavra | Minutos |
+|---|---|---|---|---|---|
+| c001, c002, c003, c006 | 9.496 | 8 | 81.267 | 8,6 | 10,5 |
+| c004 | 9.064 | 5 | 82.463 | 9,1 | 10,8 |
+| c005 | 16.055 | 9 | 136.383 | 8,5 | 17,4 |
+| c007 | 17.337 | 9 | 111.231 | 6,4 | 13,9 |
+| c008 | 14.764 | 8 | 110.288 | 7,5 | 13,8 |
+| c009 | 7.944 | 4 | 69.919 | 8,8 | 10,9 |
+| Total | 74.660 | 43 | 591.551 | 7,9 | 17,4 de relógio |
+
+Cada mensagem contada uma vez só, pelo `id`. Cache lido 8,13 milhões; cache criado 1,24 milhão.
+
+**Os dois volumes:** 128 mil palavras, 1,05 milhão de tokens de saída, 8,2 por palavra, 2 pontos do
+medidor (92% a 94%). A régua de pontos, ~1 a cada 45 mil palavras, previu 2,9 e errou para cima; a de
+tokens, 6,4 por palavra, previu 821 mil e errou para baixo em 22%.
+
+**Glossário:** 288 entradas de partida, as do Volume 1 que o texto usa → 459 depois da rodada.
+
+**Rodada de correção:**
+- 7 conflitos entre tradutores, que não se viam. Resolvidos pela forma oficial, quando as tabelas do jogo
+  a tinham: serpente alada, rylak, arakkoa superior, Nobambo, Deserto de Ossos.
+- 12 formas de memória trocadas pela oficial, em 47 segmentos: Seguidores de Rukhmar, Capela Esperança da
+  Luz, Manopla de Tyr, percursos temporais, plantíneos, incunábulo, jaganata.
+- Dal’rend virou Laceral, como no Tides: as tabelas dão Rend Blackhand → Laceral Mão Negra.
+- 5 entradas que flexionam saíram do glossário: *half-orc*, *elder shaman*, *whelps*, *Broken*, *gryphon
+  riders*.
+- Sem mensagem a tradutor: a sessão corrigiu por script. Conferido no texto: 0 "titan"; "titãs" 26 vezes,
+  "titã" 13; nenhum nome do glossário em inglês sobrando.
+
+**Um tradutor consultou `cronicas-medir/dic.json` por conta própria** e achou o que o brief não pedia.
+Vale pôr o caminho do dicionário em `decisoes.md` no próximo livro.
+
+**Livro montado:** 74,8 mil palavras, 9 capítulos, 2 deles as Partes, epubcheck com 0 erro, `conferir`
+limpo. Roteiro: `livros/trabalho/roteiro-de-escuta-cronicas-2.md`, 10 paradas.
+
 ## Consequências
 
 **Ganha:**

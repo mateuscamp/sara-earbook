@@ -20,6 +20,7 @@ ADRs em `docs/adr/`. O Claude Code traduz; o Python nunca chama o LLM (ADR-0001)
 - Código, índice e marca d'água (ADR-0008): o `<pre>` que se declara código e o índice que o EPUB marca (`epub:type`, `role`, `data-type`; nunca pelo título nem pelo nome do arquivo) saem no `limpar`, registrados; o Gherkin fica, como parágrafo. Sai também o parágrafo idêntico em metade ou mais dos arquivos do spine, e em 10 ou mais ("OceanofPDF.com").
 - Termo e decisão do livro (ADR-0007): o tradutor declara em `termos/<lote>.json` o que decidiu fora do glossário, e o `conferir` cobra. O que a amostra decidiu mora em `decisoes.md`, que todo tradutor lê.
 - Entrada: EPUB. PDF entra pelo comando `importar-pdf` (ADR-0004), só para ouvir: sem fidelidade visual, sem OCR, e a biblioteca de PDF só em `adaptadores/`.
+- Livro escaneado (ADR-0011): sem código novo. O tesseract roda por fora, um script fora do repositório grava um EPUB limpo, e o `preparar` segue dali. O pacote continua sem OCR.
 - Romance de fã (ADR-0010): sem código novo. O Calibre, antes do `preparar`, resolve metadado, títulos, capítulos e frase partida; o `adaptar` é só transporte de um script que grava `adaptados/`; o original em inglês é mapa de parágrafos, nunca texto.
 - Motor: o Claude Code na sessão, pela assinatura, com um subagente por capítulo. O limite de uso conta.
 - Notas de rodapé: o marcador sai do meio da frase e o texto da nota vai para o fim do capítulo.
@@ -77,6 +78,11 @@ O Mateus diz o caminho do livro; a sessão o leva até `livros/prontos/`. O orig
    - Depois dele: `ebook-meta <epub> -l pt-BR --author-sort "Sobrenome, Nome"`, porque o `ebook-convert` grava `pt`.
    - Depois do `preparar`: `adaptar`, script que grava `adaptados/`, `conferir`, `montar`. Fim com a prova palavra a palavra: 0 trecho não declarado. Termo raro trocado vai em `omitidos`.
    - Calibre e script nunca entram em `src/`. O que pedir o mesmo caminho num terceiro livro volta a ser decisão de código.
+7. Livro escaneado ou EPUB de OCR com um bloco por página: **só caminho, sem código** (ADR-0011; os scripts estão na pasta de notas, `cronicas-mapa/`).
+   - OCR: `pdftoppm -r 300 -gray` e `tesseract --psm 4`, um processo por página; a segunda leitura (400 dpi, `--psm 6`) serve para achar erro pela discordância.
+   - O script separa título, parágrafo, legenda e rodapé, devolve a capitular, junta a frase entre páginas, corrige por lista e registra tudo o que sai, com a página. O `preparar` é o teste de contrato.
+   - Nomes oficiais em lote: `wago.tools/db2/<tabela>/csv?locale=enUS` e `ptBR`, casados pelo ID.
+   - No glossário entra só nome de forma fixa: o `conferir` compara palavra inteira, com caixa. Termo que flexiona (Guardião, Guardiã) mora em `decisoes.md`, que manda não o declarar em `termos/`.
 - Defeito de código achado num livro: pare e relate. A correção é uma sessão filha, com o processo deste arquivo.
 - Conversão sem tradução roda na sessão principal; tradução de livro inteiro, numa filha.
 - Custo de referência (ADR-0006, Huxley inteiro): ~8 tokens de saída por palavra e ~850 palavras por minuto por subagente; as 16 mil palavras gastaram menos de 1% da semana.

@@ -157,3 +157,45 @@ def test_dois_algarismos_colados_a_palavra_nao_sao_chamada_de_nota() -> None:
     assert _faltas(["Casos de COVID19 no Brasil3."], "Casos de COVID no Brasil.") == [
         "o número 19 das fontes não está no texto"
     ]
+
+
+def test_ano_depois_de_colaboradores_e_citacao() -> None:
+    fonte = "Segundo Kirmayer e colaboradores (2004), tais sintomas aparecem."
+    texto = "Segundo Kirmayer e colaboradores, tais sintomas aparecem."
+    assert _faltas([fonte], texto) == []
+    assert so_funciona_no_papel(fonte) == ["citação '(2004)'"]
+
+
+def test_data_de_vida_com_cerca_de_e_citacao() -> None:
+    fonte = "Hipócrates de Cós (cerca de 460-377 a.C.) descreveu os humores."
+    assert _faltas([fonte], "Hipócrates de Cós descreveu os humores.") == []
+    assert so_funciona_no_papel(fonte) == ["citação '(cerca de 460-377 a.C.)'"]
+
+
+def test_numero_depois_de_nome_que_nao_e_data_e_cobrado() -> None:
+    """Só a forma de data é citação: "Escala de Glasgow (15)" é dado, e o 15 fica."""
+    fonte = "Escala de Glasgow (15) no coma, e Moderado (35-49) no retardo."
+    assert _faltas([fonte], "Escala de Glasgow no coma, e Moderado no retardo.") == [
+        "o número 15 das fontes não está no texto",
+        "o número 35 das fontes não está no texto",
+        "o número 49 das fontes não está no texto",
+    ]
+    assert so_funciona_no_papel(fonte) == []
+
+
+def test_numero_depois_de_colaboradores_que_nao_e_data_e_cobrado() -> None:
+    assert _faltas(["Com seus colaboradores (12) no estudo."], "Com colaboradores no estudo.") == [
+        "o número 12 das fontes não está no texto"
+    ]
+
+
+def test_data_antes_de_cristo_com_dois_algarismos_e_citacao() -> None:
+    fonte = "O poeta Lucrécio (96-55 a.C.) escreveu."
+    assert _faltas([fonte], "O poeta Lucrécio escreveu.") == []
+    assert so_funciona_no_papel(fonte) == ["citação '(96-55 a.C.)'"]
+
+
+def test_intervalo_de_datas_antes_de_1500_e_citacao() -> None:
+    fonte = "O filósofo Roger Bacon (1214-1294) escreveu."
+    assert _faltas([fonte], "O filósofo Roger Bacon escreveu.") == []
+    assert so_funciona_no_papel(fonte) == ["citação '(1214-1294)'"]

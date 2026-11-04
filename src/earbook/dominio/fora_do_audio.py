@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """O que sai inteiro do texto lido (ADR-0008): pelo papel, o bloco de código e o índice
 remissivo; pela repetição, a marca d'água e o destaque de margem; pelo conteúdo de cada
-parágrafo, a bibliografia e o índice remissivo sem marcação. A limpeza registra cada um, com o
-motivo daqui.
+parágrafo, a bibliografia, o índice remissivo sem marcação, o sumário de papel e a propaganda.
+A limpeza registra cada um, com o motivo daqui.
 """
 
 from __future__ import annotations
@@ -46,6 +46,17 @@ MOTIVO_DA_BIBLIOGRAFIA = "bibliografia: referências no padrão ABNT"
 ENTRADAS_SEGUIDAS = 10
 PALAVRAS_POR_PAGINA = 8
 MOTIVO_DO_INDICE_PELO_CONTEUDO = "índice remissivo: termos seguidos do número da página"
+# O sumário de papel (ADR-0009): a linha com 5 pontos seguidos e número no fim. Só quando há 5 ou
+# mais no capítulo: a linha solta pode ser de um quadro ou formulário. Medido: o Dalgalarrondo
+# tem 41, todas no capítulo de abertura, e os outros cinco livros, nenhuma.
+LINHAS_DO_SUMARIO = 5
+MOTIVO_DO_SUMARIO_DE_PAPEL = "sumário de papel: pontilhado e número de página"
+_LINHA_DE_SUMARIO = re.compile(r"\.{5,}\s*\d+\s*$")
+# A propaganda (ADR-0009): o título "Conheça também" e os parágrafos até o próximo título. Com
+# mais de 5, é texto do livro: a propaganda é curta, e o título não leva um capítulo junto.
+TITULO_DA_PROPAGANDA = "conheça também"
+PARAGRAFOS_DA_PROPAGANDA = 5
+MOTIVO_DA_PROPAGANDA = "propaganda do livro: Conheça também"
 # ", 346-347", ", 66", ", 200-203". A vírgula decimal ("2,0", as tabelas do Dalgalarrondo) não tem
 # espaço; o ano ("Porto Alegre, 2004") e o número antes do parêntese ("(Cummings, 20)") não contam.
 _PAGINA_DO_INDICE = re.compile(
@@ -147,6 +158,41 @@ def _referencia(segmento: Segmento) -> bool:
     texto = segmento.texto
     abnt = _AUTOR_ABNT.match(texto) is not None and _ANO.search(texto) is not None
     return segmento.papel is Papel.PARAGRAFO and abnt
+
+
+def sumario_de_papel(capitulos: Sequence[tuple[str, Sequence[Segmento]]]) -> dict[str, str]:
+    """ID → motivo de cada linha do sumário de papel, quando o capítulo tem 5 ou mais. As linhas
+    do meio que não têm pontilhado (o título da parte, o título em duas linhas) ficam."""
+    saem: dict[str, str] = {}
+    for _, segmentos in capitulos:
+        linhas = [s.id for s in segmentos if _LINHA_DE_SUMARIO.search(s.texto)]
+        if len(linhas) >= LINHAS_DO_SUMARIO:
+            saem |= dict.fromkeys(linhas, MOTIVO_DO_SUMARIO_DE_PAPEL)
+    return saem
+
+
+def propaganda(capitulos: Sequence[tuple[str, Sequence[Segmento]]]) -> dict[str, str]:
+    """ID → motivo do título "Conheça também" e dos parágrafos até o próximo título, ou o fim
+    do capítulo. O título nunca dispara a regra com mais de 5 parágrafos depois dele."""
+    saem: dict[str, str] = {}
+    for _, segmentos in capitulos:
+        for n, segmento in enumerate(segmentos):
+            if _titulo_da_propaganda(segmento):
+                bloco = _ate_o_proximo_titulo(segmentos, n)
+                if len(bloco) - 1 <= PARAGRAFOS_DA_PROPAGANDA:
+                    saem |= dict.fromkeys((s.id for s in bloco), MOTIVO_DA_PROPAGANDA)
+    return saem
+
+
+def _titulo_da_propaganda(segmento: Segmento) -> bool:
+    return segmento.papel is Papel.TITULO and segmento.texto.casefold() == TITULO_DA_PROPAGANDA
+
+
+def _ate_o_proximo_titulo(segmentos: Sequence[Segmento], inicio: int) -> Sequence[Segmento]:
+    for n in range(inicio + 1, len(segmentos)):
+        if segmentos[n].papel is Papel.TITULO:
+            return segmentos[inicio:n]
+    return segmentos[inicio:]
 
 
 def pelo_papel(capitulos: Sequence[tuple[str, Sequence[Segmento]]]) -> dict[str, str]:

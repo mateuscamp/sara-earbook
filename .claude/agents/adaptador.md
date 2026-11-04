@@ -79,7 +79,8 @@ na subpasta do scratchpad que o brief der.
   vira "e colaboradores". O ano entre colchetes ("Freud [1911]") é o da obra e fica como data:
   "Freud, em 1911,". A data que o texto dá como fato ("editada em 1913") fica. O ano da citação
   também pode ficar, como "em 1949", quando a frase diz que ele é a data do fato ("desenvolvido
-  por Moruzzi e Magoun, em 1949").
+  por Moruzzi e Magoun, em 1949"). As datas de vida depois do nome ("Jaspers (1883-1969)") saem,
+  e nenhuma palavra nova entra no lugar.
 - **Sigla:** segue o glossário. A sigla que fica sigla, na primeira vez no capítulo, vem depois
   do nome quando o livro dá o nome: "transtorno de déficit de atenção e hiperatividade, o
   TDAH,". A que o glossário manda por extenso vai por extenso todas as vezes, e o "(SRAA)" que

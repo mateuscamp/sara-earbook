@@ -297,6 +297,8 @@ resposta, "Sim, para estudar". Entram em `decisoes.md` do livro e no `adaptador.
 15. **Trecho de teste:** o capítulo 27 inteiro (`c031-s0001` a `c031-s0146`), a escuta única.
 16. **O sumário de papel e a propaganda do `c001`:** vão para a fila do `limpar`, numa sessão à
     parte, antes do livro final. O adaptador não toca neles.
+17. **Datas de vida no corpo do texto:** saem, como na epígrafe, e nenhuma palavra nova entra no
+    lugar (decidido depois do capítulo 29: "Sim aos quatro").
 
 ### Implementação (2026-11-03)
 
@@ -399,6 +401,129 @@ adaptação", com o teste visto falhar na asserção antes (o Mateus: "Commitar 
 capítulo 27 é mais denso que a média: tem 60% do texto a adaptar, contra 45% no livro, e um
 Quadro e uma caixa lidos pela página. Fica para o Mateus decidir entre medir um capítulo típico
 antes ou aceitar o custo.
+
+### A escuta de teste (2026-11-03)
+
+O Mateus ouviu o capítulo 27 no ElevenReader, pelo roteiro, e passou. A pergunta foi "Você já
+ouviu o capítulo 27, e ele passou?", e a resposta, "Ouvi, passou". As 12 paradas passaram:
+epígrafe, citação, sigla ("OMS", "CID-10", "DSM quatro TR"), caixa de sintomas, lista, Quadro,
+remissão, destaque, Semiotécnica e Questões de revisão. O `adaptador.md` não muda, e esta é a
+escuta única do `AGENTS.md`: a etapa nova fica aprovada pelo ouvido.
+
+### O capítulo típico e o custo refeito (2026-11-03)
+
+O capítulo 27 é o mais denso que se poderia medir, então o custo foi medido de novo num capítulo
+típico, com a mesma pasta, o mesmo `adaptador.md` e um subagente só. Por script, o típico é o
+**`c033`, capítulo 29, "Síndromes neuróticas"**:
+
+| Medida | Livro | `c033` | `c031` | `c022` |
+|---|---|---|---|---|
+| Texto a adaptar, pela régua deste ADR | 45% | 42% | 59% | 40% |
+| Texto a adaptar, pelas regras do `conferir` | 57% | 55% | 63% | 53% |
+| Palavras | mediana 2.761, média 3.904 | 3.308 | 2.187 | 10.954 |
+| Segmentos por mil palavras | 27,5 | 28,4 | 64,9 | 23,5 |
+| Quadros e Tabelas por capítulo | ~2 | 2 | 2 | 3 |
+
+A régua do Contexto (45%) não conta o "N." de item numerado, e a do `conferir` conta: é a mesma
+pergunta, com duas contagens. O `c022` acerta a proporção, mas tem quase o triplo da média de
+palavras. O `c039`, que parecia típico pelas regras do `conferir`, dá 56% na outra régua.
+
+| Medida | `c031` (2 lotes) | `c033` (2 lotes) |
+|---|---|---|
+| Grupos, segmentos | 45, 142 | 56, 94 |
+| Palavras do capítulo | 2.187 | 3.308 |
+| Tokens de saída | 55.572 | 53.362 |
+| Tokens por palavra do capítulo | 25,4 | 16,1 |
+| Tempo | 3,6 min | 3,35 min |
+| Palavras de origem por minuto | ~600 | ~990 |
+| Cache lido | 1,24 milhão | 0,98 milhão |
+| Palavras em `igual` | 22% | 30% |
+
+Do `c033`:
+- **`conferir`:** nada a corrigir, com 2 avisos: os termos "caracterizam" e "comporta", que só
+  existiam no destaque ou partidos por ele;
+- **Quadro 29.1, à mão, contra a p. 324:** as 13 linhas, cada lado na coluna certa, nada perdido
+  nem inventado.
+
+**O `igual` economiza menos do que este ADR previa.** O Contexto supõe que 55% das palavras
+sairiam só pelo ID, e sai de 22% a 30%: o adaptador reescreve também o segmento que tem destaque,
+frase partida ou hífen de quebra, que a contagem não vê. Por isso a régua boa é a palavra do
+capítulo, e não a palavra adaptada.
+
+**A estimativa do livro inteiro, pelos dois capítulos:**
+- **Saída:** ~2,45 milhões de tokens a 16,1 por palavra, a régua do capítulo típico. Um ajuste
+  aos dois capítulos (8,9 tokens por palavra mais 254 por segmento) dá 2,42 milhões, mas são dois
+  pontos para dois parâmetros, sem prova nenhuma. Com a rodada de correção e o glossário das
+  siglas, ~2,7 milhões. A faixa vai de 2,1 a 3,3 milhões: o piso é 15% de diluição no capítulo
+  longo, e o teto, os dois capítulos somados (19,8 por palavra) com 10% de correção.
+- **Medidor:** pela régua do DDD (1,22 milhão moveu ~3 pontos), **~6,6 pontos, de 5,1 a 8,0.** O
+  medidor não foi lido antes e depois dos dois capítulos.
+- **Tempo:** o maior capítulo (`c022`) leva de 11 a 18 min, e o livro, uns 20 min de relógio com
+  um adaptador por capítulo.
+
+**A condição de inversão.** O centro passa pouco dos 6 pontos, e a faixa a atravessa. A condição
+foi escrita antes de qualquer medida. Ela existe para parar um custo fora de proporção, e 6,6
+pontos para 152 mil palavras é a régua do livro técnico (~1 ponto a cada 22 mil palavras dá 6,9).
+Não há alternativa mais barata com a mesma fidelidade: o custo vem do julgamento em cada parágrafo.
+O Mateus decide, com o medidor zerado, se o custo fica.
+
+**O Mateus aceitou o custo.** A pergunta foi "Aceita o custo e os outros três pontos?", e a
+resposta, "Sim aos quatro": ~6,6 pontos (de 5,1 a 8,0), acima da condição dos 6. O livro inteiro
+só começa depois que o medidor zerar, em 6 de novembro.
+
+**Achados do `c033`, resolvidos pelo mesmo "Sim aos quatro":**
+- **"Autor e colaboradores (ano)"** não era tido como citação, porque `_DEPOIS_DE_NOME` pedia
+  maiúscula ou "al.". São 7 no livro. No `c033-s0096`, o adaptador tinha mantido "em 2004",
+  contra a decisão 2. O `conferir` passou a reconhecê-lo.
+- **Decisão 17: as datas de vida no corpo do texto saem,** como na epígrafe, e nenhuma palavra
+  nova entra no lugar. São 44, como "Jaspers (1883-1969)". No `c033-s0094`, o adaptador tinha
+  escrito "que viveu de 1839 a 1883". A regra da citação passou a aceitar "(cerca de 460-377
+  a.C.)", o único caso que ela não pegava.
+
+### O sumário de papel e a propaganda saem no `limpar` (2026-11-03)
+
+O Mateus aprovou ("Sim aos quatro"), antes do livro inteiro, porque a remoção muda o `limpos/` e
+o adaptador não deve pagar por esse texto. As duas regras ficam em `dominio/fora_do_audio.py` e
+entram em `limpeza.json`, com o motivo:
+- **Sumário de papel:** sai a linha com 5 pontos seguidos e número no fim, quando o capítulo tem
+  5 ou mais. A conta por capítulo é uma proteção acrescentada na implementação: a linha solta pode
+  ser de um quadro ou de um formulário.
+- **Propaganda:** sai o título exatamente "Conheça também", com os parágrafos até o próximo
+  título, se forem até 5. Com mais, é texto do livro, e nada sai. A regra é de uma frase só: a
+  propaganda com outro título fica.
+
+Medido contra o HEAD `5d4325a`, com os seis livros de ponta a ponta:
+- **Dalgalarrondo:** só o `c001` muda, de 94 para 50 segmentos: 41 linhas do sumário e 3 da
+  propaganda. O `segmentos/` é idêntico, e no EPUB montado só muda o `c001.xhtml`.
+- **Competente, Hard Parts, Huxley, Tides e Learning DDD:** `segmentos/`, `limpos/`,
+  `limpeza.json`, `livro.json` e o EPUB montado são idênticos, fora o UUID e a data do OPF do
+  `importar-pdf`, e o `conferir` das pastas traduzidas dá a mesma saída.
+
+Ficam no `c001` 9 segmentos do sumário sem pontilhado: o título "Sumário", 4 títulos "parte", os
+3 títulos das partes ("1 ASPECTOS GERAIS DA PSICOPATOLOGIA") e a primeira linha do capítulo 21. O
+adaptador os descarta por decisão, quando chegar ao `c001`.
+
+**A pasta.** O `preparar` recusa pasta que já existe, então o livro seguiu em
+`livros/trabalho/dalgalarrondo-adaptado-2.earbook`, com o mesmo EPUB, o glossário, as decisões e
+as respostas do `c031` e do `c033`. Os pedidos desses dois capítulos saíram byte a byte iguais, e
+nenhuma resposta ficou velha. O `c001` ganhou pedidos novos e não tinha resposta.
+
+**Fila, fora desta rodada:** o pontilhado com espaços (". . . . . 23") não sai. São 37 linhas no
+Competente e 20 no Hard Parts, e cobri-lo muda esses dois livros: é uma rodada própria, depois do
+Dalgalarrondo (decisão do Mateus). O título "Conheça também:", com dois-pontos, também não é
+pego.
+
+**Da revisão desta rodada,** com a pergunta "Corrijo os lotes A e B?" e a resposta "A e B":
+- **A1:** um número sozinho entre parênteses depois de um nome era tido como citação: "Escala de
+  Glasgow (15)" sem o 15 passava, e com o 15 era acusada. Agora, depois do nome, só a forma de
+  data é citação: ano, intervalo de 3 ou 4 algarismos, ou data com "a.C.". Teste visto falhar
+  na asserção antes; o Dalgalarrondo não tinha caso.
+- **Dois testes novos** (o limite de exatos 5 parágrafos da propaganda e a caixa do título),
+  cada um visto falhar com o seu mutante, e o comentário de `_PAGINA_DO_INDICE` de volta ao lugar.
+
+No `c033`, os grupos `c033-s0094` e `c033-s0096` foram refeitos pelas decisões novas: "Georg Miller
+Beard, em 1869," e "Segundo Kirmayer e colaboradores,". O `c031` não mudou: o `conferir` novo não
+acusou nada nele.
 
 ## Consequências
 

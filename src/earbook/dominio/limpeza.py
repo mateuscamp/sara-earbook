@@ -22,6 +22,8 @@ from earbook.dominio.fora_do_audio import (
     indice_pelo_conteudo,
     marcas_dagua,
     pelo_papel,
+    propaganda,
+    sumario_de_papel,
 )
 from earbook.dominio.segmento import Papel, Segmento, primeira_letra
 
@@ -134,7 +136,9 @@ def limpar_para_o_ouvido(
     )
     # ADR-0008: código, índice e bibliografia saem por último: até aqui, separam os parágrafos em
     # volta deles. O índice sem marcação também ("Índice pelo conteúdo").
-    for escolher in (pelo_papel, bibliografia, indice_pelo_conteudo):
+    # O sumário de papel e a propaganda, pelo mesmo motivo (ADR-0009).
+    regras = (pelo_papel, bibliografia, indice_pelo_conteudo, sumario_de_papel, propaganda)
+    for escolher in regras:
         juntado = _tirar_do_livro(juntado, escolher)
     return juntado
 

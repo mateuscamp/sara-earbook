@@ -27,13 +27,17 @@ _PALAVRA_COM_HIFEN = re.compile(r"[^\W\d_]+(?:-[^\W\d_]+)*")
 _NUMERO = re.compile(r"\d+(?:[.,]\d+)*")
 _ANO = r"\b(?:1[5-9]\d\d|20[0-2]\d)[a-z]?\b"
 _PARENTESE = re.compile(r"\(([^()]*)\)")
-# Antes do parêntese de data: o nome ("Sullivan (1983)"), o "et al." ou o ano entre colchetes
-# ("Freud [1911] (1976)").
-_DEPOIS_DE_NOME = re.compile(r"(?:[A-ZÀ-Ý][\w'\u2019-]*|al\.|\])\s*$")
-_SO_DATA = re.compile(r"[\d\s,;:.\u2013-]*(?:p\.\s*[\d\s\u2013-]+)?(?:[ad]\.C\.)?\s*")
+# Antes do parêntese de data: o nome ("Sullivan (1983)"), o "et al.", o "e colaboradores" ou o
+# ano entre colchetes ("Freud [1911] (1976)").
+_DEPOIS_DE_NOME = re.compile(r"(?:[A-ZÀ-Ý][\w'\u2019-]*|al\.|colaboradores|\])\s*$")
+_SO_DATA = re.compile(
+    r"(?:cerca de\s+)?[\d\s,;:.\u2013-]*(?:p\.\s*[\d\s\u2013-]+)?(?:[ad]\.C\.)?\s*"
+)
 _INTERVALO = r"\d{3,4}\s*[\u2013-]\s*\d{2,4}"
 _PAGINA = r"\bp\.\s*\d+(?:\s*[\u2013-]\s*\d+)?"
 _SO_ANO_E_PAGINA = re.compile(rf"{_ANO}|{_INTERVALO}|{_PAGINA}")
+# Depois do nome, só a forma de data é citação: "(15)" é dado, e o número é cobrado.
+_FORMA_DE_DATA = re.compile(rf"{_ANO}|{_INTERVALO}|[ad]\.C\.")
 _ROTULO = re.compile(
     r"\b(?:Quadros?|Tabelas?|Figuras?)\s+\d+(?:\.\d+)?(?:\s*(?:,|e|a)\s*\d+(?:\.\d+)?)*"
 )
@@ -167,7 +171,7 @@ def _eh_citacao(texto: str, achado: re.Match[str]) -> bool:
     (1856-1926)", "Aristóteles (348-322 a.C.)": só data, logo depois do nome."""
     conteudo = achado.group(1)
     if _DEPOIS_DE_NOME.search(texto[: achado.start()]) and _SO_DATA.fullmatch(conteudo):
-        return any(letra.isdigit() for letra in conteudo)
+        return _FORMA_DE_DATA.search(conteudo) is not None
     sem_datas = _SO_ANO_E_PAGINA.sub(" ", conteudo)
     # Só o ano de verdade faz a citação; o intervalo e a página, sozinhos, não (A4 da auditoria).
     tem_ano = re.search(_ANO, conteudo) is not None

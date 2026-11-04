@@ -38,6 +38,13 @@ A decisão está no [ADR-0001](docs/adr/0001-reescrever-com-claude-code-orquestr
   ([ADR-0008](docs/adr/0008-codigo-e-indice-saem-do-audio.md)). A bibliografia de outro padrão
   (APA, numerada), a lista curta e a bibliografia que o PDF partiu entre nota e parágrafo (a do
   Competente) ficam.
+- O sumário de papel: a linha com 5 pontos seguidos e número no fim ("1. Introdução ……… 23"),
+  quando o capítulo tem 5 ou mais. O título "Sumário", os títulos das partes e a linha sem
+  pontilhado ficam
+  ([ADR-0009](docs/adr/0009-adaptar-reescreve-por-grupo-e-o-conferir-cobra-a-fidelidade.md)).
+- A propaganda: o título "Conheça também", com até 5 parágrafos até o próximo título. A propaganda
+  com outro título fica
+  ([ADR-0009](docs/adr/0009-adaptar-reescreve-por-grupo-e-o-conferir-cobra-a-fidelidade.md)).
 - A capitular deslocada, que volta para a palavra quando o próprio livro prova que a palavra
   existe ([ADR-0007](docs/adr/0007-a-proxima-traducao-sem-trabalho-a-mao.md)). A letra que
   abre a frase antes de palavra em minúscula, como o artigo em "desejo. A resultante", fica

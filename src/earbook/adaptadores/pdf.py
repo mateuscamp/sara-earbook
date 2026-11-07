@@ -29,6 +29,10 @@ _FONTE_MONOESPACADA = re.compile(r"mono|courier|code|consol", re.IGNORECASE)
 # negrito. ADR-0004, "Subtítulo em negrito do tamanho do corpo".
 _FONTE_NEGRITO = re.compile(r"[-,]\w*(?:bold|black|heavy|demi)", re.IGNORECASE)
 
+# O versalete de fonte própria vem num tamanho só, e por isso a letra maior não o acha: no Maudlin,
+# "Archer-Medium-SC700" (ADR-0004, "Versalete de fonte própria"). O "SC" vem no fim do nome,
+# depois do separador: sem ele, "DiscoSC" seria versalete. Sem caixa, como as outras fontes.
+_FONTE_VERSALETE = re.compile(r"[-_]SC\d*$", re.IGNORECASE)
 
 _BOM_UTF8 = b"\xef\xbb\xbf"
 _BOM_UTF16LE = b"\xff\xfe"
@@ -167,9 +171,20 @@ def _linha(linha: LTTextLine, altura: float) -> Linha | None:
         tamanho=tamanho,
         monoespacada=monoespacada,
         negrito=negrito,
-        versalete=em_versalete([(c.get_text(), c.size) for c in visiveis], tamanho),
+        versalete=_versalete(visiveis, tamanho),
         fim=linha.x1,
     )
+
+
+def _versalete(visiveis: list[LTChar], tamanho: float) -> bool:
+    """O versalete feito à mão, pela letra maior, ou o de fonte própria, pelo nome da fonte.
+
+    Toda letra visível, como no negrito: a abertura de capítulo com as primeiras palavras em
+    versalete e o resto no corpo é parágrafo.
+    """
+    feito_a_mao = em_versalete([(c.get_text(), c.size) for c in visiveis], tamanho)
+    de_fonte = all(_fonte_casa(_FONTE_VERSALETE, c.fontname) for c in visiveis)
+    return feito_a_mao or de_fonte
 
 
 def _fonte_casa(padrao: re.Pattern[str], nome_da_fonte: object) -> bool:

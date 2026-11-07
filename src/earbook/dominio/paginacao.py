@@ -19,6 +19,7 @@ import re
 from collections import defaultdict
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
+from statistics import median
 
 from earbook.dominio.pagina import Linha, Pagina, tamanho_do_corpo
 
@@ -32,10 +33,27 @@ PAGINAS_MINIMAS = 3
 # no Hard Parts o rodapé tirado deixava a virada de página colar um item de lista no parágrafo
 # seguinte (ADR-0004, "O que ficou da Fase 1").
 PAGINAS_VIZINHAS = 2
+# Fora da faixa, a borda é o que fica fora da mancha, a área do corpo no livro inteiro. No
+# Maudlin (396 x 612 pt), o cabeçalho fica a 13,6% do alto, acima do corpo, que começa a 17%, e o
+# número de página fica na margem de fora, a 81% da altura (ADR-0004, "Cabeçalho fora da
+# faixa"). O percentil 1, e não o extremo: uma linha do corpo fora do lugar não desloca a mancha.
+# A faixa fica junto da mancha, e não no lugar dela, para não mudar os livros já medidos: nos
+# outros PDFs o cabeçalho cai na faixa, e a mancha sozinha mediria outra borda (C3 da auditoria).
+PERCENTIL_DA_MANCHA = 0.01
+# A mancha se mede pelas linhas largas, de pelo menos metade da largura mediana do corpo: o
+# cabeçalho e o número do tamanho do corpo, um por página, entrariam nela (R1 da auditoria).
+FRACAO_DA_LARGURA = 0.5
+# Acima da mancha é acima dela por mais que isto: o cabeçalho de tabela que abre a página, na
+# altura do corpo (Hard Parts, "Advantage Disadvantage"), fica.
+FOLGA_DA_MANCHA = 0.005
+# A linha de fora da faixa é cabeçalho na metade de cima e rodapé na de baixo.
+METADE_DA_PAGINA = 0.5
 # Medido nos dois livros: cada cabeçalho tirado tinha um topo só (0,05 e 0,9252).
 TOLERANCIA_DO_TOPO = 0.01
 # Cabeçalho e número de página vêm no tamanho do corpo ou menores (7,5 e 9 pt contra 10,5).
 FOLGA_DA_FONTE = 0.5
+# A linha do corpo, na mancha, é a que fica a menos disto do tamanho do corpo.
+TOLERANCIA_DO_CORPO = 0.5
 # Sem o ponto: "1.2" virava 12 e passava por número de página (revisão nº 5).
 _SEPARADORES = re.compile(r"[\s|\u00b7\u2022\-\u2013\u2014]")
 _ARABICO = re.compile(r"[0-9]{1,5}")
@@ -57,6 +75,15 @@ class LinhaRemovida:
 
 
 @dataclass(frozen=True)
+class _Mancha:
+    """Onde o corpo mora no livro: o alto dele e as duas margens, em fração e em pontos."""
+
+    topo: float
+    esquerda: float
+    direita: float
+
+
+@dataclass(frozen=True)
 class PaginasLimpas:
     paginas: tuple[Pagina, ...]
     remocoes: tuple[LinhaRemovida, ...]
@@ -68,9 +95,10 @@ def tirar_cabecalhos_e_rodapes(paginas: Sequence[Pagina]) -> PaginasLimpas:
     `tirar_cabecalhos_e_rodapes(paginas)` devolve as páginas sem essas linhas e uma
     remoção registrada por linha tirada.
     """
-    limite = tamanho_do_corpo(paginas) + FOLGA_DA_FONTE
-    na_borda = _na_borda_do_livro(paginas)
-    numeros = _numeros_de_pagina(na_borda, limite)
+    corpo = tamanho_do_corpo(paginas)
+    limite = corpo + FOLGA_DA_FONTE
+    na_borda, ao_lado = _candidatas(paginas, _mancha(paginas, corpo))
+    numeros = _numeros_de_pagina([*na_borda, *ao_lado], limite)
     repetidas = _repetidas(
         o for o in na_borda if o[2].tamanho <= limite and (o[0], o[1]) not in numeros
     )
@@ -89,14 +117,51 @@ def tirar_cabecalhos_e_rodapes(paginas: Sequence[Pagina]) -> PaginasLimpas:
     return PaginasLimpas(tuple(limpas), tuple(remocoes))
 
 
-def _na_borda_do_livro(paginas: Sequence[Pagina]) -> list[_Ocorrencia]:
-    """As linhas na faixa da borda, de qualquer tamanho: quem filtra a fonte é cada regra."""
-    return [
-        (pagina.numero, posicao, linha)
+def _candidatas(
+    paginas: Sequence[Pagina], mancha: _Mancha | None
+) -> tuple[list[_Ocorrencia], list[_Ocorrencia]]:
+    """(na borda, ao lado): as linhas na faixa da borda ou acima da mancha, que vão às duas
+    regras, e as ao lado da mancha, que vão só à do número de página (R2 da auditoria).
+
+    De qualquer tamanho: quem filtra a fonte é cada regra. Ao lado da coluna, a linha que se
+    repete é do livro: a nota de margem, o "x" do eixo de uma figura.
+    """
+    na_borda: list[_Ocorrencia] = []
+    ao_lado: list[_Ocorrencia] = []
+    for pagina in paginas:
+        for posicao, linha in enumerate(pagina.linhas):
+            if _na_borda(linha) or _acima_da_mancha(linha, mancha):
+                na_borda.append((pagina.numero, posicao, linha))
+            elif _ao_lado_da_mancha(linha, mancha):
+                ao_lado.append((pagina.numero, posicao, linha))
+    return na_borda, ao_lado
+
+
+def _mancha(paginas: Sequence[Pagina], corpo: float) -> _Mancha | None:
+    """A área do corpo no livro, pelo percentil das linhas largas do tamanho do corpo."""
+    do_corpo = [
+        linha
         for pagina in paginas
-        for posicao, linha in enumerate(pagina.linhas)
-        if _na_borda(linha)
+        for linha in pagina.linhas
+        if abs(linha.tamanho - corpo) < TOLERANCIA_DO_CORPO
     ]
+    if not do_corpo:
+        return None
+    minima = median(linha.fim - linha.x for linha in do_corpo) * FRACAO_DA_LARGURA
+    largas = [linha for linha in do_corpo if linha.fim - linha.x >= minima]
+    k = int(len(largas) * PERCENTIL_DA_MANCHA)
+    topos = sorted(linha.topo for linha in largas)
+    esquerdas = sorted(linha.x for linha in largas)
+    direitas = sorted(linha.fim for linha in largas)
+    return _Mancha(topos[k], esquerdas[k], direitas[-1 - k])
+
+
+def _acima_da_mancha(linha: Linha, mancha: _Mancha | None) -> bool:
+    return mancha is not None and linha.topo < mancha.topo - FOLGA_DA_MANCHA
+
+
+def _ao_lado_da_mancha(linha: Linha, mancha: _Mancha | None) -> bool:
+    return mancha is not None and (linha.fim < mancha.esquerda or linha.x > mancha.direita)
 
 
 def _na_borda(linha: Linha) -> bool:
@@ -168,7 +233,7 @@ def _repetidas(candidatas: Iterable[_Ocorrencia]) -> dict[tuple[int, int], str]:
             if not _cabecalho_corrente(paginas, com_letra=com_letra):
                 continue
             for pagina, posicao, linha in mesma_altura:
-                lugar = "cabeçalho" if linha.topo < FAIXA_DA_BORDA else "rodapé"
+                lugar = "cabeçalho" if linha.topo < METADE_DA_PAGINA else "rodapé"
                 motivos[pagina, posicao] = f"{lugar} de página repetido"
     return motivos
 
@@ -185,7 +250,7 @@ def _grupos(candidatas: Iterable[_Ocorrencia]) -> dict[tuple[str, bool], list[_O
         # ("2021", "© 2020", uma data; A3 da auditoria).
         if not _LETRA.search(chave):
             chave = "".join(ocorrencia[2].texto.split())
-        grupos[chave, ocorrencia[2].topo < FAIXA_DA_BORDA].append(ocorrencia)
+        grupos[chave, ocorrencia[2].topo < METADE_DA_PAGINA].append(ocorrencia)
     return grupos
 
 

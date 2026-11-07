@@ -21,6 +21,7 @@ ADRs em `docs/adr/`. O Claude Code traduz; o Python nunca chama o LLM (ADR-0001)
 - Termo e decisão do livro (ADR-0007): o tradutor declara em `termos/<lote>.json` o que decidiu fora do glossário, e o `conferir` cobra. O que a amostra decidiu mora em `decisoes.md`, que todo tradutor lê.
 - Entrada: EPUB. PDF entra pelo comando `importar-pdf` (ADR-0004), só para ouvir: sem fidelidade visual, sem OCR, e a biblioteca de PDF só em `adaptadores/`.
 - Livro escaneado (ADR-0011): sem código novo. O tesseract roda por fora, um script fora do repositório grava um EPUB limpo, e o `preparar` segue dali. O pacote continua sem OCR.
+- Livro com fórmula (ADR-0012): a fórmula vem da página, não do texto do PDF. A sessão grava a página renderizada de cada segmento com fórmula, `decisoes.md` diz como dizê-la e manda o tradutor ler a página, e um revisor que não traduziu confere contra ela. O filtro do PDF (figura, equação partida, marcador de nota) é script fora de `src/`.
 - Romance de fã (ADR-0010): sem código novo. O Calibre, antes do `preparar`, resolve metadado, títulos, capítulos e frase partida; o `adaptar` é só transporte de um script que grava `adaptados/`; o original em inglês é mapa de parágrafos, nunca texto.
 - Motor: o Claude Code na sessão, pela assinatura, com um subagente por capítulo. O limite de uso conta.
 - Notas de rodapé: o marcador sai do meio da frase e o texto da nota vai para o fim do capítulo.
@@ -83,6 +84,10 @@ O Mateus diz o caminho do livro; a sessão o leva até `livros/prontos/`. O orig
    - O script separa título, parágrafo, legenda e rodapé, devolve a capitular, junta a frase entre páginas, corrige por lista e registra tudo o que sai, com a página. O `preparar` é o teste de contrato.
    - Nomes oficiais em lote: `wago.tools/db2/<tabela>/csv?locale=enUS` e `ptBR`, casados pelo ID.
    - No glossário entra só nome de forma fixa: o `conferir` compara palavra inteira, com caixa. Termo que flexiona (Guardião, Guardiã) mora em `decisoes.md`, que manda não o declarar em `termos/`.
+8. Livro com fórmula: **página como fonte, sem código** (ADR-0012; os scripts estão na pasta de notas, `maudlin-mapa/`).
+   - `fonte.py` chama o `importar-pdf` por dentro, com um filtro por página: figura, fragmento de fórmula, equação de exibição numa linha só, marcador de nota, glifos do ket. Grava `retirado.json` e `blocos.json`.
+   - `mapa_de_paginas.py` dá a página de cada segmento com fórmula; a página vai em PNG para `livros/trabalho/<nome>-paginas/`, e a tabela, para `decisoes.md`.
+   - Depois da tradução: o script que acha símbolo nos `traduzidos/` e um revisor por capítulo, contra a página.
 - Defeito de código achado num livro: pare e relate. A correção é uma sessão filha, com o processo deste arquivo.
 - Conversão sem tradução roda na sessão principal; tradução de livro inteiro, numa filha.
 - Custo de referência (ADR-0006, Huxley inteiro): ~8 tokens de saída por palavra e ~850 palavras por minuto por subagente; as 16 mil palavras gastaram menos de 1% da semana.
@@ -106,12 +111,12 @@ Verificadas só em revisão (`code-audit`):
 
 - Marcador de nota no meio da frase ("...disse ele.12"). Feito no `preparar`.
 - Trecho lido duas vezes (`<p>` dentro de `<blockquote>`). Feito no `preparar`.
-- Número de página, cabeçalho repetido, sumário duplicado. No PDF, o cabeçalho de duas páginas vizinhas também sai; o de duas páginas alternadas ainda é lido (ADR-0004, "O que ficou da Fase 1").
+- Número de página, cabeçalho repetido, sumário duplicado. No PDF, o cabeçalho de duas páginas vizinhas também sai; o de duas páginas alternadas ainda é lido (ADR-0004, "O que ficou da Fase 1"). Fora da faixa de 8%, saem o cabeçalho acima da mancha do corpo e o número de página ao lado da coluna (ADR-0004, "Cabeçalho fora da faixa").
 - Sumário de papel e propaganda: feitos no `preparar` (ADR-0009). Sai a linha com 5 pontos seguidos e número no fim, quando o capítulo tem 5 ou mais; sai o título "Conheça também" com até 5 parágrafos até o próximo título. Ficam o título "Sumário", os títulos das partes e a linha sem pontilhado; a propaganda com outro título ainda é lida. O pontilhado com espaços (". . . . . 23", 37 linhas no Competente e 20 no Hard Parts) ainda é lido: rodada própria, depois do Dalgalarrondo.
 - Índice remissivo, bloco de código e marca d'água repetida: feitos no `preparar` quando o EPUB marca o índice e o código (ADR-0008). O índice sem marca, como o do PDF importado, sai pelo conteúdo: 10 parágrafos de "termo, página" seguidos ou mais (ADR-0008, "Índice pelo conteúdo"). O índice curto e o código do PDF importado ainda são lidos.
 - Destaque de margem que repete a frase do texto: feito no `importar-pdf` e no `preparar` (ADR-0004, ADR-0008). O destaque resumido ou reescrito ainda é lido.
 - Quadro do PDF que vira nota e vai para o fim do capítulo, longe do texto: feito no `importar-pdf` (ADR-0004, "Quadro no lugar"). O quadro sem rótulo "Quadro N.N" ou "Tabela N.N" em letra de título ainda não é reconhecido.
-- Subtítulo em versalete do PDF que vira nota, e texto escondido debaixo de outro que abre capítulo falso: feitos no `importar-pdf` (ADR-0004, "O que ficou da Fase 1"). O versalete de fonte própria, de um tamanho só, ainda vira nota.
+- Subtítulo em versalete do PDF que vira nota, e texto escondido debaixo de outro que abre capítulo falso: feitos no `importar-pdf` (ADR-0004, "O que ficou da Fase 1"). O versalete de fonte própria ("-SC700") vira título pelo nome da fonte (ADR-0004, "Versalete de fonte própria").
 - Bibliografia: feita no `preparar` para a do padrão ABNT, 10 referências seguidas ou mais (ADR-0008, "Bibliografia"). A de outro padrão, a lista curta e a do Competente, partida entre nota e parágrafo, ainda são lidas; a do Competente se conserta no `importar-pdf`, onde nasce (decisão do Mateus, 2026-11-03).
 - Negrito feito à mão (o mesmo texto desenhado de novo por cima, no mesmo tamanho): feito no `importar-pdf` (ADR-0004, "Negrito feito à mão"). A cópia de uma letra só ainda é lida.
 - Alternativa de exercício cuja letra só existe no CSS do `<ol>`: a voz lê "B e C" sem que nada tenha letra. Pendente.

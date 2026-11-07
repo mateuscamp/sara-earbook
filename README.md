@@ -186,7 +186,9 @@ O `importar-pdf` grava `livro.epub` ao lado do PDF (ou onde `--epub` mandar), co
 autor do metadado do PDF (ou os de `--titulo` e `--autor`). O que ele faz:
 
 - tira o número de página, também o que é maior que o texto, e o cabeçalho repetido, pela
-  posição na página. O cabeçalho que aparece só nas duas páginas de uma abertura também sai;
+  posição na página. O cabeçalho que aparece só nas duas páginas de uma abertura também sai. No
+  livro de margem larga, sai também o cabeçalho acima de onde o texto começa e o número de página
+  na margem, ao lado da coluna;
 - tira o texto escondido: a linha em letra de título desenhada por cima de uma linha de outro
   tamanho, na mesma altura;
 - lê uma vez só o negrito feito à mão: o mesmo texto desenhado de novo por cima, no mesmo
@@ -201,8 +203,9 @@ autor do metadado do PDF (ou os de `--titulo` e `--autor`). O que ele faz:
 - deixa o quadro no lugar. O quadro abre no rótulo "Quadro 5.1" ou "Tabela 5.1" em letra de
   título, e o conteúdo dele, em letra menor, é lido como parágrafo, e não como nota no fim do
   capítulo. Ele entra depois da frase que interrompe, e a frase volta a ser uma só;
-- lê o subtítulo em versalete feito à mão (maiúsculas de dois tamanhos) como título, e não
-  como nota no fim do capítulo;
+- lê o subtítulo em versalete como título, e não como nota no fim do capítulo: o feito à mão
+  (maiúsculas de dois tamanhos) e o de fonte própria (o nome da fonte termina em "SC", como
+  "Archer-Medium-SC700");
 - divide os capítulos pelo tamanho dos títulos.
 
 O EPUB serve para ouvir, não para ler na tela. Sai sem imagem e sem estilo, e cada linha de

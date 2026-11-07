@@ -151,13 +151,16 @@ def montar_pdf_com_senha(destino: Path) -> Path:
 _HELVETICA = b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>"
 
 
-def montar_pdf_com_nome_de_fonte(destino: Path, nome_da_fonte: bytes) -> Path:
+def montar_pdf_com_nome_de_fonte(
+    destino: Path, nome_da_fonte: bytes, linhas: list[LinhaDeTeste] | None = None
+) -> Path:
     """Fonte fora das 14 padrão, cujo /FontName no descritor é `nome_da_fonte` cru.
 
     Nome PDF é `/Courier`; `(Courier)` (texto) e `5` (número) são malformados, e o
-    pdfminer os entrega sem converter em `str`.
+    pdfminer os entrega sem converter em `str`. A fonte troca a Helvetica: as `linhas` em
+    negrito (Helvetica-Bold) continuam na fonte padrão.
     """
-    _ = montar_pdf(destino, [[LinhaDeTeste("Texto.", 72, 700)]])
+    _ = montar_pdf(destino, [linhas or [LinhaDeTeste("Texto.", 72, 700)]])
     larguras = b"/FirstChar 32 /LastChar 126 /Widths [" + b" ".join([b"600"] * 95) + b"]"
     descritor = (
         b"<< /Type /FontDescriptor /FontName " + nome_da_fonte

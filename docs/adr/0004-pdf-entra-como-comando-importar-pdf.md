@@ -795,6 +795,67 @@ commitar"). Os seis livros saíram idênticos à medição acima.
 - **Pendência, guarda sem teste que não muda os três PDFs:** M6, a largura maior que zero da
   cópia. E M7 é equivalente: entre duas cópias de texto igual, qual fica não muda o livro.
 
+### Cabeçalho fora da faixa e versalete de fonte própria (2026-11-07)
+
+Medido no HEAD `9af7ac9`, no *Philosophy of Physics: Quantum Theory* (Tim Maudlin, Princeton,
+2019), PDF de editora de 250 páginas, 396 x 612 pt. O Mateus aprovou ("Aprovar as cinco"), junto
+com o caminho do livro (ADR-0012).
+
+**1. Cabeçalho e número de página fora da faixa.**
+- **O defeito:** a margem é larga. O cabeçalho corrente ("Chapter 2" nas pares, o título do
+  capítulo nas ímpares, 9 pt) fica a 13,6% do alto, e o corpo começa a 17%. O número de página
+  fica na margem de fora, a 81% da altura, ao lado da coluna (x 392 nas ímpares, 62 nas pares). Os
+  dois caem fora da faixa de 8%, e nada saía: 230 números e 222 cabeçalhos no meio das frases
+  ("what 5 Chapter 1 we want"), 179 junções de parágrafo erradas e o número de página no fim de
+  cada nota de rodapé.
+- **A regra** (`dominio/paginacao.py`): além da faixa, entra como candidata a linha fora da
+  **mancha**, a área do corpo no livro inteiro, medida pelas linhas largas do tamanho do corpo
+  (pelo menos metade da largura mediana), no percentil 1 (o alto e a margem esquerda) e no 99 (a
+  margem direita):
+  - acima da mancha, por mais de 0,005, qualquer linha: o cabeçalho, que vai às duas regras de
+    sempre (o número sai se segue a paginação em 3 páginas, e a linha sai se se repete no mesmo
+    topo em 3 páginas, com a fonte do tamanho do corpo ou menor);
+  - ao lado da coluna, qualquer linha, mas só para a regra do número de página.
+  O motivo diz "cabeçalho" na metade de cima da página e "rodapé" na de baixo. A faixa de 8% fica
+  junto da mancha, e não some, para não mudar os livros já medidos.
+- **Recusado: a linha mais alta de cada página.** Pegava o cabeçalho de tabela que abre três
+  páginas no Hard Parts ("Advantage Disadvantage", "Component Namespace Responsibility",
+  "Consistency") e 5 linhas de URL repetidas no Competente. Pela mancha do livro, o cabeçalho de
+  tabela está na altura do corpo, e fica.
+- **Recusado: o texto repetido ao lado da coluna.** A nota de margem que se repete é do livro, e
+  o "x" do eixo de uma figura na mesma altura em três páginas também (R2 da auditoria).
+- **Por que as linhas largas** (R1 da auditoria): o cabeçalho e o número do tamanho do corpo, um
+  por página contra ~30 linhas de corpo, passam de 1% das linhas e entrariam na mancha; a regra
+  deixaria de valer, em silêncio. O percentil continua: uma epígrafe no alto, ou uma equação que
+  avança sobre a margem, não desloca a mancha.
+- **O que se perde:** uma linha que se repete em 3 páginas acima de onde o corpo começa, e um
+  número de linha na margem que coincida com a paginação. Não há caso nos quatro PDFs.
+
+**2. Versalete de fonte própria.**
+- **O defeito:** os 8 experimentos e as seções do Maudlin ("further reading", "The PBR Theorem")
+  vêm em `Archer-Medium-SC700`, uma fonte só de versaletes, de um tamanho só (9 pt, contra o corpo
+  de 10). A letra maior do versalete feito à mão não existe, e a linha virava nota no fim do
+  capítulo. Era o item pendente "o versalete de fonte própria, de um tamanho só, ainda vira nota".
+- **A regra** (`adaptadores/pdf.py`): a linha cuja letra visível é **toda** de fonte com o nome
+  terminado em "SC", depois do traço ou do sublinhado, com um número opcional (`-SC`, `-SC700`),
+  sem distinguir caixa, como as outras regras de fonte, é versalete, e vira título pela regra que já existe. A abertura de capítulo com as primeiras
+  palavras em versalete e o resto em Minion continua parágrafo.
+- **O que se perde:** uma linha inteira de corpo em versalete de fonte própria (uma epígrafe, por
+  exemplo) viraria título. A fonte de versalete sem o "SC" no fim do nome ("MinionPro-RegularSC")
+  continua nota.
+
+**Medido depois do código:**
+
+| Livro | O que muda |
+|---|---|
+| *Maudlin* (`importar-pdf` + `preparar`) | saem 235 cabeçalhos e 237 números; títulos 41 → 75 (os 34 versaletes); notas 144 → 126; segmentos 1.327 → 1.281; junções 179 → 72; suspeitos 86 → 45 |
+| *Competente*, *Hard Parts*, *Dalgalarrondo* | o resumo do `importar-pdf`, `segmentos/`, `limpos/` e `limpeza.json` idênticos |
+| *Huxley*, *Tides*, *Learning DDD* | EPUB, não passam pelo `importar-pdf`; `preparar` idêntico |
+
+Nenhum dos três PDFs tem fonte com "SC" no nome, com ou sem caixa. Depois da auditoria (a mancha
+pelas linhas largas, o candidato ao lado da coluna só na regra do número, a regex sem caixa), os
+seis livros e o Maudlin saem iguais à medição acima.
+
 ## Consequências
 
 **Ganha:** um comando a mais na mesma esteira, sem repositório novo. Os defeitos de conversão são atacados onde nascem.
@@ -814,6 +875,7 @@ commitar"). Os seis livros saíram idênticos à medição acima.
 | O destaque não cola no texto | testes (`tests/test_destaque.py`): a letra menor na virada de coluna abre parágrafo, para os dois lados; a mesma letra, ou meio ponto de diferença, segue; a letra menor sem virada segue; do PDF de ponta a ponta, a frase da p. 250 volta inteira | portão | o destaque cola na frase, ou um parágrafo sem destaque se parte |
 | O quadro fica no lugar | testes (`tests/test_quadro.py`): o conteúdo do quadro é parágrafo, não nota; a frase interrompida volta inteira, com o quadro depois, também quando o quadro acaba em linha de 9 pt; o quadro espera o destaque que parte a continuação; fica no lugar entre parágrafos, entra antes do título seguinte e não se perde no fim do livro; o rótulo seguido ("Quadro" ou "Tabela") e a linha de 11 pt continuam o quadro, e os quadros seguidos esperam juntos a frase acabar; a letra do corpo e o título o fecham, e o corpo colado à última linha do quadro abre bloco próprio; o código dentro do quadro não retoma o texto, e a linha em maiúscula depois do quadro também não; o título "Quadro clínico", sem número, não abre quadro; a menção no corpo não o abre; do PDF de ponta a ponta, as p. 43 e 44 | portão | conteúdo de quadro vira nota, a frase se emenda no quadro, ou um bloco de quadro some |
 | O que ficou da Fase 1 | testes: o versalete feito à mão é título e o continua a linha de maiúsculas seguinte, e as maiúsculas de um tamanho só, a minúscula e o símbolo maior não são versalete, e as maiúsculas depois de uma nota continuam nota (`tests/test_versalete.py`, com o adaptador lendo um PDF); a linha de título sobre outra de outro tamanho sai, o texto repetido do mesmo tamanho não é texto escondido, e a linha ao lado e a letra miúda ficam; o `importar-pdf` não abre o capítulo falso (`tests/test_texto_escondido.py`); os verbetes justificados saem coluna a coluna, e a célula com alguma continuação sem margem comum segue linha a linha; o corpo depois da tabela de letra menor é outra faixa, e o destaque de um lado só não a corta, nem a letra menor dos dois lados sem o vão de parágrafo; a coluna de duas linhas ligadas pelo hífen vem antes da outra, e a de duas linhas sem o hífen segue linha a linha (`tests/test_colunas_curtas_e_justificadas.py`); o cabeçalho de duas páginas vizinhas sai, e o de duas com uma entre elas e a linha sem letra em duas vizinhas ficam (`tests/test_paginacao.py`) | portão | volta uma nota de versalete, o capítulo falso, a intercalação do glossário, ou muda um livro sem versalete, texto escondido nem cabeçalho de abertura |
+| Cabeçalho fora da faixa e versalete de fonte própria | testes (`tests/test_cabecalho_fora_da_faixa.py`): o cabeçalho acima da mancha que se repete sai, e o título único acima dela fica; o número de página ao lado da coluna, dos dois lados, sai, e dentro da coluna fica; o cabeçalho e o número do tamanho do corpo saem; o cabeçalho largo em letra menor sai; a epígrafe no alto e a linha que passa da margem não deslocam a mancha; a linha repetida no alto da mancha, o texto repetido e o "x" repetido ao lado da coluna ficam; a linha toda em fonte "-SC" ou "-sc" é versalete, e a fonte comum, o "SC" sem separador e a linha que mistura versalete e corpo não são (`tests/test_versalete_de_fonte.py`, com o adaptador lendo um PDF) | portão | volta o cabeçalho no meio da frase, o versalete de fonte própria volta a ser nota, ou muda um livro sem margem larga nem fonte SC |
 | Negrito feito à mão | testes (`tests/test_texto_repetido.py`): a cópia do mesmo tamanho sai e fica a primeira; a cópia do texto escondido tem um registro só; o resumo do comando diz o texto repetido; as 9 linhas da p. 2 do Dalgalarrondo viram "Conheça também"; a cópia de uma letra, a deslocada mais de 10%, a de outro tamanho, a de outra altura e o texto diferente ficam; do PDF montado em código, o `importar-pdf` lê a palavra uma vez | portão | a cópia volta a ser lida, ou sai uma linha que não repete outra |
 | A escuta ★ | rodar `importar-pdf` + `preparar` num PDF real em `livros/` e contar o que o `limpar` ainda precisa tirar | a cada mudança no conversor | a contagem sobe |
 

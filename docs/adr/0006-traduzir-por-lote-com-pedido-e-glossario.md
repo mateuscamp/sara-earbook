@@ -876,6 +876,289 @@ Vale pôr o caminho do dicionário em `decisoes.md` no próximo livro.
 **Livro montado:** 74,8 mil palavras, 9 capítulos, 2 deles as Partes, epubcheck com 0 erro, `conferir`
 limpo. Roteiro: `livros/trabalho/roteiro-de-escuta-cronicas-2.md`, 10 paradas.
 
+### *What Is Real?*, de Adam Becker (2026-11-07)
+
+Primeiro livro de divulgação científica: um EPUB da editora, sem amostra e sem escuta de teste, porque
+o `tradutor.md` não mudou. Não há edição brasileira. O título em português vai para o metadado: "O que
+é real? A busca inacabada pelo significado da física quântica".
+
+**Antes do `preparar`, por caminho sem código** (registro em `livros/trabalho/what-is-real-retirado.md`):
+- Saíram as notas (15,7 mil palavras, só fonte de citação e sem link), as referências, o resto do
+  índice, as permissões, os direitos e o sumário.
+- Por decisão do Mateus, saíram também as 29 legendas de figura, como na *Crônica*. A remissão
+  "(Figure 3.2)" saiu na tradução, pelo `decisoes.md`, como no Dalgalarrondo.
+- O EPUB 3 exige um nav: ele saiu do spine e ficou no manifesto.
+
+**Antes de traduzir:**
+- O inventário no `montar --original` achou três perdas do EPUB:
+  - o expoente de 10¹⁰⁰⁺, que virou "10100+";
+  - o φ⁴, que é imagem, e o texto dizia "4 field theory";
+  - o "E = mc²".
+- O `decisoes.md` mandou escrever os três por extenso. Um tradutor achou um quarto que o inventário
+  não pegou: "10500", em `c021-s0029`.
+
+**Decisões do Mateus** ("Aprovar e soltar"):
+- as legendas e as remissões saem;
+- "Capítulo 1" no lugar do "1" solto;
+- os títulos com eco de Hamlet;
+- a fórmula por extenso;
+- "emaranhamento";
+- o título e o sumário em português, por script.
+
+A política de termos seguiu o uso brasileiro: artigos de fundamentos, Pesquisa FAPESP e a Wikipédia
+em português.
+
+| Tradutor | Lotes | Palavras | Minutos | Saída (por palavra) | Cache lido |
+|---|---|---|---|---|---|
+| c003 a c009 (abertura, introdução, prólogo, cap. 1) | 9 | 5.658 | 3,4 | 25.051 (4,4) | 592.601 |
+| c010 (cap. 2) | 4 | 7.301 | 7,2 | 56.439 (7,7) | 995.047 |
+| c011 (cap. 3) | 3 | 5.770 | 5,9 | 44.893 (7,8) | 711.113 |
+| c012 (cap. 4) | 5 | 9.052 | 5,4 | 39.594 (4,4) | 1.018.535 |
+| c013 e c014 (Parte 2, cap. 5) | 7 | 9.864 | 7,8 | 62.311 (6,3) | 886.522 |
+| c015 (cap. 6) | 5 | 7.960 | 4,9 | 35.570 (4,5) | 1.171.461 |
+| c016 (cap. 7) | 4 | 7.363 | 4,7 | 33.643 (4,6) | 849.173 |
+| c017 (cap. 8) | 6 | 9.836 | 6,1 | 44.198 (4,5) | 1.139.533 |
+| c018 e c019 (Parte 3, cap. 9) | 7 | 9.709 | 9,7 | 75.236 (7,7) | 1.450.325 |
+| c020 (cap. 10) | 5 | 7.860 | 5,6 | 40.613 (5,2) | 1.064.955 |
+| c021 (cap. 11) | 5 | 8.091 | 8,2 | 64.357 (8,0) | 973.264 |
+| c022 (cap. 12) | 5 | 7.831 | 7,3 | 57.461 (7,3) | 708.187 |
+| c023 a c025 (apêndice, agradecimentos, autor) | 3 | 2.716 | 2,4 | 17.181 (6,3) | 365.209 |
+| **Total** | 68 | 99.011 | 9,7 de relógio | 596.547 (6,0) | 11.925.925 |
+
+Cada mensagem foi contada uma vez só, pelo `id`. O cache criado foi de 1,17 milhão.
+
+**Real contra a estimativa:**
+- **Saída:** 597 mil tokens, contra 640 a 900 mil previstos. Este livro gastou menos que a régua do
+  romance (6,0 contra 6,4 por palavra) e bem menos que a *Crônica* (8,2).
+- **Glossário:** 150 entradas fixadas antes de distribuir, com a tabela de termos de `decisoes.md`.
+  Com elas, quase não houve decisão de termo dentro dos lotes.
+- **Tempo:** 9,7 minutos de relógio. Somados em série, os 13 tradutores levariam 78,6 minutos:
+  ~1.260 palavras por minuto por tradutor.
+- **Medidor semanal:** de 29% para 31%, com a rodada de correção e a sessão irmã do Maudlin
+  rodando ao mesmo tempo. A régua de ~1 ponto a cada 45 mil palavras previa 2,2.
+
+**Glossário: de 150 para 962 entradas.**
+- **Saíram 2 durante a tradução, por homônimo:**
+  - "London", porque é também o físico Fritz London;
+  - "New York", que está dentro de "The New York Times".
+- **Um título mudou pela caixa:** o do capítulo 8 ficou "Mais coisas entre o céu e a Terra", com
+  maiúscula, porque o glossário cobra "Terra".
+- **Na rodada:** as 1.037 declarações tinham 828 originais. Um só tinha duas formas: Netherlands,
+  que ficou "Holanda".
+- **Ficaram de fora 11 que flexionam ou mudam de caixa,** e foram tiradas também das declarações:
+  Solvay conference, Quantum Theory, Structure, Nature, Jesus, Spontaneous-collapse theory, VCR,
+  instruction sets, polarizer, Copenhagen camp e EPR paper.
+
+**Rodada de correção:** o `conferir` acusou 24 problemas, e a sessão corrigiu por script, sem mensagem
+a tradutor:
+- 5 segmentos com a forma que perdeu:
+  - Princetituto (`c015-s0015`);
+  - Holanda (`c015-s0034`);
+  - "complexo industrial-militar" (`c012-s0056` e `c019-s0034`);
+  - "processamento quântico de informação" (`c021-s0023`).
+- 3 ajustes para o ouvido, que o `conferir` não pede:
+  - o "[sic]" que sobrou em `c016-s0055`. Os outros dois tradutores já o tinham tirado, porque ele só
+    marcava um erro do inglês;
+  - "Texas A&M", que virou "Texas A e M";
+  - "St. Andrews", que virou "Saint Andrews".
+
+**IDs velhos no `decisoes.md`:** os IDs foram anotados no primeiro `preparar`, antes de as legendas
+saírem. As legendas mudaram a numeração de 4 deles. Os tradutores acharam o lugar pelo texto, que a
+regra citava. No próximo livro, os IDs se anotam depois do último `preparar`.
+
+**Conferência e montagem:**
+- **`conferir`:** "nada faltando, sobrando ou repetido".
+- **`montar --epub livros/prontos/what-is-real.pronto.epub`:** 25 capítulos, 692 segmentos e
+  104.222 palavras, 5% a mais que o original.
+- **Script do título e do sumário:** o `dc:title`, o nav, o ncx e o `<title>` dos XHTML vão para o
+  português, e o `xml:lang` vai para pt-BR. O script tira também a marca d'água do nav. Ele é
+  necessário porque o `montar` só traduz o sumário que aponta para um ID.
+- **epubcheck:** 0 erro, contra 1 PKG-006 no EPUB da editora.
+- **Inventário no livro montado:** 0 figura, URL, símbolo, algarismo romano, abreviação, caixa alta
+  e palavra funcional inglesa.
+- **Siglas que ficam:** EPR, CERN, GRW, FBI, BBC, WSEG, CHSH, MIT, WMAP, NSF, SLAC, TNT e LIGO.
+
+**O que os tradutores devolveram como dúvida:**
+- **Erros do original traduzidos pelo sentido:**
+  - Aharanov (`c019-s0041`), Orbus (`c008-s0004`), Norbert Weiner (`c015-s0046`), Nicholas Gisin
+    (`c020-s0009`) e Giles Brassard (`c020-s0018`);
+  - Marcel Grossman (`c021-s0011`) e Phillip Grangier (`c019-s0049`);
+  - "John Herschel discovered Uranus" (`c021-s0040`), que foi William;
+  - "Institute of Advanced Study" (`c014-s0017`);
+  - ~12 faltas de espaço depois de "?" ou de colchete.
+- **Alusões que se perdem:**
+  - o Clash (`c006-s0008`);
+  - "where to be and where not to be" (`c006-s0003`);
+  - o Gershwin (`c021-s0039`);
+  - a ênfase em caixa alta da carta de Stern (`c015-s0036`).
+- **Formas para o ouvido:**
+  - "Hugh Everett Terceiro", "Júnior", "rei Cristiano Décimo";
+  - "Washington" no lugar de "Washington, DC";
+  - "Mount Holyoke";
+  - "a coisa vem do bit" (*it from bit*).
+- **Escolhas de registro:**
+  - Einstein trata Heisenberg por "você", e Heisenberg responde com "o senhor" (`c010`);
+  - Göttingen fica, sem passar a Gotinga.
+
+Roteiro: `livros/trabalho/roteiro-de-escuta-what-is-real.md`, 10 paradas, uma por decisão nova.
+
+### *Introdução ao panpsiquismo*, verbete da SEP (2026-11-07)
+
+O verbete "Panpsychism" da *Stanford Encyclopedia of Philosophy* (Goff, Seager e Allen-Hermanson,
+revisão de 2022), impresso do navegador em PDF de 24 páginas. Primeiro texto de enciclopédia, com
+citação autor-ano em quase todo parágrafo. Sem amostra e sem escuta de teste: o `tradutor.md` não
+mudou. Medidor semanal: 31% antes, 32% depois, com a rodada de correção.
+
+**O caminho, sem código (ADR-0010):**
+- O `importar-pdf` rodou de uma cópia do HEAD `9af7ac9`, porque a árvore tinha mudanças sem commit
+  no `importar-pdf`.
+- Ele tirou o cabeçalho e o rodapé do navegador (72 linhas), mas deixou o número "N/24" como nota.
+- Um script gravou a cópia limpa: sem os 24 "N/24", os 25 marcadores "[n]" (as notas ficam em outra
+  página da SEP), o menu, a bibliografia e as páginas de ferramentas e de verbetes relacionados.
+- A fórmula do CIS, partida em 4 parágrafos, foi refeita pela página.
+- O registro está em `livros/trabalho/introducao-ao-panpsiquismo-retirado.md`.
+
+| Tradutor | Palavras | Lotes | Tokens de saída | Por palavra | Minutos |
+|---|---|---|---|---|---|
+| c001 a c003 | 5.974 | 5 | 42.209 | 7,1 | 5,6 |
+| c004 a c006 | 6.540 | 5 | 40.004 | 6,1 | 5,2 |
+| Total | 12.514 | 10 | 82.213 | 6,6 | 5,6 de relógio |
+
+Cada mensagem foi contada uma vez só, pelo `id`. Cache lido: 1,53 milhão; cache criado: 164 mil.
+
+**A previsão errou para cima:**
+- Previ de 10 a 12 tokens por palavra, entre a Crônica e o DDD, e saiu 6,6: a régua do romance.
+- Com o lote cheio (~1.250 palavras), a citação a cortar não pesou.
+- Cada tradutor fez de 1.070 a 1.260 palavras por minuto.
+
+**As decisões do Mateus** ("Aprovar e soltar", a proposta inteira por texto, numa mensagem só):
+- O título do livro é "Introdução ao panpsiquismo".
+- O número de seção sai dos títulos.
+- Na citação autor-ano, o nome fica e o ano, a página e o capítulo saem sempre. O ano que é fato
+  histórico fica.
+- A fórmula se diz por extenso ("S1, S2, e assim por diante até Sn", "S estrela").
+- Grafia "panpsiquismo", com N; o Houaiss traz "pampsiquismo", que soa igual.
+
+**Glossário:** 31 entradas → 195 depois da rodada (128 nomes de pessoa e 36 termos declarados).
+
+**Rodada de correção, sem mensagem a tradutor:**
+- *phenomenal properties* saiu do glossário: "non-phenomenal properties" contém a forma, e a
+  tradução "propriedades não fenomenais" era acusada. A forma ficou em `decisoes.md`.
+- "Maddell" virou Madell, erro do original.
+- "o cosmopsiquismo constitutivo", que começava com minúscula para escapar da caixa do glossário,
+  virou "O cosmopsiquismo".
+- "c. 624 a 545 a.C." virou "cerca de 624 a 545 a.C." em 3 segmentos: a voz leria "cê".
+- Depois disso, o `conferir` deu "nada faltando".
+
+**O que os tradutores devolveram:**
+- 13 erros do original, traduzidos pelo sentido: "van de Waals", "physical word", "a common
+  ancestors", "hundredand first-feeling".
+- O "como é ser essa coisa", que pode soar estranho.
+- Uma suspeita de extração confirmada pela página: os componentes negativo e positivo do monismo
+  russelliano (`c003-s0040`) são dois blocos sem rótulo no PDF, e o `importar-pdf` os juntou num
+  parágrafo só. Ficou assim e é uma parada do roteiro.
+
+**Livro montado:**
+- 12,7 mil palavras em 6 capítulos, o `conferir` limpo e o epubcheck com 0 erro.
+- No livro montado, o inventário achou 0 resíduo de navegador, URL, colchete, "e.g." ou número de
+  seção. Os 15 anos entre parênteses que sobram são datas de vida.
+- `fecha_epub.py` traduz o sumário, que o `montar` deixava em inglês, e põe o nav em pt-BR.
+
+Roteiro: `livros/trabalho/roteiro-de-escuta-introducao-ao-panpsiquismo.md`, 8 paradas. Os scripts estão na pasta de notas, `panpsiquismo-mapa/`.
+
+### *Philosophy of Physics: Quantum Theory*, de Tim Maudlin (2026-11-07)
+
+Primeiro livro com fórmula, vindo de PDF de editora. Não houve amostra nem escuta de teste: o
+`tradutor.md` não mudou, e as regras de como dizer a fórmula se decidiram por texto, com exemplos
+(ADR-0012). Não há edição brasileira.
+
+**O caminho da fórmula** (ADR-0012):
+- A página renderizada é a fonte. Os 162 segmentos com fórmula têm o PNG da página na tabela do
+  `decisoes.md`, e o tradutor abre a página com a ferramenta Read.
+- Depois, um revisor que não traduziu confere cada um contra a página: 5 revisores para os 6
+  capítulos com fórmula.
+- Os tradutores leram ψ, √, setas, chapéus e matrizes na imagem. Também devolveram ao segmento
+  certo os pedaços de fórmula que o PDF tinha posto no vizinho.
+
+**Decisões do Mateus** ("Aprovar as cinco"):
+- as fórmulas pelas regras e exemplos, sem escuta de teste;
+- References, índice e sumário fora do áudio;
+- os termos alinhados com o *What Is Real?*;
+- a tradução do livro inteiro, por ~760 mil tokens.
+
+| Tradutor | Lotes | Palavras | Minutos | Saída (por palavra) | Cache lido |
+|---|---|---|---|---|---|
+| c001 a c003 e c010 (abertura, introdução, cap. 7) | 7 | 8.777 | 8,0 | 65.745 (7,5) | 1.129.109 |
+| c004 (cap. 1) | 6 | 10.504 | 5,5 | 43.286 (4,1) | 1.662.918 |
+| c005 (cap. 2, 74 fórmulas) | 9 | 15.963 | 11,2 | 90.885 (5,7) | 5.888.660 |
+| c006 (cap. 3, 28 fórmulas) | 3 | 5.624 | 3,4 | 27.187 (4,8) | 1.091.431 |
+| c007 (cap. 4, 14 fórmulas) | 8 | 14.979 | 8,7 | 66.327 (4,4) | 5.335.104 |
+| c008 (cap. 5, 30 fórmulas) | 7 | 12.551 | 7,4 | 56.212 (4,5) | 3.315.599 |
+| c009 (cap. 6, 14 fórmulas) | 7 | 11.868 | 10,7 | 81.880 (6,9) | 2.158.434 |
+| **Tradutores** | 47 | 80.266 | 11,2 de relógio | 431.522 (5,4) | 20.581.255 |
+| Revisores de fórmula (c004+c005, c006, c007, c008, c009) | — | 171 segmentos | 1,0 a 4,2 | 63.653 | 12.154.451 |
+| **Total** | | | | 495.175 (6,2) | 32.735.706 |
+
+Os minutos são os da primeira passada. A saída inclui a rodada de correção, que foi feita pelo
+mesmo subagente e fica no mesmo transcrito. Cada mensagem foi contada uma vez só, pelo `id`.
+
+**Real contra a estimativa:**
+- **Saída:** 495 mil tokens, contra 760 mil previstos (9,5 por palavra, "folga para as fórmulas").
+  - Os tradutores ficaram em 5,4 por palavra, abaixo da régua do romance (6,4).
+  - Ler a página não custou saída: custou leitura, com 20,6 milhões de cache lido contra 11,9 no
+    *What Is Real?*, que tem 19 mil palavras a mais.
+  - O capítulo com mais fórmula (c005, 74) deu 5,7 por palavra. O c009 deu 6,9, por causa da
+    teoria da decisão, não das fórmulas.
+- **Tempo:** 11,2 minutos de relógio para a tradução. Somados em série, os 7 tradutores levariam
+  55 minutos: ~1.460 palavras por minuto por tradutor.
+- **Medidor semanal:** de 32% para 34% com a tradução, a revisão e a correção. Mais ~3 pontos
+  antes, no código das regras A e B (de 29% a 32%).
+
+**A revisão das fórmulas achou só fala, nenhuma conta errada.** Nos 171 segmentos conferidos,
+coeficiente, sinal, estado, índice e ordem bateram com a página. As 16 divergências foram de fala,
+e cada uma virou regra do `decisoes.md`:
+- **Agrupamento** (pedido da sessão mãe): o ouvido não vê parêntese.
+  - Coeficiente que multiplica um grupo: "vezes a soma de…" ou "vezes a diferença entre…".
+  - Coeficiente de um termo só: repetido em cada termo.
+  - Argumento de função: "o cosseno da metade de teta", e não "de teta sobre dois".
+- **A letra "e" sozinha**, que a voz lê como conjunção:
+  - "e elevado a" virou "a exponencial de";
+  - o índice e virou "do elétron", e d virou "do detector";
+  - a carga e virou "a carga do elétron".
+- **Outras falas:**
+  - ∇² é "laplaciano", e não "gradiente ao quadrado";
+  - 1/(2√2) é "um sobre o dobro de raiz de dois".
+- **Achado no inventário do livro montado:** "de à direita" (16 vezes, no c007) virou "do estado à
+  direita".
+
+**Glossário: de 85 para 279 entradas.**
+- **Antes:** só nomes próprios e uns poucos termos de forma fixa. A tabela de termos e as formas
+  que flexionam ficaram em `decisoes.md`, para o `conferir` não cobrar a caixa do começo da frase
+  ("Muitos mundos", no título do capítulo 6).
+- **Depois:** entrou o que os tradutores declararam. Ficaram fora 11 termos genéricos que mudam com
+  a frase ("hit", "lumps", "squared amplitude"); os tradutores tiraram essas declarações.
+- **Conflitos resolvidos:**
+  - "spooky action at a distance": "ação fantasmagórica a distância";
+  - "complex conjugate": "conjugado complexo".
+- **Erros de nome do original, corrigidos:** Perle é Pearle; "Chisti" Stoica é Cristi;
+  Mach-Zehender é Mach-Zehnder.
+
+**O que os tradutores devolveram como dúvida:**
+- **c005-s0182, esquerda e direita:** a troca fica. O revisor mostrou que a frase do autor também é
+  verdadeira, pela simetria do singleto; a troca é a favor de quem ouve.
+- **Remissão a figura:** saiu em todos os capítulos. O argumento de Mermin (c004-s0099 e s0100) foi
+  reescrito sem os "círculos" e as "linhas" da figura, e o revisor confirmou a lógica.
+- **Números longos:** "noventa e nove vírgula" seguido de nove "nove" (c008) ficou como no
+  original, e vai ao roteiro.
+
+**Fim:**
+- `conferir`: nada faltando.
+- O script de símbolos não achou nenhum.
+- O inventário do livro montado também não achou nenhum defeito novo.
+- epubcheck: 0 erro, no livro pronto e no EPUB de origem.
+- O roteiro de escuta tem 10 paradas, 3 delas de fórmula:
+  `livros/trabalho/roteiro-de-escuta-philosophy-of-physics-quantum.md`.
+
 ## Consequências
 
 **Ganha:**

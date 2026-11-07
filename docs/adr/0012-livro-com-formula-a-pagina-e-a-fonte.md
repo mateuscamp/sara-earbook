@@ -126,6 +126,18 @@ filtro por página antes. Cada linha tirada fica em `retirado.json`, com a pági
    *What Is Real?*, traduzido em paralelo.
 5. A tradução do livro inteiro.
 
+### O livro inteiro (2026-11-07)
+
+A revisão contra a página não achou nenhuma conta errada nos 171 segmentos conferidos. Achou 16
+divergências de fala, que viraram regra do `decisoes.md`:
+- **Agrupamento:** o coeficiente que multiplica um grupo se diz "vezes a soma de…"; o de um termo
+  só se repete em cada termo.
+- **A letra "e" sozinha:** "a exponencial de", "do elétron", "a carga do elétron".
+- **Laplaciano:** ∇² se diz "laplaciano".
+
+A medição (495 mil tokens de saída, 2 pontos do medidor) está no ADR-0006. Para o próximo livro com
+fórmula, essas regras vão no `decisoes.md` desde o começo.
+
 ## Fila
 
 Defeitos de código achados neste livro, resolvidos aqui pelo script e não no pacote:

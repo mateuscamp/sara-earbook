@@ -92,6 +92,52 @@ p. 162 "Lothar and his allies", p. 187 "Blade's Edge was". Entre as p. 86 e 87, 
 "Yet he would not accept this “gift”" sem ver que o resto da frase vinha no segmento seguinte. O tradutor
 achou o fragmento, "he would not allow his clan to partake of Gul'dan", e refez a frase em `c005-s0218`.
 
+## Livro de OCR que já traz o texto: *A grande história da evolução* (2026-11-07)
+
+Richard Dawkins, com Yan Wong, trad. Laura Teixeira Motta (Companhia das Letras). A fonte é um PDF de 788
+páginas, de downloadgeral.com, com OCR recomposto: o texto foi redigitado em fontes de verdade, mas cada
+página tem fonte e tamanho próprios (corpo de 9,5 a 11 pt, de Minion a Courier). As figuras vetoriais foram
+lidas como texto, e o título do conto vem em caixa alta de 8 pt. Sem cabeçalho corrente. A margem da página
+par e a da ímpar diferem em ~20 pt, o mesmo que o recuo.
+
+**Não conta como o terceiro livro escaneado.** O texto veio no PDF e não houve tesseract. O script deste
+livro não reaproveita nenhuma regra do script das Crônicas: ele parte das linhas do pdfminer, com a fonte
+por página. O que se repetiu foi só o princípio: a fonte refeita por script, com tudo o que sai registrado,
+e o erro de OCR corrigido por lista. Se o próximo livro de OCR repetir as mesmas regras, a pergunta volta.
+
+**O caminho.** `fonte.py` (pasta de notas, `dawkins-mapa/`) importa `ler_paginas`, `montar_blocos` e
+`gravar_epub`. Antes do miolo, ele tira páginas inteiras (capa, orelha, direitos, sumário, 32 pranchas,
+as páginas "JUNÇÃO COM…", o fim do livro), o texto de figura, a legenda e o número de página. Põe também
+título, conto e subtítulo na forma do sumário, alinha as margens e passa por cima da fonte do OCR (negrito
+e Courier viravam título e código). Depois do miolo, ele junta a nota que continua na página seguinte,
+separa as notas coladas, tira o "*" do texto, junta o parágrafo partido pelo travessão do OCR ("- digamos")
+e pelo número no começo da linha, e corrige o OCR por `ocr.json` e por regras declaradas (o ordinal
+"250 0002 avô", o Qβ, o ponto médio solto). O `preparar` é o teste de contrato.
+
+| Medida | |
+|---|---|
+| Pronto | 115 capítulos, 2.021 segmentos, 174 notas, 238 mil palavras (~28,8 h a 138 ppm) |
+| Fora, com página e motivo | 645 números de página, 401 linhas de legenda, 361 de texto de figura, 384 de páginas de figura, 466 de pranchas, pp. 734-788 inteiras |
+| Corrigido | 96 trocas de OCR por lista (87 formas), 31 parágrafos partidos, 204 marcadores "*", 58 remissões "(ver Ilustração N)" |
+| `conferir`, epubcheck | limpos |
+| Inventário por script | 0 lixo de figura, 0 número de página, 0 cabeçalho, 0 asterisco, 0 legenda |
+
+### Decisões do Mateus (2026-11-07: "Aprovar as 11")
+
+1. Um capítulo por conto. Por Encontro, o Encontro 26 teria 4h14; por conto, o maior capítulo tem 1h41.
+2. Legendas fora, com as pranchas e as páginas "JUNÇÃO COM…".
+3. Nota "*" no fim do capítulo, sem o marcador.
+4. Fora a nota com o original em inglês do poema que o texto já leu traduzido (9 notas). Na do Yeats fica
+   a tradução.
+5. Fora as "Notas sobre as filogêneses" (Yan Wong).
+6. Fora bibliografia, créditos, índice, leituras adicionais, orelha e "sobre o autor".
+7. Os 19 blocos de "código" eram Courier do OCR em número de página, resto de gráfico e um título.
+8. Fora a remissão entre parênteses à figura ou à página; fica a que está dentro da frase.
+9. Ficam as quatro versões em inglês medieval do verso de Chaucer, que o conto compara letra a letra.
+10. OCR por lista, conferida no contexto. As ~6.700 formas fora do vocabulário (quase todas nomes de
+    espécie) ficam como estão: não há dicionário pt-BR na máquina.
+11. Ficam dedicatória, agradecimentos, prefácio, epígrafes, citações e versos (cada verso um parágrafo).
+
 ## Fila
 
 - **Quadro lateral no meio do parágrafo:** ele fica, mas às vezes a frase seguinte depende do que veio antes

@@ -41,8 +41,9 @@ A decisão está no [ADR-0001](docs/adr/0001-reescrever-com-claude-code-orquestr
 - As referências médicas no estilo Vancouver ("86. Adams MA, Hutton WC. … J Bone Joint Surg Br.
   1980;62:358–362."), uma por parágrafo ou coladas numa nota: a região de pedaços de referência
   com 10 citações de periódico ("ano;volume:página") ou mais, com os pedaços partidos pela página
-  e o título logo antes ([ADR-0008](docs/adr/0008-codigo-e-indice-saem-do-audio.md)). A lista
-  curta, com menos de 10 citações, fica; a prosa que cita "et al." também.
+  e o título logo antes ([ADR-0008](docs/adr/0008-codigo-e-indice-saem-do-audio.md)). A
+  referência partida que a limpeza tinha juntado sai inteira, e cada pedaço fica em `remocoes`.
+  A lista curta, com menos de 10 citações, fica; a prosa que cita "et al." também.
 - O sumário de papel: a linha com 5 pontos seguidos e número no fim ("1. Introdução ……… 23"),
   quando o capítulo tem 5 ou mais. O título "Sumário", os títulos das partes e a linha sem
   pontilhado ficam
@@ -164,10 +165,15 @@ No livro em adaptação, o `conferir` cobra a fidelidade de cada grupo:
 - nada que só funciona no papel: `•`, "Quadro 27.1", "(Autor, ano)", "et al.", "p. ex.",
   pontilhado de sumário, linha de formulário e a sigla que o glossário manda por extenso.
 
-O `omitidos` também aceita número, com motivo `citação`, `data`, `ordinal`, `potência` ou
-`unidade`: é para a forma que o `conferir` não reconhece. Porcentagem e dose nunca se omitem, e o
-número omitido não pode continuar no texto. O termo omitido, o número omitido e o descarte por
-decisão saem como avisos, que não recusam o livro. O `montar`
+O `omitidos` também aceita número, com motivo `citação`, `data`, `ordinal`, `página`, `potência`
+ou `unidade`: é para a forma que o `conferir` não reconhece. Porcentagem e dose nunca se omitem, e
+o número omitido não pode continuar no texto. A chamada de nota colada à palavra ("PCDT6,178")
+fica fora da conta, e o denominador que a linha da tabela partiu ("920/197" e, adiante, "0") se
+junta no texto ("920 de 1970"). O erro inequívoco do original num número vai em `corrigidos`,
+com o trecho das fontes, o do texto e a página do PDF que prova o erro:
+`"corrigidos": [{"de": "3 0%", "para": "30%", "pagina": 112}]`. O termo omitido, o número
+omitido, a correção do original e o descarte por decisão saem como avisos, que não recusam o
+livro. O `montar`
 põe o primeiro parágrafo do grupo no elemento do primeiro ID, cada parágrafo a mais num elemento
 irmão logo depois, e tira as outras fontes. `--original` monta o texto limpo, sem a adaptação.
 

@@ -10,7 +10,8 @@ título, que o ADR-0008 proíbe como critério.
 from __future__ import annotations
 
 from earbook.dominio.fora_do_audio import MOTIVO_DA_BIBLIOGRAFIA
-from earbook.dominio.limpeza import LivroLimpo, limpar_para_o_ouvido
+from earbook.dominio.limpeza import limpar_para_o_ouvido
+from earbook.dominio.livro_limpo import LivroLimpo
 from earbook.dominio.segmento import Papel, Segmento
 
 TITULO = (Papel.TITULO, "Referências bibliográficas e leituras recomendadas")

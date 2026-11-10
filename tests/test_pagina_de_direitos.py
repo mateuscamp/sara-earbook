@@ -9,7 +9,8 @@ from __future__ import annotations
 import pytest
 
 from earbook.dominio.direitos import MOTIVO_DA_PAGINA_DE_DIREITOS, MOTIVO_DA_VIZINHA_DE_DIREITOS
-from earbook.dominio.limpeza import LivroLimpo, limpar_para_o_ouvido
+from earbook.dominio.limpeza import limpar_para_o_ouvido
+from earbook.dominio.livro_limpo import LivroLimpo
 from earbook.dominio.segmento import Papel, Segmento
 
 T, P = Papel.TITULO, Papel.PARAGRAFO

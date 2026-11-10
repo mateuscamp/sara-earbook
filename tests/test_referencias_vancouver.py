@@ -14,7 +14,8 @@ from pathlib import Path
 
 from earbook.comandos.preparar import preparar
 from earbook.dominio.fora_do_audio import MOTIVO_DO_VANCOUVER
-from earbook.dominio.limpeza import LivroLimpo, limpar_para_o_ouvido
+from earbook.dominio.limpeza import MOTIVO_DO_PEDACO, limpar_para_o_ouvido
+from earbook.dominio.livro_limpo import LivroLimpo
 from earbook.dominio.segmento import Papel, Segmento
 from tests.livro_de_teste import montar_epub
 
@@ -177,3 +178,20 @@ def test_subtitulo_entre_o_titulo_e_a_lista_sai_com_as_leituras() -> None:
     sugeridas = (Papel.TITULO, "Suggested Readings")
     livro = _limpar([PROSA, sugeridas, *leituras, REFERENCES, subtitulo, *_numeradas(1, 10)])
     assert _sobrou(livro) == [PROSA[1]]
+
+
+def test_pedaco_juntado_a_referencia_sai_com_ela_registrado() -> None:
+    """Practical, c038-s0253: a referência partida em três linhas se juntava numa só, que saía, e
+    as duas continuações ficavam como junção num segmento que não existia mais."""
+    partida = [
+        (Papel.PARAGRAFO, "11. Patten DK, Schultz BG, Berlau DJ. The safety and"),
+        (Papel.PARAGRAFO, "efficacy of low-dose naltrexone in the manage-"),
+        (Papel.PARAGRAFO, "ment of chronic pain. Pharmacotherapy. 2018;38(3):382\u2013389."),
+    ]
+    livro = _limpar([PROSA, REFERENCES, *_numeradas(1, 10), *partida, PROXIMO])
+    assert _sobrou(livro) == [PROSA[1], PROXIMO[1]]
+    assert livro.juncoes == ()
+    assert [(r.id, r.motivo, r.texto) for r in livro.remocoes[-2:]] == [
+        ("c001-s0014", f"{MOTIVO_DO_VANCOUVER}: {MOTIVO_DO_PEDACO}", partida[1][1]),
+        ("c001-s0015", f"{MOTIVO_DO_VANCOUVER}: {MOTIVO_DO_PEDACO}", partida[2][1]),
+    ]

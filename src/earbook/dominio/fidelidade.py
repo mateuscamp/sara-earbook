@@ -42,9 +42,11 @@ _ROTULO = re.compile(
     r"\b(?:Quadros?|Tabelas?|Figuras?)\s+\d+(?:\.\d+)?(?:\s*(?:,|e|a)\s*\d+(?:\.\d+)?)*"
 )
 _ORDINAL_NO_COMECO = re.compile(r"^\s*\d+\.\s")
-# A chamada de nota colada à palavra da tabela ("EUA1", "Brasil3"): um algarismo só, depois de
-# 3 letras. "B12", "B1", "F40" e "T4" são dados e contam (A3 da auditoria).
-_CHAMADA_COLADA = re.compile(r"(?<=[^\W\d_]{3})\d(?!\d)")
+# A chamada de nota colada à palavra, depois de 3 letras: um algarismo só ("EUA1", "Brasil3") ou
+# a lista com vírgula ("PCDT6,178", "altos16,17", do PCDT da Dor Crônica), que é citação. "B12",
+# "B1", "F40", "T4" e "COVID19" são dados e contam (A3 da auditoria); "0,6" depois de espaço é
+# decimal.
+_CHAMADA_COLADA = re.compile(r"(?<=[^\W\d_]{3})(?:\d+(?:,\d+)+|\d(?!\d))")
 _SO_ROTULO = re.compile(r"(?:(?:Quadro|Tabela|Figura)\s+\d+(?:\.\d+)*|\d+)")
 _PAPEL: tuple[tuple[re.Pattern[str], str], ...] = (
     (re.compile("\u2022"), "marcador de lista '•'"),
@@ -62,7 +64,7 @@ _PAPEL: tuple[tuple[re.Pattern[str], str], ...] = (
 # número por extenso, 9 vezes (ADR-0009, "O número omitido"). A faixa conta pelo número que a abre.
 _FIM_DA_FAIXA = r"(?:\s*(?:a|e|ou|[\u2013-])\s*\d+(?:[.,]\d+)*)?"
 _MEDIDA = rf"{_FIM_DA_FAIXA}\s*(?:%|por cento|(?:mg|ml|mcg|\u00b5g|\u03bcg|UI|g)(?![^\W\d_]))"
-MOTIVOS_DO_NUMERO = frozenset({"citação", "data", "ordinal", "potência", "unidade"})
+MOTIVOS_DO_NUMERO = frozenset({"citação", "data", "ordinal", "página", "potência", "unidade"})
 
 
 class Raridade:
@@ -90,7 +92,11 @@ class Raridade:
 
 
 def _palavras(texto: str) -> list[str]:
-    return [achado.group() for achado in _PALAVRA_COM_HIFEN.finditer(texto)]
+    # O PDF pode trazer o acento separado da letra (NFD, "reumatolo\u0301gicas" no PCDT), e o
+    # acento solto parte a palavra. O `conferir` compara em NFC; `limpos/` fica como veio
+    # (ADR-0009, "O PCDT da Dor Crônica"). A raridade do livro também passa por aqui.
+    composto = unicodedata.normalize("NFC", texto)
+    return [achado.group() for achado in _PALAVRA_COM_HIFEN.finditer(composto)]
 
 
 def _numeros(texto: str) -> list[str]:
@@ -109,17 +115,18 @@ def radical(palavra: str) -> str:
 
 
 def faltas_de_fidelidade(
-    fontes: Sequence[str], texto: Sequence[str], omitidos: Collection[str], raridade: Raridade
+    fontes: Sequence[str],
+    texto: Sequence[str],
+    omitidos: Collection[str],
+    raridade: Raridade,
+    corrigidos: Sequence[tuple[str, str]] = (),
 ) -> list[str]:
     """O que o texto adaptado perdeu ou inventou em relação às fontes do grupo."""
     corrido = " ".join(texto)
     declarados = set(omitidos)
-    motivos = [
-        f"o número {n} das fontes não está no texto"
-        for n in numeros_que_faltam(fontes, corrido)
-        if n not in declarados
-    ]
-    motivos += [f"o número {n} não está nas fontes" for n in _numeros_inventados(fontes, corrido)]
+    faltam, inventados = _numeros_em_falta_e_novos(fontes, corrido, corrigidos)
+    motivos = [f"o número {n} das fontes não está no texto" for n in faltam if n not in declarados]
+    motivos += [f"o número {n} não está nas fontes" for n in inventados]
     return motivos + [
         f"o termo '{forma}' das fontes não está no texto nem em omitidos"
         for forma in termos_que_faltam(fontes, corrido, omitidos, raridade)
@@ -137,7 +144,7 @@ def problemas_do_numero_omitido(
     dose, e só o que as fontes têm e o texto de fato deixou de dizer."""
     if motivo.partition(":")[0].strip() not in MOTIVOS_DO_NUMERO:
         return [f"o número {numero} foi omitido com motivo fora da lista: {motivo!r}"]
-    vezes = sum(_numeros(fonte).count(numero) for fonte in fontes)
+    vezes = sum(_declaraveis(fonte).count(numero) for fonte in fontes)
     if not vezes:
         return [f"o número {numero} foi omitido, mas as fontes não o têm"]
     if any(re.search(rf"(?<![\d.,]){re.escape(numero)}{_MEDIDA}", fonte) for fonte in fontes):
@@ -149,17 +156,73 @@ def problemas_do_numero_omitido(
 
 def numeros_que_faltam(fontes: Sequence[str], corrido: str) -> list[str]:
     """Cada número das fontes, fora o ano de citação e o rótulo, tantas vezes quantas aparece."""
+    return list(_deficit(fontes, corrido))
+
+
+def _deficit(fontes: Sequence[str], corrido: str) -> Counter[str]:
     exigidos: Counter[str] = Counter()
     for fonte in fontes:
         exigidos.update(_numeros(_sem_os_isentos(fonte, numeros=True)))
-    no_texto = _numeros_do_texto(corrido)
-    return [numero for numero in exigidos if no_texto[numero] < exigidos[numero]]
+    return exigidos - _numeros_do_texto(corrido)
+
+
+def _numeros_em_falta_e_novos(
+    fontes: Sequence[str], corrido: str, corrigidos: Sequence[tuple[str, str]]
+) -> tuple[list[str], list[str]]:
+    """Os números das fontes que o texto não diz e os do texto que as fontes não têm, fora a
+    correção declarada do original (de, para) e o denominador partido pela linha da tabela."""
+    velhos = Counter(numero for de, _ in corrigidos for numero in _numeros(de))
+    novos = {numero for _, para in corrigidos for numero in _numeros(para)}
+    inventados = [n for n in _numeros_inventados(fontes, corrido) if n not in novos]
+    return _sem_os_partidos(fontes, _deficit(fontes, corrido) - velhos, inventados)
 
 
 def _numeros_inventados(fontes: Sequence[str], corrido: str) -> list[str]:
     """O ano de citação pode ficar como data do fato ("em 1949"); o número novo, nunca."""
-    todos = {numero for fonte in fontes for numero in _numeros(fonte)}
+    todos = {numero for fonte in fontes for numero in _declaraveis(fonte)}
     return [numero for numero in _numeros_do_texto(corrido) if numero not in todos]
+
+
+def _declaraveis(fonte: str) -> list[str]:
+    """Os números da fonte que o grupo pode dizer ou declarar omitidos: a chamada colada com
+    vírgula conta inteira ("6,178") e por número ("6", "178"), a mesma leitura que a isenta."""
+    numeros = _numeros(_CHAMADA_COLADA.sub(" ", fonte))
+    for chamada in _CHAMADA_COLADA.finditer(fonte):
+        partes = chamada.group().split(",")
+        numeros += [chamada.group(), *partes] if len(partes) > 1 else partes
+    return numeros
+
+
+def _sem_os_partidos(
+    fontes: Sequence[str], faltam: Counter[str], inventados: Sequence[str]
+) -> tuple[list[str], list[str]]:
+    """A coluna da tabela partida no PDF: "920/197" e, adiante, "0" são o "920/1970" que o texto
+    diz (PCDT, c090-s1407). O número novo se aceita só como cabeça logo depois da barra da
+    fração e cauda depois dela nas fontes, as duas ausentes do texto; o resto segue acusado."""
+    corrido = " ".join(_sem_os_isentos(fonte, numeros=True) for fonte in fontes)
+    achados = list(_NUMERO.finditer(corrido))
+    restam = Counter(faltam)
+    novos: list[str] = []
+    for numero in inventados:
+        if (par := _cabeca_e_cauda(numero, corrido, achados, restam)) is None:
+            novos.append(numero)
+        else:
+            restam -= Counter(par)
+    return list(restam), novos
+
+
+def _cabeca_e_cauda(
+    numero: str, corrido: str, achados: Sequence[re.Match[str]], restam: Counter[str]
+) -> tuple[str, str] | None:
+    for n, achado in enumerate(achados):
+        cabeca = achado.group()
+        if corrido[achado.start() - 1 : achado.start()] != "/" or not numero.startswith(cabeca):
+            continue
+        cauda = numero[len(cabeca) :]
+        depois = any(seguinte.group() == cauda for seguinte in achados[n + 1 :])
+        if cauda and depois and not Counter((cabeca, cauda)) - restam:
+            return cabeca, cauda
+    return None
 
 
 def _numeros_do_texto(corrido: str) -> Counter[str]:

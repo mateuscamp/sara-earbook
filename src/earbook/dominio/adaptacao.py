@@ -51,6 +51,15 @@ class Omitido:
 
 
 @dataclass(frozen=True)
+class Correcao:
+    """O erro inequívoco do PDF que o grupo corrigiu, com a página que o prova."""
+
+    de: str
+    para: str
+    pagina: int
+
+
+@dataclass(frozen=True)
 class Grupo:
     fontes: tuple[str, ...]
     tipo: TipoDoGrupo
@@ -58,6 +67,7 @@ class Grupo:
     descarte: str = ""
     """Como o agente escreveu: "repetido", "rotulo" ou "decisao: <seção>"."""
     omitidos: tuple[Omitido, ...] = ()
+    corrigidos: tuple[Correcao, ...] = ()
 
 
 @dataclass(frozen=True)

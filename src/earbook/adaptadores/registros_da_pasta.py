@@ -12,7 +12,7 @@ import os
 import tempfile
 from pathlib import Path
 
-from earbook.dominio.adaptacao import Grupo, Omitido, TipoDoGrupo
+from earbook.dominio.adaptacao import Correcao, Grupo, Omitido, TipoDoGrupo
 from earbook.dominio.segmento import Papel, Segmento
 
 # O `mkstemp` cria com 0600; os arquivos da pasta eram 0644, como os do `write_text`.
@@ -130,7 +130,7 @@ def campo_inteiro(registro: dict[str, Json], chave: str, caminho: Path) -> int:
 
 def grupo_do_registro(registro: dict[str, Json], caminho: Path) -> Grupo:
     """Um grupo da resposta da adaptação: as fontes e exatamente um de `texto`, `igual` e
-    `descarte` (ADR-0009). `omitidos` só vale com `texto`."""
+    `descarte` (ADR-0009). `omitidos` e `corrigidos` só valem com `texto`."""
     fontes = tuple(
         como_texto(item, "fontes", caminho) for item in lista(registro.get("fontes"), caminho)
     )
@@ -143,9 +143,10 @@ def grupo_do_registro(registro: dict[str, Json], caminho: Path) -> Grupo:
             f"{caminho}: o grupo tem de ter um só de 'texto', 'igual' e 'descarte': {registro!r}"
         )
         raise PastaDeTrabalhoInvalidaError(mensagem)
-    if "omitidos" in registro and tipos[0] is not TipoDoGrupo.TEXTO:
-        mensagem = f"{caminho}: 'omitidos' só vale no grupo com 'texto': {registro!r}"
-        raise PastaDeTrabalhoInvalidaError(mensagem)
+    for chave in ("omitidos", "corrigidos"):
+        if chave in registro and tipos[0] is not TipoDoGrupo.TEXTO:
+            mensagem = f"{caminho}: {chave!r} só vale no grupo com 'texto': {registro!r}"
+            raise PastaDeTrabalhoInvalidaError(mensagem)
     return _grupo_do_tipo(tipos[0], fontes, registro, caminho)
 
 
@@ -171,10 +172,32 @@ def _grupo_do_tipo(
         _omitido(objeto(item, caminho), caminho)
         for item in lista(registro.get("omitidos", []), caminho)
     )
-    return Grupo(fontes, tipo, texto=paragrafos, omitidos=omitidos)
+    corrigidos = tuple(
+        _correcao(objeto(item, caminho), caminho)
+        for item in lista(registro.get("corrigidos", []), caminho)
+    )
+    return Grupo(fontes, tipo, texto=paragrafos, omitidos=omitidos, corrigidos=corrigidos)
 
 
 def _omitido(registro: dict[str, Json], caminho: Path) -> Omitido:
     return Omitido(
         campo_texto(registro, "termo", caminho), campo_texto(registro, "motivo", caminho)
     )
+
+
+def _correcao(registro: dict[str, Json], caminho: Path) -> Correcao:
+    """A correção do original: o trecho errado das fontes, o certo e a página que o prova."""
+    pagina = campo_inteiro(registro, "pagina", caminho)
+    if pagina < 1:
+        mensagem = f"{caminho}: 'pagina' devia ser 1 ou mais, veio {pagina!r}"
+        raise PastaDeTrabalhoInvalidaError(mensagem)
+    de, para = campo_texto(registro, "de", caminho), campo_texto(registro, "para", caminho)
+    # O trecho vazio "está" em qualquer texto, e a correção igual não corrige nada (auditoria).
+    for chave, trecho in (("de", de), ("para", para)):
+        if not trecho.strip():
+            mensagem = f"{caminho}: {chave!r} vazio na correção: {registro!r}"
+            raise PastaDeTrabalhoInvalidaError(mensagem)
+    if de == para:
+        mensagem = f"{caminho}: correção com 'de' igual a 'para': {registro!r}"
+        raise PastaDeTrabalhoInvalidaError(mensagem)
+    return Correcao(de, para, pagina)

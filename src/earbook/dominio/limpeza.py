@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass, replace
+from dataclasses import replace
 
 from earbook.dominio.cabecalho import (
     frase_repetida,
@@ -25,6 +25,15 @@ from earbook.dominio.fora_do_audio import (
     propaganda,
     sumario_de_papel,
 )
+from earbook.dominio.livro_limpo import (
+    Aparo,
+    CapituloLimpo,
+    Juncao,
+    LivroLimpo,
+    Pista,
+    Remocao,
+    Suspeita,
+)
 from earbook.dominio.segmento import Papel, Segmento, primeira_letra
 
 # Termina frase. Aspas e apóstrofo não estão aqui: a fala que fecha aspas com vírgula segue
@@ -39,6 +48,7 @@ _METADE_DEPOIS_DO_HIFEN = re.compile(r"[^\W\d_]+")
 _PONTUACAO = re.compile(r"[.,;:!?…“”\"]")
 # "first prologue", "ONE", "acknowledgments": título de capítulo que veio como <p>.
 PALAVRAS_DA_LINHA_CURTA = 3
+MOTIVO_DO_PEDACO = "juntado ao anterior, que também saiu"
 MOTIVO_DA_LINHA_CURTA = "parágrafo partido ou título? linha curta sem pontuação: não juntei"
 # Letra maiúscula sozinha, sem ser inicial ("J."), contração ou pronome "I": a capitular
 # que a conversão do PDF deixou no meio do texto.
@@ -48,65 +58,6 @@ PARAGRAFOS_DA_PISTA = 3
 MOTIVO_DA_CAPITULAR = (
     "capitular perdida? começa em minúscula logo depois de título: corrigir a primeira letra"
 )
-
-
-@dataclass(frozen=True)
-class Remocao:
-    """Um segmento que saiu do áudio, com o motivo, para o `conferir` e para revisão."""
-
-    id: str
-    motivo: str
-    texto: str
-
-
-@dataclass(frozen=True)
-class Pista:
-    id: str
-    posicao: int
-    letra: str
-
-
-@dataclass(frozen=True)
-class Suspeita:
-    """Um segmento que parece lixo de página, mas ficou no texto: quem decide é o agente."""
-
-    id: str
-    motivo: str
-    texto: str
-    pista: Pista | None = None
-
-
-@dataclass(frozen=True)
-class Aparo:
-    """Um pedaço tirado do fim de um segmento que continua no texto, como o cabeçalho colado."""
-
-    id: str
-    motivo: str
-    texto: str
-
-
-@dataclass(frozen=True)
-class Juncao:
-    """O segmento `id` foi juntado ao fim do segmento `em`: era o mesmo parágrafo partido."""
-
-    id: str
-    em: str
-
-
-@dataclass(frozen=True)
-class CapituloLimpo:
-    capitulo: str
-    segmentos: tuple[Segmento, ...]
-
-
-@dataclass(frozen=True)
-class LivroLimpo:
-    capitulos: tuple[CapituloLimpo, ...]
-    remocoes: tuple[Remocao, ...]
-    suspeitas: tuple[Suspeita, ...] = ()
-    aparos: tuple[Aparo, ...] = ()
-    juncoes: tuple[Juncao, ...] = ()
-    capitulares: tuple[CapitularDevolvida, ...] = ()
 
 
 def limpar_para_o_ouvido(
@@ -140,7 +91,25 @@ def limpar_para_o_ouvido(
     regras = (pelo_papel, bibliografia, indice_pelo_conteudo, sumario_de_papel, propaganda)
     for escolher in regras:
         juntado = _tirar_do_livro(juntado, escolher)
-    return juntado
+    originais = {s.id: s.texto for _, segmentos in capitulos for s in segmentos}
+    return _juncoes_saem_com_a_cabeca(juntado, originais)
+
+
+def _juncoes_saem_com_a_cabeca(livro: LivroLimpo, originais: Mapping[str, str]) -> LivroLimpo:
+    """O pedaço juntado a um segmento que depois saiu (a referência Vancouver partida na página)
+    sai com ele, registrado com o motivo dele: a junção órfã fazia o `conferir` recusar o livro
+    (ADR-0008, "A junção órfã"). O texto registrado é o do pedaço como veio do EPUB."""
+    motivos = {remocao.id: remocao.motivo for remocao in livro.remocoes}
+    restantes = list(livro.juncoes)
+    novas: list[Remocao] = []
+    while orfas := [juncao for juncao in restantes if juncao.em in motivos]:
+        for juncao in orfas:
+            motivos[juncao.id] = motivos[juncao.em]
+            # A junção é sempre no anterior: o motivo fixo conta junto no resumo do `preparar`.
+            motivo = f"{motivos[juncao.em]}: {MOTIVO_DO_PEDACO}"
+            novas.append(Remocao(juncao.id, motivo, originais[juncao.id]))
+        restantes = [juncao for juncao in restantes if juncao not in orfas]
+    return replace(livro, remocoes=(*livro.remocoes, *novas), juncoes=tuple(restantes))
 
 
 def _tirar_paginas_marcas_e_cabecalhos(

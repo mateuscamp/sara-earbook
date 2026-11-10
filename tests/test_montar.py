@@ -16,7 +16,7 @@ from earbook.comandos.montar import (
     montar,
 )
 from earbook.comandos.preparar import Preparo, preparar
-from earbook.dominio.limpeza import CapituloLimpo
+from earbook.dominio.livro_limpo import CapituloLimpo
 from tests.livro_de_teste import montar_epub
 
 CAPITULO_UM = (

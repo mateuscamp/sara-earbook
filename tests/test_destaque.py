@@ -16,7 +16,8 @@ import pytest
 from earbook.comandos.importar_pdf import importar_pdf
 from earbook.comandos.preparar import preparar
 from earbook.dominio.blocos import montar_blocos
-from earbook.dominio.limpeza import LivroLimpo, limpar_para_o_ouvido
+from earbook.dominio.limpeza import limpar_para_o_ouvido
+from earbook.dominio.livro_limpo import LivroLimpo
 from earbook.dominio.pagina import Linha, Pagina
 from earbook.dominio.segmento import Papel, Segmento
 from tests.pdf_de_teste import LinhaDeTeste, montar_pdf

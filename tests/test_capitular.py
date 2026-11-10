@@ -10,14 +10,8 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from earbook.dominio.limpeza import (
-    MOTIVO_DA_CAPITULAR,
-    MOTIVO_DA_LINHA_CURTA,
-    LivroLimpo,
-    Pista,
-    Suspeita,
-    limpar_para_o_ouvido,
-)
+from earbook.dominio.limpeza import MOTIVO_DA_CAPITULAR, MOTIVO_DA_LINHA_CURTA, limpar_para_o_ouvido
+from earbook.dominio.livro_limpo import LivroLimpo, Pista, Suspeita
 from earbook.dominio.segmento import Papel, Segmento
 
 

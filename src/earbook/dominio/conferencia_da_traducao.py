@@ -16,7 +16,7 @@ from earbook.dominio.glossario import (
     EntradaDoGlossario,
     TermosDoLote,
 )
-from earbook.dominio.limpeza import CapituloLimpo
+from earbook.dominio.livro_limpo import CapituloLimpo
 from earbook.dominio.segmento import PALAVRA, Papel, Segmento
 from earbook.dominio.traducao import Pedido, Resposta, Traduzido
 

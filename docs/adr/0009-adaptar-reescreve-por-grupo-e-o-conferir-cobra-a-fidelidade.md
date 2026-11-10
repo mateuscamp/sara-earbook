@@ -682,6 +682,58 @@ roteiro está em `livros/trabalho/roteiro-de-escuta-dalgalarrondo.md`, com 11 pa
   usa 138, contado do texto montado;
 - o pontilhado com espaços segue na fila, para uma rodada própria.
 
+### O PCDT da Dor Crônica: chamada com vírgula, número partido e correção do original (2026-11-10)
+
+O PCDT da Dor Crônica (Ministério da Saúde, PDF em pt-BR) foi adaptado inteiro, em 128 lotes, e o
+`conferir` deu 37 problemas. Nenhum era de conteúdo; seis eram defeitos da régua, e um, uma forma
+de declarar que faltava.
+
+- **A chamada de nota colada com vírgula é citação.** "neste PCDT6,178", "corporal1,2" e
+  "musculoesquelética8,9": a régua tirava só o primeiro algarismo da chamada ("EUA1") e cobrava o
+  resto ("178", "2", "9"), enquanto a guarda do número omitido lia a fonte crua ("6,178"). O
+  adaptador que declarava o 178 ouvia que as fontes não o tinham; o que declarava "8,9", que o 9
+  faltava. Agora as duas leem a fonte do mesmo jeito: depois de 3 letras, a chamada de um
+  algarismo ou a lista com vírgula ("6,178", "altos16,17") fica fora da conta, e o número dela
+  se declara inteiro ou por número. "0,6" depois de espaço é decimal e é cobrado. 8 problemas.
+- **O denominador que a linha da tabela partiu.** Nas tabelas GRADE do c090, o PDF entregou
+  "920/1970" como "920/197" e, adiante, "0"; "754/1849" como "754/1" e "849". O texto que diz
+  "920 de 1970" tinha três problemas. O número novo se aceita quando é a junção de uma cabeça
+  logo depois da barra da fração com uma cauda que vem depois dela nas fontes do grupo, e as duas
+  faltam no texto. Sem a barra, "197" e "0" que viram "1970" continuam acusados. 3 IDs, 17
+  problemas.
+- **A correção do original.** O PDF traz erro inequívoco: pregabalina 30, 45 e 60 mg/dia onde a
+  tabela vizinha e a página dizem 300, 450 e 600; "3 0%" por 30%; "I 0,6" por 10,6. O Mateus
+  decidiu que o erro se corrige e se declara com o motivo "correção do original" e a página.
+  O `omitidos` não serve: ele tira um termo, e a correção põe um número que as fontes não têm. O
+  grupo com `texto` ganha o campo `corrigidos`:
+
+  ```json
+  {"fontes": ["c001-s0001"], "texto": ["Redução da dor em 30%."],
+   "corrigidos": [{"de": "3 0%", "para": "30%", "pagina": 112}]}
+  ```
+
+  `de` é o trecho das fontes como está, `para` é o trecho do texto, e `pagina` é a página do PDF
+  que prova o erro (inteiro, 1 ou mais; a do exemplo é ilustrativa). `de` e `para` não
+  podem ser vazios nem iguais, e cada um se acha com o número inteiro: "60" dentro de "600" não
+  conta. O `conferir` deixa de cobrar os números de `de` e aceita
+  os de `para`, e acusa o `de` que as fontes não têm e o `para` que o texto não diz. Cada
+  correção sai como aviso ("corrigiu '3 0%' para '30%': correção do original, p. 112"), que a
+  sessão lê antes do `montar`. A dose também se corrige assim: é o caso da pregabalina, e o aviso
+  é o que garante que alguém leu a página. A palavra trocada sem número continua corrigida pelo
+  sentido, sem campo, como no Dalgalarrondo.
+- **O motivo `página`.** O número de página solto no meio do texto não tinha motivo, e os
+  adaptadores usaram `ordinal`. A lista fechada passa a ser citação, data, ordinal, página,
+  potência e unidade.
+- **O acento decomposto.** O PDF trouxe 15 segmentos com o acento separado da letra (NFD:
+  "reumatolo\u0301gicas", "alívio", "função"), e o acento solto partia a palavra na régua do
+  termo raro. O `conferir` compara as palavras em NFC. Normalizar no `limpar` mudaria o texto de
+  `limpos/` e tornaria velhas as 15 adaptações do PCDT já feitas, além dos livros de medição; a
+  comparação é onde a diferença morde. O NFD continua em `limpos/` e no `igual` do livro montado:
+  a origem é o `importar-pdf`, e normalizar ali é rodada própria, com medição.
+
+Depois do código, o `conferir` do PCDT dá 11 problemas, todos de correção do original que a
+resposta ainda não declara (c090-s3296, s3341, s3375, s3720 e s4027). Os 2.115 avisos não mudaram.
+
 ## Consequências
 
 **Ganha:**
@@ -737,7 +789,8 @@ Regras derivadas no `AGENTS.md`:
 - A adaptação entra por `earbook adaptar` e pela resposta do lote; o agente grava `adaptados/` e
   nunca `para-adaptar/` nem `limpos/`.
 - O adaptador nunca escreve número que as fontes não têm, nem tira número que elas têm, fora o ano
-  de citação; termo raro omitido vai em `omitidos`, com o motivo.
+  de citação; termo raro omitido vai em `omitidos`, com o motivo. O erro inequívoco do original
+  vai em `corrigidos`, com a página.
 
 ## Notas
 

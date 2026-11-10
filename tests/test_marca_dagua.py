@@ -5,7 +5,8 @@ from __future__ import annotations
 
 import pytest
 
-from earbook.dominio.limpeza import LivroLimpo, limpar_para_o_ouvido
+from earbook.dominio.limpeza import limpar_para_o_ouvido
+from earbook.dominio.livro_limpo import LivroLimpo
 from earbook.dominio.segmento import Papel, Segmento
 
 # Medido no Learning DDD: o último parágrafo de cada um dos 321 arquivos.

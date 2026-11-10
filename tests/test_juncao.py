@@ -11,7 +11,8 @@ from collections.abc import Sequence
 
 import pytest
 
-from earbook.dominio.limpeza import Aparo, Juncao, LivroLimpo, Suspeita, limpar_para_o_ouvido
+from earbook.dominio.limpeza import limpar_para_o_ouvido
+from earbook.dominio.livro_limpo import Aparo, Juncao, LivroLimpo, Suspeita
 from earbook.dominio.segmento import Papel, Segmento
 
 TITULO = "World of WarCraft - Tides of Darkness"

@@ -10,7 +10,7 @@ import pytest
 
 from earbook.adaptadores import pasta_de_trabalho as trabalho
 from earbook.adaptadores.registros_da_pasta import PastaDeTrabalhoInvalidaError
-from earbook.dominio.adaptacao import Grupo, Omitido, RespostaDaAdaptacao, TipoDoGrupo
+from earbook.dominio.adaptacao import Correcao, Grupo, Omitido, RespostaDaAdaptacao, TipoDoGrupo
 from earbook.dominio.segmento import Papel, Segmento
 from earbook.dominio.traducao import Pedido
 
@@ -58,6 +58,25 @@ def test_resposta_com_os_tres_tipos_de_grupo_e_lida(pasta: Path) -> None:
     )
 
 
+def test_correcao_do_original_e_lida(pasta: Path) -> None:
+    correcao = {"de": "3 0%", "para": "30%", "pagina": 418}
+    _responder(pasta, [{"fontes": ["c005-s0001"], "texto": ["Em 30%."], "corrigidos": [correcao]}])
+    grupo = Grupo(
+        ("c005-s0001",),
+        TipoDoGrupo.TEXTO,
+        texto=("Em 30%.",),
+        corrigidos=(Correcao("3 0%", "30%", 418),),
+    )
+    assert trabalho.ler_adaptados(pasta) == (RespostaDaAdaptacao("c005-l001", (grupo,)),)
+
+
+_CORRECAO_SEM_PAGINA = {"de": "60", "para": "600"}
+_CORRECAO_NA_PAGINA_0 = {"de": "60", "para": "600", "pagina": 0}
+# Auditoria: o trecho vazio "está" em qualquer texto, e a correção igual não corrige nada.
+_CORRECAO_VAZIA = {"de": " ", "para": "600", "pagina": 3}
+_CORRECAO_IGUAL = {"de": "60", "para": "60", "pagina": 3}
+
+
 @pytest.mark.parametrize(
     ("grupo", "motivo"),
     [
@@ -72,6 +91,17 @@ def test_resposta_com_os_tres_tipos_de_grupo_e_lida(pasta: Path) -> None:
         ({"fontes": ["c005-s0001"], "descarte": 3}, "'descarte'"),
         ({"fontes": ["c005-s0001"], "igual": True, "omitidos": []}, "'omitidos'"),
         ({"fontes": ["c005-s0001"], "texto": ["Um."], "omitidos": [{"termo": "x"}]}, "'motivo'"),
+        ({"fontes": ["c005-s0001"], "igual": True, "corrigidos": []}, "'corrigidos'"),
+        (
+            {"fontes": ["c005-s0001"], "texto": ["Um."], "corrigidos": [_CORRECAO_SEM_PAGINA]},
+            "'pagina'",
+        ),
+        (
+            {"fontes": ["c005-s0001"], "texto": ["Um."], "corrigidos": [_CORRECAO_NA_PAGINA_0]},
+            "'pagina'",
+        ),
+        ({"fontes": ["c005-s0001"], "texto": ["Um."], "corrigidos": [_CORRECAO_VAZIA]}, "'de'"),
+        ({"fontes": ["c005-s0001"], "texto": ["Um."], "corrigidos": [_CORRECAO_IGUAL]}, "igual"),
     ],
 )
 def test_grupo_fora_do_formato_e_recusado_com_o_arquivo(

@@ -10,7 +10,8 @@ from pathlib import Path
 from earbook.adaptadores import pasta_de_trabalho as trabalho
 from earbook.adaptadores.pacote_epub import PacoteEpub, extrair_epub
 from earbook.adaptadores.xhtml import segmentar_xhtml
-from earbook.dominio.limpeza import LivroLimpo, limpar_para_o_ouvido
+from earbook.dominio.limpeza import limpar_para_o_ouvido
+from earbook.dominio.livro_limpo import LivroLimpo
 from earbook.dominio.segmento import Segmento, id_do_capitulo
 from earbook.dominio.trabalho import CapituloPreparado, LivroPreparado, TextoForaDeSegmento
 

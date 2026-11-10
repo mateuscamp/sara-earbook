@@ -641,6 +641,23 @@ regressão visto falhar na asserção antes da correção, ou com o mutante que 
 - **Ficam, declarados acima:** R3 (a razão "1000; 2:1") e R8 (os itens numerados antes da lista
   sem título).
 
+### A junção órfã (2026-11-10)
+
+No Practical, a referência partida pela página em três linhas ("98. Patten DK, … The safety and",
+"efficacy of …", "ment of chronic pain …") se juntava numa só no `limpar`, e a regra Vancouver,
+que roda depois, tirava a cabeça. As continuações ficavam em `juncoes`, apontando para um segmento
+que não existia mais, e o `conferir` recusava o livro: 9 junções órfãs. Agora, depois de todas as
+regras, o pedaço juntado a um segmento que saiu sai com ele, em `remocoes`, com o motivo dele e
+"juntado ao anterior, que também saiu", e o texto que o pedaço tinha antes da junção. Vale para
+toda regra que roda depois da junção, não só para a Vancouver.
+
+| Practical | Antes | Depois |
+|---|---|---|
+| Remoções | 12.695 | 12.704 |
+| Junções | 437 | 428 |
+| Junções órfãs | 9 | 0 |
+| `segmentos/`, `limpos/`, `livro.json`, suspeitas | | idênticos |
+
 ## Consequências
 
 **Ganha:**

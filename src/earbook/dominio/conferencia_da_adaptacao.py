@@ -4,11 +4,14 @@ Junta-se ao `conferir` do ADR-0005, que continua valendo."""
 
 from __future__ import annotations
 
+import re
+import unicodedata
 from collections import Counter
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
 from earbook.dominio.adaptacao import (
+    Correcao,
     Grupo,
     MotivoDoDescarte,
     Omitido,
@@ -27,7 +30,7 @@ from earbook.dominio.fidelidade import (
     termos_que_faltam,
 )
 from earbook.dominio.glossario import ConferenciaDeNomes, EntradaDoGlossario
-from earbook.dominio.limpeza import CapituloLimpo
+from earbook.dominio.livro_limpo import CapituloLimpo
 from earbook.dominio.segmento import Papel, Segmento
 from earbook.dominio.traducao import Pedido
 
@@ -69,11 +72,12 @@ def conferir_adaptacao(
 
 
 def avisos_da_adaptacao(respostas: Sequence[RespostaDaAdaptacao]) -> tuple[Problema, ...]:
-    """O que não recusa o livro e a sessão lê antes do `montar`: o termo omitido de propósito
-    e o descarte por decisão do livro (ADR-0009)."""
+    """O que não recusa o livro e a sessão lê antes do `montar`: o termo omitido de propósito,
+    a correção do original e o descarte por decisão do livro (ADR-0009)."""
     avisos: list[Problema] = []
     for grupo in (grupo for resposta in respostas for grupo in resposta.grupos):
         avisos += [Problema(grupo.fontes[0], _aviso_do_omitido(o)) for o in grupo.omitidos]
+        avisos += [Problema(grupo.fontes[0], _aviso_da_correcao(c)) for c in grupo.corrigidos]
         base, _, secao = grupo.descarte.partition(":")
         if base.strip() == MotivoDoDescarte.DECISAO and secao.strip():
             avisos.append(Problema(grupo.fontes[0], f"descartado por decisão: {secao.strip()}"))
@@ -84,6 +88,33 @@ def _aviso_do_omitido(omitido: Omitido) -> str:
     if eh_numero(omitido.termo):
         return f"omitiu o número {omitido.termo}: {omitido.motivo}"
     return f"omitiu '{omitido.termo}': {omitido.motivo}"
+
+
+def _aviso_da_correcao(correcao: Correcao) -> str:
+    troca = f"corrigiu '{correcao.de}' para '{correcao.para}'"
+    return f"{troca}: correção do original, p. {correcao.pagina}"
+
+
+def _problemas_da_correcao(correcao: Correcao, fontes: str, corrido: str) -> list[str]:
+    """A correção do original (ADR-0009): o trecho errado está nas fontes do grupo, juntas, e o
+    certo, no texto, cada um com o número inteiro: "60" dentro de "600" não prova nada."""
+    motivos: list[str] = []
+    if not _tem_o_trecho(correcao.de, fontes):
+        motivos.append(f"a correção de '{correcao.de}' não está nas fontes")
+    if not _tem_o_trecho(correcao.para, corrido):
+        motivos.append(f"a correção para '{correcao.para}' não está no texto")
+    return motivos
+
+
+def _tem_o_trecho(trecho: str, texto: str) -> bool:
+    padrao = rf"(?<![\d.,]){re.escape(_nfc(trecho))}(?![.,]?\d)"
+    return re.search(padrao, texto) is not None
+
+
+def _nfc(texto: str) -> str:
+    """O PDF pode trazer o acento separado da letra (NFD); o `conferir` compara em NFC, e
+    `limpos/` fica como veio (ADR-0009, "O PCDT da Dor Crônica")."""
+    return unicodedata.normalize("NFC", texto)
 
 
 def conferir_sumario(
@@ -169,21 +200,26 @@ def _grupo(
         motivos += _descarte(grupo.descarte, fontes, vizinhos, regua.raridade)
         return [Problema(primeiro, motivo) for motivo in motivos]
     ouvido = grupo.texto if grupo.tipo is TipoDoGrupo.TEXTO else tuple(f.texto for f in fontes)
+    ouvido = tuple(_nfc(paragrafo) for paragrafo in ouvido)
     if Papel.TITULO in papeis and len(ouvido) > 1:
         motivos.append(f"o título tem {len(ouvido)} parágrafos")
     motivos += ["parágrafo vazio" for paragrafo in ouvido if not paragrafo.strip()]
     problemas = [Problema(primeiro, motivo) for motivo in motivos]
     problemas += conferir_textos(Segmento(primeiro, Papel.PARAGRAFO, p) for p in ouvido)
-    textos = [fonte.texto for fonte in fontes]
+    textos = [_nfc(fonte.texto) for fonte in fontes]
+    corrido = " ".join(ouvido)
     omitidos = [omitido.termo for omitido in grupo.omitidos]
-    motivos = faltas_de_fidelidade(textos, ouvido, omitidos, regua.raridade)
+    corrigidos = [(correcao.de, correcao.para) for correcao in grupo.corrigidos]
+    motivos = faltas_de_fidelidade(textos, ouvido, omitidos, regua.raridade, corrigidos)
     motivos += [
         problema
         for o in grupo.omitidos
         if eh_numero(o.termo)
-        for problema in problemas_do_numero_omitido(o.termo, o.motivo, textos, " ".join(ouvido))
+        for problema in problemas_do_numero_omitido(o.termo, o.motivo, textos, corrido)
     ]
-    motivos += regua.nomes.motivos(" ".join(textos), " ".join(ouvido))
+    for correcao in grupo.corrigidos:
+        motivos += _problemas_da_correcao(correcao, " ".join(textos), corrido)
+    motivos += regua.nomes.motivos(" ".join(textos), corrido)
     motivos += [motivo for paragrafo in ouvido for motivo in so_funciona_no_papel(paragrafo)]
     return problemas + [Problema(primeiro, motivo) for motivo in motivos]
 

@@ -204,3 +204,52 @@ def test_intervalo_de_datas_antes_de_1500_e_citacao() -> None:
 def test_numero_omitido_nao_e_cobrado() -> None:
     fonte = "Karl Jaspers (1883-1969) (1979) disse."
     assert _faltas([fonte], "Karl Jaspers disse.", ("1979",)) == []
+
+
+@pytest.mark.parametrize(
+    ("fonte", "texto"),
+    [
+        ("Não está recomendado neste PCDT6,178.", "Não está recomendado neste PCDT."),
+        ("Diagrama corporal1,2", "Diagrama corporal."),
+        ("Dor crônica musculoesquelética8,9", "Dor crônica musculoesquelética."),
+        ("Os custos são altos16,17, e sobem.", "Os custos são altos, e sobem."),
+    ],
+)
+def test_chamada_de_nota_colada_com_virgula_e_citacao(fonte: str, texto: str) -> None:
+    """PCDT da Dor Crônica: "PCDT6,178" deixava o 178 cobrado, e "8,9", o 9."""
+    assert _faltas([fonte], texto) == []
+
+
+def test_decimal_depois_de_espaco_nao_e_chamada_de_nota() -> None:
+    assert _faltas(["A dose de 0,6 por quilo."], "A dose por quilo.") == [
+        "o número 0,6 das fontes não está no texto"
+    ]
+
+
+def test_denominador_partido_pela_linha_da_tabela_se_junta() -> None:
+    """PCDT, c090-s1407: a coluna "920/1970" saiu como "920/197" e, na linha de baixo, "0"."""
+    fontes = ["não grave viés de 1080/ 920/197", "publicação 2006 0"]
+    texto = "Viés de publicação não grave: 1080 de 2006 e 920 de 1970."
+    assert _faltas(fontes, texto) == []
+
+
+def test_numero_junto_sem_a_barra_da_fracao_continua_inventado() -> None:
+    fontes = ["Em 197 casos,", "e 0 óbitos."]
+    assert _faltas(fontes, "Em 1970 casos, e óbitos.") == [
+        "o número 197 das fontes não está no texto",
+        "o número 0 das fontes não está no texto",
+        "o número 1970 não está nas fontes",
+    ]
+
+
+def test_numero_corrigido_do_original_nao_falta_nem_e_inventado() -> None:
+    fontes = ["pregabalina 60 mg/dia"]
+    texto = ["pregabalina 600 mg/dia"]
+    raridade = _raridade(*fontes)
+    assert faltas_de_fidelidade(fontes, texto, (), raridade, (("60", "600"),)) == []
+
+
+def test_acento_decomposto_nas_fontes_e_o_mesmo_termo() -> None:
+    """PCDT, c022-s0006: o PDF trouxe "reumatológicas" com o acento separado da letra (NFD)."""
+    fonte = "Doenças reumatológicas."
+    assert _faltas([fonte], "Doenças reumatológicas.") == []

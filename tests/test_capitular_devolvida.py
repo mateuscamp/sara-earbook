@@ -14,7 +14,8 @@ from collections.abc import Sequence
 import pytest
 
 from earbook.dominio.capitular import CapitularDevolvida
-from earbook.dominio.limpeza import Juncao, LivroLimpo, limpar_para_o_ouvido
+from earbook.dominio.limpeza import limpar_para_o_ouvido
+from earbook.dominio.livro_limpo import Juncao, LivroLimpo
 from earbook.dominio.segmento import Papel, Segmento
 
 

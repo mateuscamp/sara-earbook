@@ -32,7 +32,7 @@ from earbook.dominio.conferencia_da_adaptacao import (
     conferir_sumario,
 )
 from earbook.dominio.conferencia_da_traducao import conferir_termos, conferir_traducao
-from earbook.dominio.limpeza import CapituloLimpo
+from earbook.dominio.livro_limpo import CapituloLimpo
 from earbook.dominio.segmento import Segmento, notas_para_o_fim
 from earbook.dominio.trabalho import CapituloPreparado
 from earbook.dominio.traducao import (

@@ -5,14 +5,20 @@ from __future__ import annotations
 
 from dataclasses import replace
 
-from earbook.dominio.adaptacao import Grupo, Omitido, RespostaDaAdaptacao, TipoDoGrupo
+from earbook.dominio.adaptacao import (
+    Correcao,
+    Grupo,
+    Omitido,
+    RespostaDaAdaptacao,
+    TipoDoGrupo,
+)
 from earbook.dominio.conferencia_da_adaptacao import (
     avisos_da_adaptacao,
     conferir_adaptacao,
     conferir_sumario,
 )
 from earbook.dominio.glossario import EntradaDoGlossario
-from earbook.dominio.limpeza import CapituloLimpo
+from earbook.dominio.livro_limpo import CapituloLimpo
 from earbook.dominio.segmento import Papel, Segmento
 from earbook.dominio.traducao import Pedido
 
@@ -306,4 +312,120 @@ def test_numero_seguido_de_por_cento_nao_se_omite() -> None:
     fonte = replace(_FONTE, texto="Cerca de 5 por cento dos adultos.")
     assert _omitindo("Cerca de dos adultos.", "5", "data", fonte) == [
         "o número 5 é porcentagem ou dose e não se omite"
+    ]
+
+
+def test_chamada_colada_com_virgula_se_declara_inteira_ou_por_numero() -> None:
+    """PCDT, c050-s0004 e c065-s0003: o adaptador declarou o 178 de "PCDT6,178" e o 2 de "1,2",
+    e o `conferir` respondia que as fontes não os tinham."""
+    fonte = replace(_FONTE, texto="Não recomendado neste PCDT6,178. Diagrama corporal1,2")
+    texto = "Não recomendado neste PCDT. Diagrama corporal."
+    for numero in ("178", "6,178", "2", "1,2"):
+        assert _omitindo(texto, numero, "citação", fonte) == []
+
+
+def test_numero_de_pagina_solto_tem_motivo_proprio() -> None:
+    fonte = replace(_FONTE, texto="Veja a página 3 do anexo.")
+    assert _omitindo("Veja o anexo.", "3", "página: número de página solto", fonte) == []
+
+
+_PREGABALINA = Segmento("c003-s0001", Papel.PARAGRAFO, "Gabapentina versus pregabalina 60 mg/dia")
+
+
+def _corrigindo(texto: str, correcao: Correcao) -> list[str]:
+    fonte = _PREGABALINA
+    grupo = Grupo((fonte.id,), TipoDoGrupo.TEXTO, texto=(texto,), corrigidos=(correcao,))
+    resposta = RespostaDaAdaptacao("c003-l001", (grupo,))
+    problemas = conferir_adaptacao(
+        [CapituloLimpo("c003", (fonte,))],
+        [Pedido("c003-l001", (fonte,))],
+        [resposta],
+        (),
+        amostra=False,
+    )
+    return [p.motivo for p in problemas]
+
+
+def test_correcao_do_original_passa_e_vira_aviso() -> None:
+    """O erro inequívoco do PDF se corrige e se declara, com a página (decisão do Mateus)."""
+    texto = "Gabapentina versus pregabalina 600 mg/dia."
+    correcao = Correcao("60", "600", 412)
+    assert _corrigindo(texto, correcao) == []
+    grupo = Grupo((_PREGABALINA.id,), TipoDoGrupo.TEXTO, texto=(texto,), corrigidos=(correcao,))
+    avisos = avisos_da_adaptacao([RespostaDaAdaptacao("c003-l001", (grupo,))])
+    assert [(p.id, p.motivo) for p in avisos] == [
+        ("c003-s0001", "corrigiu '60' para '600': correção do original, p. 412")
+    ]
+
+
+def test_correcao_que_as_fontes_ou_o_texto_nao_tem_e_problema() -> None:
+    assert _corrigindo(
+        "Gabapentina versus pregabalina 600 mg/dia.", Correcao("70", "600", 412)
+    ) == [
+        "o número 60 das fontes não está no texto",
+        "a correção de '70' não está nas fontes",
+    ]
+    assert _corrigindo("Gabapentina versus pregabalina 60 mg/dia.", Correcao("60", "600", 412)) == [
+        "a correção para '600' não está no texto",
+    ]
+
+
+def test_correcao_e_conferida_pelo_numero_inteiro() -> None:
+    """Revisão: "60" dentro de "600" não prova a correção, nem "600" dentro de "1600"."""
+    fonte = replace(_PREGABALINA, texto="Gabapentina versus pregabalina 600 mg/dia")
+    grupo = Grupo(
+        (fonte.id,),
+        TipoDoGrupo.TEXTO,
+        texto=("Gabapentina versus pregabalina 1600 mg/dia.",),
+        corrigidos=(Correcao("60", "600", 412),),
+    )
+    problemas = conferir_adaptacao(
+        [CapituloLimpo("c003", (fonte,))],
+        [Pedido("c003-l001", (fonte,))],
+        [RespostaDaAdaptacao("c003-l001", (grupo,))],
+        (),
+        amostra=False,
+    )
+    assert [p.motivo for p in problemas] == [
+        "o número 600 das fontes não está no texto",
+        "o número 1600 não está nas fontes",
+        "a correção de '60' não está nas fontes",
+        "a correção para '600' não está no texto",
+    ]
+
+
+def test_correcao_que_atravessa_dois_segmentos_do_grupo_e_achada() -> None:
+    fontes = (
+        Segmento("c003-s0001", Papel.PARAGRAFO, "Redução da dor em 3"),
+        Segmento("c003-s0002", Papel.PARAGRAFO, "0% dos pacientes"),
+    )
+    grupo = Grupo(
+        tuple(f.id for f in fontes),
+        TipoDoGrupo.TEXTO,
+        texto=("Redução da dor em 30% dos pacientes.",),
+        corrigidos=(Correcao("3 0%", "30%", 112),),
+    )
+    problemas = conferir_adaptacao(
+        [CapituloLimpo("c003", fontes)],
+        [Pedido("c003-l001", fontes)],
+        [RespostaDaAdaptacao("c003-l001", (grupo,))],
+        (),
+        amostra=False,
+    )
+    assert [p.motivo for p in problemas] == []
+
+
+def test_sigla_do_glossario_com_acento_decomposto_nas_fontes_e_cobrada() -> None:
+    """Revisão: o NFC valia só no termo raro; a sigla em NFD nas fontes escapava do glossário."""
+    fonte = Segmento("c004-s0001", Papel.PARAGRAFO, "A CONITE\u0301C avaliou.")
+    grupo = Grupo((fonte.id,), TipoDoGrupo.TEXTO, texto=("A CONITÉC avaliou.",))
+    problemas = conferir_adaptacao(
+        [CapituloLimpo("c004", (fonte,))],
+        [Pedido("c004-l001", (fonte,))],
+        [RespostaDaAdaptacao("c004-l001", (grupo,))],
+        (EntradaDoGlossario("CONITÉC", "a comissão"),),
+        amostra=False,
+    )
+    assert [p.motivo for p in problemas] == [
+        "'CONITÉC' ficou no original; o glossário diz 'a comissão'"
     ]

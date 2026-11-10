@@ -42,7 +42,7 @@ from earbook.adaptadores.registros_da_pasta import (
 )
 from earbook.dominio.adaptacao import RespostaDaAdaptacao
 from earbook.dominio.glossario import CandidatoANome, EntradaDoGlossario, TermosDoLote
-from earbook.dominio.limpeza import CapituloLimpo, LivroLimpo
+from earbook.dominio.livro_limpo import CapituloLimpo, LivroLimpo
 from earbook.dominio.segmento import Segmento
 from earbook.dominio.siglas import CandidatoASigla
 from earbook.dominio.trabalho import CapituloPreparado, LivroPreparado

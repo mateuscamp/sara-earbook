@@ -10,7 +10,8 @@ por esse texto.
 from __future__ import annotations
 
 from earbook.dominio.fora_do_audio import MOTIVO_DA_PROPAGANDA, MOTIVO_DO_SUMARIO_DE_PAPEL
-from earbook.dominio.limpeza import LivroLimpo, limpar_para_o_ouvido
+from earbook.dominio.limpeza import limpar_para_o_ouvido
+from earbook.dominio.livro_limpo import LivroLimpo
 from earbook.dominio.segmento import Papel, Segmento
 
 PROSA = (Papel.PARAGRAFO, "Este livro nasceu de muitas aulas de psicopatologia geral.")

@@ -10,7 +10,7 @@ import pytest
 
 from earbook.adaptadores import pasta_de_trabalho as trabalho
 from earbook.adaptadores.registros_da_pasta import PastaDeTrabalhoInvalidaError
-from earbook.dominio.limpeza import CapituloLimpo, Juncao, LivroLimpo, Remocao
+from earbook.dominio.livro_limpo import CapituloLimpo, Juncao, LivroLimpo, Remocao
 from earbook.dominio.segmento import Papel, Segmento
 from earbook.dominio.trabalho import CapituloPreparado, LivroPreparado
 

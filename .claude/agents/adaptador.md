@@ -57,7 +57,15 @@ destes:
 - `"descarte": "decisao: <seção de decisoes.md>"`: o que as decisões do livro mandam tirar.
 - `"omitidos": [{"termo", "motivo"}]`, junto do `texto`: o termo técnico das fontes que você
   deixou de fora de propósito, com o motivo. A sessão lê cada um. Número só se omite com motivo
-  `citação`, `data`, `ordinal`, `potência` ou `unidade`, e nunca porcentagem nem dose.
+  `citação`, `data`, `ordinal`, `página`, `potência` ou `unidade`, e nunca porcentagem nem dose.
+  O número de página solto no meio do texto é `página`, não `ordinal`. A chamada de nota colada
+  à palavra ("PCDT6,178", "corporal1,2") já fica fora da conta: não precisa declarar.
+- `"corrigidos": [{"de", "para", "pagina"}]`, junto do `texto`: o erro inequívoco do original
+  num número, que a página do PDF prova ("pregabalina 60 mg/dia" onde a tabela diz 600; "3 0%"
+  por 30%; "I 0,6" por 10,6). `de` é o trecho das fontes como está, `para` é o trecho do seu
+  texto, e `pagina` é a página do PDF, em número. Só o que a página ou o próprio livro provam:
+  na dúvida, o número fica como está e vai para o relatório. A sessão lê cada correção antes do
+  `montar`.
 
 Cada ID do pedido entra em exatamente um grupo, e um grupo nunca junta IDs de lotes diferentes.
 JSON válido em UTF-8, com as aspas tipográficas do português (“ ” e ‘ ’), que não precisam de
@@ -121,7 +129,7 @@ na subpasta do scratchpad que o brief der.
   "e/ou" fica.
 - **Termo estrangeiro entre parênteses** ("état crepusculaire, twilight state"): fica.
 - **Erro do original** (palavra trocada, letra a menos: "faz-se estão o diagnóstico"): corrija
-  pelo sentido e ponha o ID no relatório.
+  pelo sentido e ponha o ID no relatório. O erro num número vai em `corrigidos`, com a página.
 
 ## Antes de terminar
 
@@ -136,6 +144,6 @@ não aparecem.
 - os lotes gravados;
 - os Quadros e caixas que você adaptou pela página do PDF, com a página;
 - os termos em `omitidos`, com o ID;
-- os erros do original que você corrigiu, com o ID;
+- os erros do original que você corrigiu, com o ID (os de número, em `corrigidos`);
 - os trechos em que hesitou (coluna ambígua, nota sem chamada, lista que podia ser frase), com
   o ID.

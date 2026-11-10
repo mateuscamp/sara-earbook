@@ -10,7 +10,8 @@ Mateus aprovou ("Aprovar"). A regra olha o conteúdo de cada parágrafo, nunca o
 from __future__ import annotations
 
 from earbook.dominio.fora_do_audio import MOTIVO_DO_INDICE_PELO_CONTEUDO
-from earbook.dominio.limpeza import LivroLimpo, limpar_para_o_ouvido
+from earbook.dominio.limpeza import limpar_para_o_ouvido
+from earbook.dominio.livro_limpo import LivroLimpo
 from earbook.dominio.segmento import Papel, Segmento
 
 TITULO = (Papel.TITULO, "Índice")

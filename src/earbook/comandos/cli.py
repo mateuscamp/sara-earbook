@@ -19,7 +19,7 @@ from earbook.comandos.preparar import Preparo, pasta_padrao, preparar
 from earbook.comandos.roteiro import minutos
 from earbook.comandos.traduzir import Exportacao, traduzir
 from earbook.dominio.conferencia import Problema
-from earbook.dominio.limpeza import LivroLimpo
+from earbook.dominio.livro_limpo import LivroLimpo
 from earbook.dominio.tipo_da_linha import TipoDeBloco
 from earbook.dominio.trabalho import LivroPreparado
 from earbook.dominio.traducao import PALAVRAS_POR_LOTE, Modo

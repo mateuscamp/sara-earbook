@@ -3,7 +3,8 @@ from __future__ import annotations
 
 import pytest
 
-from earbook.dominio.limpeza import LivroLimpo, Remocao, Suspeita, tirar_cabecalhos_de_pagina
+from earbook.dominio.limpeza import tirar_cabecalhos_de_pagina
+from earbook.dominio.livro_limpo import LivroLimpo, Remocao, Suspeita
 from earbook.dominio.segmento import Papel, Segmento
 
 # Os metadados reais do OPF do Tides of Darkness: o cabeçalho é um pedaço do título.

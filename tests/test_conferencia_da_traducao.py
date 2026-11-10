@@ -8,7 +8,7 @@ import pytest
 from earbook.dominio.conferencia import Problema
 from earbook.dominio.conferencia_da_traducao import conferir_traducao
 from earbook.dominio.glossario import EntradaDoGlossario
-from earbook.dominio.limpeza import CapituloLimpo
+from earbook.dominio.livro_limpo import CapituloLimpo
 from earbook.dominio.segmento import Papel, Segmento
 from earbook.dominio.traducao import Pedido, Resposta, Traduzido
 

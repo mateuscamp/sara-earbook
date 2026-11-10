@@ -117,7 +117,7 @@ Verificadas só em revisão (`code-audit`):
 - Destaque de margem que repete a frase do texto: feito no `importar-pdf` e no `preparar` (ADR-0004, ADR-0008). O destaque resumido ou reescrito ainda é lido.
 - Quadro do PDF que vira nota e vai para o fim do capítulo, longe do texto: feito no `importar-pdf` (ADR-0004, "Quadro no lugar"). O quadro sem rótulo "Quadro N.N" ou "Tabela N.N" em letra de título ainda não é reconhecido.
 - Subtítulo em versalete do PDF que vira nota, e texto escondido debaixo de outro que abre capítulo falso: feitos no `importar-pdf` (ADR-0004, "O que ficou da Fase 1"). O versalete de fonte própria ("-SC700") vira título pelo nome da fonte (ADR-0004, "Versalete de fonte própria").
-- Bibliografia: feita no `preparar` para a do padrão ABNT, 10 referências seguidas ou mais (ADR-0008, "Bibliografia"). A de outro padrão, a lista curta e a do Competente, partida entre nota e parágrafo, ainda são lidas; a do Competente se conserta no `importar-pdf`, onde nasce (decisão do Mateus, 2026-11-03).
+- Bibliografia: feita no `preparar` para a do padrão ABNT, 10 referências seguidas ou mais (ADR-0008, "Bibliografia"). Desde 2026-11-10, sai também a Vancouver, das obras médicas: a região de pedaços de referência com 10 citações de periódico ou mais (ADR-0008, "Referências no estilo Vancouver"). A APA, a lista curta e a do Competente, partida entre nota e parágrafo, ainda são lidas; a do Competente se conserta no `importar-pdf`, onde nasce (decisão do Mateus, 2026-11-03).
 - Negrito feito à mão (o mesmo texto desenhado de novo por cima, no mesmo tamanho): feito no `importar-pdf` (ADR-0004, "Negrito feito à mão"). A cópia de uma letra só ainda é lida.
 - Alternativa de exercício cuja letra só existe no CSS do `<ol>`: a voz lê "B e C" sem que nada tenha letra. Pendente.
 - `<p>` que é linha de página e parágrafo que o PDF perdeu: sem código, pelo Calibre e pelo mapa do original (ADR-0010). O `importar-pdf` ainda funde os parágrafos do PDF sem recuo, sem avisar.
@@ -169,7 +169,8 @@ src/earbook/
                 adaptacao.py (grupo, lote que não parte frase, textos do montar), siglas.py (siglas
                 candidatas), fidelidade.py (número, termo raro e papel), conferencia_da_adaptacao.py,
                 capitular.py (a capitular devolvida), escuta.py (o minuto de cada segmento),
-                fora_do_audio.py (código, índice, marca d'água, destaque e bibliografia), cabecalho.py (cabeçalho de página),
+                fora_do_audio.py (código, índice, marca d'água, destaque e bibliografia),
+                referencias_vancouver.py (as referências médicas), cabecalho.py (cabeçalho de página),
                 colunas.py (a ordem de leitura da página em colunas)
   adaptadores/  xml_seguro.py (parser), pacote_epub.py (zip + OPF), xhtml.py, papel_do_bloco.py (o papel
                 pela marcação), pasta_de_trabalho.py (o layout), registros_da_pasta.py (o JSON

@@ -524,6 +524,123 @@ Aprovadas pelo Mateus ("Sim, e commitar"). Os seis livros saíram idênticos à 
   - **M20:** só o parágrafo é entrada;
   - **M21:** a entrada precisa de um número de página.
 
+## Referências no estilo Vancouver (2026-11-10)
+
+### Contexto
+
+Dois tratados médicos de dor em inglês vieram de PDF pelo `importar-pdf`: *Bonica's Management of
+Pain* (5ª ed.) e *Practical Management of Pain* (6ª ed.). Medido no HEAD `4174d29`, cerca de um
+quarto das palavras são referências no estilo Vancouver, que a regra ABNT da seção "Bibliografia"
+não vê. O Mateus decidiu tirá-las antes de estimar a tradução: não se paga tradução nem se ouve
+"J Bone Joint Surg Br. 1980;62:358–362" por horas.
+
+Os dois formatos:
+- **Practical** (`c032-s0447` a `s0452`): um parágrafo por referência, quase sempre aberto em
+  número e ponto ("86. Adams MA, Hutton WC. The effect of posture… J Bone Joint Surg Br.
+  1980;62:358–362."). A quebra de página parte a referência em dois parágrafos ("19. Jarvik JJ,
+  Hollingworth W…" | "…Spine. 2004;29:…"). As "Suggested Readings" vêm sem número
+  ("Bartley EJ, Fillingim RB. Sex differences… Br J Anaesth. 2013;111(1):52–8."), e a caixa de
+  "Key Points" do PDF cai no meio delas.
+- **Bonica** (`c006-s1632` a `s1634`, papel `nota`): até 30 referências coladas num segmento de até
+  ~540 palavras, que pode abrir no meio de uma ("behavioral approach. Phys Ther 1002;72:279–290.
+  108. State of Washington…"). Logo depois vem o título do próximo capítulo ("CHAPTER 91…").
+
+O sinal forte é a citação de periódico: ano, ponto e vírgula, volume, dois-pontos e página
+("1980;62:358", "2011;36:E629", "2018;9(1):2957", "1991;16(3):793"). A prosa dos dois livros cita
+por número sobrescrito ("Fanuele et al.7"), nunca assim: dos 752 parágrafos de prosa do Bonica
+com "et al." ou "ano;número", nenhum tem a citação inteira.
+
+### Alternativas
+
+| Opção | Ganha | Perde | Por que não |
+|---|---|---|---|
+| **A. Região de pedaços de referência, pelo conteúdo, com 10 citações de periódico ou mais** (escolhida) | pega o parágrafo por referência (Practical) e o bloco colado (Bonica); pega os vizinhos que são pedaço; não usa título | a lista curta (menos de 10 citações) fica; a região tolera lacuna de 2 segmentos, que poderia levar um parágrafo curto | — |
+| B. Estender a regra ABNT: 10 parágrafos-referência seguidos | uma regra só | o Bonica tem de 3 a 5 segmentos por lista, e a quebra de página parte a referência do Practical: a sequência não chega a 10 | não tira o Bonica |
+| C. Pelo título "References" até o próximo título | simples | o ADR-0008 proíbe; a caixa "Key Points" no meio da lista sairia junto | tira texto que não é referência |
+| D. Limiar de 5 citações em vez de 10 | pega as "Suggested Readings" curtas | tira 2 tabelas do Bonica (`c005-s5706`, definições numeradas com fonte; `c006-s0365`, farmacocinética) | falso positivo medido |
+
+### Decisão
+
+- **Pedaço forte** (parágrafo ou nota): traz uma citação de periódico; ou um início numerado com
+  autor Vancouver ("86. Adams MA,", "151. Hooten WM,"); ou abre com a lista de autores ("Bartley
+  EJ, Fillingim RB,"). O sobrenome tem minúscula, para o crédito em maiúsculas do capítulo
+  ("JIMMY CHEN YANG, ATHAR N. MALIK") não contar, e o romano não é inicial ("Stage IV,").
+- **Pedaço fraco**: abre com número e ponto ("1. American Hospital Association."), ou traz
+  "Available at", "Accessed", URL, "doi:", "www." ou editora e ano ("Philadelphia: Saunders;
+  1996"). Ele estende a região, mas nunca a começa: a prosa com URL fica.
+- **A corrida** começa num pedaço forte e segue por pedaços, com **lacuna de até 2** segmentos
+  sem sinal entre eles (o fim de título partido, "Section II", "1913."). Ela nunca atravessa
+  título. Antes do primeiro pedaço forte, entram até 2 referências numeradas sem citação ("1.
+  American Hospital Association.") e o título logo antes, como na bibliografia ABNT. O título
+  nunca começa a região, e a prosa com URL logo antes da lista fica.
+- **A corrida curta com citação se junta à região seguinte** quando entre elas há de 1 a 2
+  títulos e até 2 outros segmentos: as "Suggested Readings" e o "References" depois delas. O
+  título do próximo capítulo não se junta a nada, porque a prosa dele nunca soma 10 citações.
+- **Sai a região com 10 citações de periódico ou mais**, no mesmo capítulo. O motivo registrado é
+  "bibliografia: referências no estilo Vancouver". A regra fica em
+  `dominio/referencias_vancouver.py`, e `fora_do_audio.bibliografia` a chama junto com a ABNT:
+  roda no mesmo ponto do `limpar`, por último.
+
+Decidido pelo Mateus ("tirá-las antes de estimar a tradução", pela sessão principal); os limiares
+são desta sessão e vão à revisão.
+
+### Medição (2026-11-10, depois do código)
+
+Palavras de `limpos/` contadas por espaço; a pasta `.earbook` antiga foi apagada e refeita.
+
+| Livro | Palavras antes → depois | Remoções com o motivo novo | O que ficou com cara de referência |
+|---|---|---|---|
+| *Bonica* | 1.800.152 → 1.371.709 (−428.443, 23,8%) | 1.075, com os 114 títulos "References" | 87 segmentos com citação de periódico (106 citações, 9.843 palavras): fonte de tabela e de figura ("Reprinted with permission from Deyo RA…"), a lista de uma referência só antes do "Index" (`c007-s0759`) |
+| *Practical* | 1.238.891 → 918.398 (−320.493, 25,9%) | 12.627, 137 delas pedaços sem sinal entre referências; 142 títulos ("References", "Suggested Readings") | 157 segmentos com citação (180 citações, 9.584 palavras): 29 "Suggested Readings" curtas ou partidas pela caixa "Key Points" (`c012-s0067`), fonte de tabela e legenda de figura |
+| *Huxley*, *Tides*, *Hard Parts*, *Dalgalarrondo* | iguais | 0 | `segmentos/`, `limpos/` e `limpeza.json` idênticos ao HEAD `4174d29` |
+
+- **Falsos positivos procurados:** os segmentos tirados sem sinal nenhum (as lacunas do
+  Practical, 143 na primeira versão e 137 depois da revisão; o Bonica não tem) foram lidos um a
+  um, e os 162 sem sinal forte com mais de 20 palavras da primeira versão também. Quase todos são pedaço de referência (editora, página, título partido) ou
+  subtítulo das leituras ("Section II", "Cervicogenic Headache"). O texto que não é referência e
+  sai: a frase "The references for this chapter can be found at ExpertConsult.com.", em 17
+  segmentos, colada a um pedaço de referência, e uma declaração do autor que o PDF intercalou na lista
+  ("No borrowed materials are included in this manuscript (whether" | "text or illustrative).",
+  `c047`). Nenhum título além de "References" e "Suggested Readings" sai (a primeira versão
+  levava também "Patient Resources", lista de sites, ao atravessar o título).
+- **A prosa que cita:** 752 parágrafos do Bonica com mais de 40 palavras têm "et al." ou
+  "ano;número"; nenhum sai.
+- **Os livros que não estão neste Mac:** o *Competente* (PDF) e o *Learning DDD*. O DDD tem
+  bibliografia APA (`c317`), sem citação de periódico.
+
+### O que fica
+
+- **A lista curta**, com menos de 10 citações de periódico na região: a "Suggested Readings" que
+  a caixa "Key Points" parte ao meio, a lista de uma referência só.
+- **A referência sem citação de periódico** no começo de uma região (o pedaço de título que abre
+  um segmento do Bonica, sem número nem ano;volume) fica, se não estiver entre dois pedaços.
+- **A referência APA** ("Evans, E. (2003).") e a ABNT não são Vancouver; a ABNT sai pela regra
+  da seção "Bibliografia".
+- **A fonte de tabela** ("Data from Chalmers T, et al. … 1983;309:1358") fica: está numa tabela,
+  que não chega a 10 citações.
+- **O que sairia:** um parágrafo de prosa sem sinal, de até 2 seguidos, entre dois pedaços de
+  referência; até 2 itens de prosa numerados ("1. Assess the patient.") logo antes de uma lista
+  sem título (R8 da code-review); e a tabela com razão ou dose na forma "1000; 2:1", que conta
+  como citação (R3). Não há caso nos livros medidos fora das listas.
+
+### Correções da revisão (2026-11-10)
+
+A code-review (esforço alto) achou 8 pontos; ficaram corrigidos 6, cada um com teste de
+regressão visto falhar na asserção antes da correção, ou com o mutante que o teste reprova:
+- **R1, o título do próximo capítulo:** a primeira versão atravessava qualquer título seguido de
+  pedaço forte em 3 segmentos, e levaria o "CHAPTER N" do Bonica e a prosa que citasse um
+  periódico. Agora a corrida não atravessa título, e só a corrida curta com citação se junta à
+  região depois dele.
+- **R2, o romano:** "Stage IV," tinha a forma de "Adams MA,".
+- **R4, a lacuna antes do título** fechava a região cedo; deixou de existir com o R1.
+- **R5 e R6, cobertura:** o pedaço fraco depois da última referência, o subtítulo entre
+  "References" e a lista (`c075`), a prosa com cara de autor antes do título (mutantes M1, M2,
+  M3 e M5, cada um reprovado por um teste).
+- **R7:** cada segmento é classificado uma vez (o `_Sinal`), como o `_entrada_de_indice` (R6 de
+  2026-11-03).
+- **Ficam, declarados acima:** R3 (a razão "1000; 2:1") e R8 (os itens numerados antes da lista
+  sem título).
+
 ## Consequências
 
 **Ganha:**
@@ -568,6 +685,7 @@ Aprovadas pelo Mateus ("Sim, e commitar"). Os seis livros saíram idênticos à 
 | Destaque sai, registrado, e a frase se emenda | testes (`tests/test_destaque.py`): o destaque ao lado do texto, no meio da frase, no meio da palavra partida, com hífen diferente e abrindo no meio da frase do texto sai com o motivo "destaque de margem: repete o texto vizinho"; do PDF de ponta a ponta, a frase da p. 250 volta inteira | portão | o destaque fica, ou a frase não se emenda |
 | O que não é destaque fica | testes: título como parágrafo, continuação em minúscula, pergunta com ":", pedaço que abre em algarismo, outro número, outra obra com uma palavra a menos, menos de 6 palavras, texto a mais de 3 segmentos ou em outro capítulo, citação e nota, gêmeos fora do meio da frase | portão | sai texto que o vizinho não repete |
 | Bibliografia sai, registrada, só pelo conteúdo | testes (`tests/test_bibliografia.py`): 10 referências ABNT seguidas e o título logo antes saem com o motivo "bibliografia: referências no padrão ABNT"; 9 ficam; a referência sem ano parte a sequência; a APA fica; o título sozinho não tira nada; o título longe das referências fica | portão | a bibliografia fica, ou o título sozinho tira texto |
+| Vancouver sai, registrada, só pelo conteúdo | testes (`tests/test_referencias_vancouver.py`): 10 referências numeradas e o título logo antes saem com o motivo "bibliografia: referências no estilo Vancouver"; 9 citações ficam; as coladas numa nota que abre no meio saem, e o título do capítulo seguinte e o crédito em maiúsculas ficam; o pedaço sem sinal entre referências sai; 3 parágrafos sem sinal partem a região e ficam; as "Suggested Readings" se juntam à lista depois de "References", também com o subtítulo no meio; o título do próximo capítulo e a prosa que cita um periódico ficam; "Stage IV," não é autor; a prosa com cara de autor antes do título fica; o pedaço fraco depois da última referência sai; a numerada sem citação antes da primeira sai; a prosa com URL logo antes fica; a prosa com "et al." e "2011;36" fica; o `preparar` registra em `limpeza.json` | portão | a referência fica, ou sai prosa |
 | Índice sai pelo conteúdo, registrado | testes (`tests/test_indice_pelo_conteudo.py`): 10 entradas seguidas e o título logo antes saem com o motivo "índice remissivo: termos seguidos do número da página"; 9 ficam; a letra no meio sai com o índice; a entrada que termina em remissão conta; mais de 8 palavras por número não é entrada; a vírgula sem espaço (decimal e milhar), o ano e o número antes do parêntese não são página, cada um no meio de 10 entradas; o título sozinho não tira nada | portão | o índice fica, ou sai texto que não é índice |
 | Nada a mais some | `preparar` no Huxley e no Tides, `importar-pdf` e `preparar` no Competente e no Hard Parts, comparados com o ADR-0003 e o ADR-0004 | a cada mudança na limpeza | `limpos/` diferente sem explicação |
 | Escuta ★ (manual) | o `montar --original` do DDD, num trecho com código e no fim do livro | depois desta mudança; responsável: Mateus | o ouvinte se perde onde o código saiu |

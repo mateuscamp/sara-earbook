@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """O que sai inteiro do texto lido (ADR-0008): pelo papel, o bloco de código e o índice
 remissivo; pela repetição, a marca d'água e o destaque de margem; pelo conteúdo de cada
-parágrafo, a bibliografia, o índice remissivo sem marcação, o sumário de papel e a propaganda.
-A limpeza registra cada um, com o motivo daqui.
+parágrafo, a bibliografia (ABNT e Vancouver), o índice remissivo sem marcação, o sumário de
+papel e a propaganda. A limpeza registra cada um, com o motivo daqui.
 """
 
 from __future__ import annotations
@@ -11,6 +11,7 @@ import re
 from collections import defaultdict
 from collections.abc import Callable, Sequence
 
+from earbook.dominio.referencias_vancouver import regioes_de_referencias
 from earbook.dominio.segmento import PALAVRA, Papel, Segmento, primeira_letra
 
 MOTIVO_DO_PAPEL = {Papel.CODIGO: "código-fonte", Papel.INDICE: "índice remissivo"}
@@ -39,6 +40,7 @@ _HIFEN_NA_PALAVRA = re.compile(r"(?<=[^\W\d_])[-\u2010\u00ad]\s*(?=[^\W\d_])")
 # (as referências dele se partem entre nota e parágrafo); o Learning DDD, 0 (APA: "Evans, E.").
 REFERENCIAS_SEGUIDAS = 10
 MOTIVO_DA_BIBLIOGRAFIA = "bibliografia: referências no padrão ABNT"
+MOTIVO_DO_VANCOUVER = "bibliografia: referências no estilo Vancouver"
 # O índice remissivo sem marcação (ADR-0008, "Índice pelo conteúdo"): cada parágrafo-entrada traz
 # números de página depois de vírgula e espaço, com até 8 palavras por número. Medido: os
 # parágrafos do índice têm no máximo 4,4 palavras por número (Dalgalarrondo) e 5,8 (Hard Parts);
@@ -69,8 +71,9 @@ _PALAVRA_OU_NUMERO = re.compile(rf"{PALAVRA.pattern}|\d+")
 
 
 def bibliografia(capitulos: Sequence[tuple[str, Sequence[Segmento]]]) -> dict[str, str]:
-    """ID → motivo de cada referência das sequências de 10 ou mais parágrafos-referência seguidos
-    no mesmo capítulo, e do título logo antes de cada sequência (ADR-0008, "Bibliografia").
+    """ID → motivo de cada referência das sequências de 10 ou mais parágrafos-referência ABNT
+    seguidos no mesmo capítulo, e do título logo antes de cada sequência (ADR-0008,
+    "Bibliografia"); e de cada região de referências Vancouver.
 
     O título nunca dispara a regra: o ADR-0008 proíbe reconhecer pelo título ("Índice" é o
     sumário em português). Ele só sai junto, como o "Index" do índice remissivo.
@@ -79,6 +82,9 @@ def bibliografia(capitulos: Sequence[tuple[str, Sequence[Segmento]]]) -> dict[st
     for _, segmentos in capitulos:
         for inicio, fim in _sequencias_de_referencias(segmentos):
             saem |= _com_o_titulo_antes(segmentos, inicio, fim, MOTIVO_DA_BIBLIOGRAFIA)
+        # As referências médicas, no estilo Vancouver (ADR-0008, "Referências no estilo Vancouver").
+        for inicio, fim in regioes_de_referencias(segmentos):
+            saem |= dict.fromkeys((s.id for s in segmentos[inicio:fim]), MOTIVO_DO_VANCOUVER)
     return saem
 
 

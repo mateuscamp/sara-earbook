@@ -36,8 +36,13 @@ A decisão está no [ADR-0001](docs/adr/0001-reescrever-com-claude-code-orquestr
 - A bibliografia no padrão ABNT ("ABDO, C. H. N. Diagnóstico… 1996."): 10 referências seguidas
   ou mais, com o título logo antes delas
   ([ADR-0008](docs/adr/0008-codigo-e-indice-saem-do-audio.md)). A bibliografia de outro padrão
-  (APA, numerada), a lista curta e a bibliografia que o PDF partiu entre nota e parágrafo (a do
+  (APA), a lista curta e a bibliografia que o PDF partiu entre nota e parágrafo (a do
   Competente) ficam.
+- As referências médicas no estilo Vancouver ("86. Adams MA, Hutton WC. … J Bone Joint Surg Br.
+  1980;62:358–362."), uma por parágrafo ou coladas numa nota: a região de pedaços de referência
+  com 10 citações de periódico ("ano;volume:página") ou mais, com os pedaços partidos pela página
+  e o título logo antes ([ADR-0008](docs/adr/0008-codigo-e-indice-saem-do-audio.md)). A lista
+  curta, com menos de 10 citações, fica; a prosa que cita "et al." também.
 - O sumário de papel: a linha com 5 pontos seguidos e número no fim ("1. Introdução ……… 23"),
   quando o capítulo tem 5 ou mais. O título "Sumário", os títulos das partes e a linha sem
   pontilhado ficam

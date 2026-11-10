@@ -40,6 +40,8 @@ ADRs em `docs/adr/`. O Claude Code traduz; o Python nunca chama o LLM (ADR-0001)
   - O roteiro do livro pronto não é escuta à parte: são as paradas da leitura que o Mateus já faz.
 - O repositório é público, e o `README.md` é a porta dele. Toda mudança de comando, de opção, do que sai do áudio ou da pasta de trabalho atualiza o README no mesmo commit (pedido do Mateus, 2026-11-02).
 - A sessão principal só orquestra (pedido do Mateus, 2026-11-01). Cada implementação roda numa sessão filha, com brief completo, e todo o processo deste arquivo vale nela. A filha usa esta mesma pasta, porque `livros/` e `.venv` ficam aqui, e roda uma por vez. Quando ela termina, o que importa volta para a principal: o commit, as medições, as decisões e os limites. Depois a filha é arquivada.
+  - A filha e o subagente falam só com a principal, e só a principal fala com o Mateus (pedido do Mateus, 2026-11-10). O brief diz que dúvida, decisão sem precedente e relatório voltam no fim do turno da filha, sem perguntar nada ao Mateus; a principal confere e leva a ele, numa mensagem só, o que é decisão dele.
+  - Filha que terminou é arquivada pela principal assim que o resultado dela foi conferido (o commit, o portão, os números), sem esperar o fim do trabalho todo (pedido do Mateus, 2026-11-10). Filha parada no meio, por limite de uso ou à espera de decisão, não terminou: fica até ser retomada.
 
 ## Livros de medição (o original fica em `~/Documentos/livros/ingles/`)
 

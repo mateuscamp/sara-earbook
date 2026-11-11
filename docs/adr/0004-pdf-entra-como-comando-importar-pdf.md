@@ -1154,7 +1154,7 @@ uma vez, e as regras rodadas sobre elas com o código antes e depois):
 | Livro | Páginas de lista | Espaço de verdade | Sumário do EPUB | `limpos/` |
 |---|---|---|---|---|
 | *Bonica* | sumário sem número: 12.678 linhas e 30.981 palavras saem (p. 67 a 194 e 5899 a 6053); colaboradores: 807 → 1.398 linhas, 2.824 → 5.012 palavras (as 21 páginas de 3 ou 4 nomes e a p. 54) | 11 segmentos mudam: os 6 "PART ONE"… do sumário e "CHAPTER 110", 112 a 115 (o 111 já saía inteiro) | 115 de 116 capítulos mudam: todos "Chapter N: título"; a abertura segue "Library of Congress…" | 15.477 → 14.870 segmentos, 1.268.221 → 1.235.019 palavras; 116 capítulos |
-| *Practical* | nada muda (o sumário e os colaboradores já saíam pela vírgula e pelos 5 nomes) | ver o relatório da sessão | nada muda: o capítulo abre no número ("1", "2") | idêntico pelas regras de página |
+| *Practical* | nada muda (o sumário e os colaboradores já saíam pela vírgula e pelos 5 nomes) | 17 trechos em 16 segmentos: o espaço antes de ")", "”" e "’" ("instead of )", "Onuf ’s"), o depois de "”" antes da chamada ("invested.” 17") e dois títulos partidos ("ACUTE PA IN", "PAT IENTS") | nada muda: o capítulo abre no número ("1", "2") | 14.004 segmentos; 820.778 → 820.761 palavras |
 | *Hard Parts* | nada muda | 2 linhas: "what if ”" → "what if”" (p. 421 e 425) | os 15 "CHAPTER N" viram "Chapter 1: What Happens When There Are No “Best Practices”?"… | 2 segmentos mudam só por esse espaço |
 | *Dalgalarrondo* | nada muda | 3 linhas: "(continuação )", "Psiquiatria ." e a linha pontilhada do sumário, sem o espaço antes da pontuação | nada muda: sem rótulo | 1 segmento muda ("História psiquiátrica (continuação)") |
 

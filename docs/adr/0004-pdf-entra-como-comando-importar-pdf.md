@@ -936,6 +936,13 @@ na asserção antes:
 - **R5 e R6:** a chamada com espaço dentro ("1,8, 9") e com a vírgula sobrescrita no fim sai
   inteira.
 - **R9:** o adaptador acha a letra seguinte de cada espaço numa passada só.
+- **O nome com vários pares apertados** (2026-11-11, depois da medição do livro inteiro): em 10
+  créditos de autor do Practical ("PREETMA KAU R KO ONER, GREGO RY W. TERMAN", p. 39), o espaço
+  falso saía certo, mas a regra antiga da letra espaçada rodava depois e repartia o nome, porque
+  os pares apertados (0,45 a 0,8 pt) formavam "palavras" de 2 e 3 letras. Agora, se algum espaço
+  inventado saiu, os espaços de verdade já separam as palavras, e a regra antiga não roda
+  (`caracteres.lido`). No Dalgalarrondo e no Hard Parts, nenhuma linha tem espaço inventado tirado;
+  na amostra do Practical, 6 linhas têm, e só a da p. 39 muda.
 - **O hífen:** com o índice tirado antes dos blocos, o Hard Parts perdia a prova de "east-west"
   e lia "eastwest". O dicionário do hífen vem agora das páginas de antes da lista e da tabela.
 - **Ficam, declarados:** R4, o expoente depois de parêntese ("(m)²") sai como chamada; R7, a

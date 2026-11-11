@@ -22,6 +22,9 @@ from dataclasses import dataclass
 from itertools import pairwise
 from statistics import median
 
+from earbook.dominio.pagina import Letra, juntar_letras_espacadas
+from earbook.dominio.segmento import normalizar_espacos
+
 RAZAO_DO_SOBRESCRITO = 0.85
 """A letra da chamada é menor que 0,85 da letra da linha (medido: 0,58 no Practical, 0,59 na
 tabela)."""
@@ -62,6 +65,8 @@ class TextoDaLinha:
     """Cada chamada tirada, entre colchetes, depois da palavra que ela segue: "wages.[1]"."""
     caracteres: tuple[Caractere, ...]
     """Os que ficaram, na ordem: a letra espaçada se mede neles."""
+    espacos_tirados: int = 0
+    """Quantos espaços inventados saíram: a linha com letra espaçada e espaço de verdade."""
 
 
 def texto_da_linha(caracteres: Sequence[Caractere], tamanho: float) -> TextoDaLinha:
@@ -71,9 +76,10 @@ def texto_da_linha(caracteres: Sequence[Caractere], tamanho: float) -> TextoDaLi
     for inicio, fim in _chamadas(caracteres, tamanho):
         fora.update(range(inicio, fim))
         chamadas.append(_registro(caracteres, inicio, fim))
-    fora.update(_espacos_inventados(caracteres, tamanho))
+    inventados = _espacos_inventados(caracteres, tamanho)
+    fora.update(inventados)
     ficam = tuple(c for i, c in enumerate(caracteres) if i not in fora)
-    return TextoDaLinha("".join(c.texto for c in ficam), tuple(chamadas), ficam)
+    return TextoDaLinha("".join(c.texto for c in ficam), tuple(chamadas), ficam, len(inventados))
 
 
 def _chamadas(caracteres: Sequence[Caractere], tamanho: float) -> list[tuple[int, int]]:
@@ -162,3 +168,20 @@ def _espacos_inventados(caracteres: Sequence[Caractere], tamanho: float) -> list
 
 def _letra(caractere: Caractere) -> bool:
     return not caractere.virtual and caractere.texto.strip() != ""
+
+
+def texto_lido(caracteres: Sequence[Caractere], tamanho: float) -> str:
+    """O texto da linha comum (não monoespaçada) como a voz o lê; ver `lido`."""
+    return lido(texto_da_linha(caracteres, tamanho), tamanho)
+
+
+def lido(linha: TextoDaLinha, tamanho: float) -> str:
+    """O texto sem chamada e sem espaço inventado e, se nenhum espaço inventado saiu, com a letra
+    espaçada juntada ("P A R T E   I", `pagina.juntar_letras_espacadas`). Se saiu, os espaços de
+    verdade já separam as palavras: a regra antiga partia o nome com pares apertados ("KAU R KO
+    ONER", Practical p. 39)."""
+    texto = normalizar_espacos(linha.texto)
+    if linha.espacos_tirados:
+        return texto
+    letras = [Letra(c.texto, c.x0, c.x1) for c in linha.caracteres if _letra(c)]
+    return juntar_letras_espacadas(letras, tamanho) or texto

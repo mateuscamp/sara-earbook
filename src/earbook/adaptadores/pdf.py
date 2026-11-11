@@ -20,8 +20,8 @@ from pdfminer.pdfparser import PDFParser
 from pdfminer.pdftypes import PDFObjRef
 from pdfminer.utils import decode_text
 
-from earbook.dominio.caracteres import Caractere, texto_da_linha
-from earbook.dominio.pagina import Letra, Linha, Pagina, em_versalete, juntar_letras_espacadas
+from earbook.dominio.caracteres import Caractere, lido, texto_da_linha
+from earbook.dominio.pagina import Linha, Pagina, em_versalete
 from earbook.dominio.segmento import normalizar_espacos
 
 # Medido no spike: o código do "Hard Parts" vem em UbuntuMono.
@@ -162,14 +162,11 @@ def _linha(linha: LTTextLine, altura: float) -> Linha | None:
     # A chamada sobrescrita e o espaço inventado saem aqui, onde o caractere ainda tem tamanho e
     # posição (ADR-0004, "Número de referência e espaço falso").
     lida = texto_da_linha(_caracteres(linha), tamanho)
-    texto = normalizar_espacos(lida.texto)
     # Toda letra, não alguma: no Hard Parts, as 584 linhas de código são 100% monoespaçadas
     # e as 183 de prosa com um nome de código no meio ("ss.survey") ficam entre 0 e 90%.
     monoespacada = all(_fonte_casa(_FONTE_MONOESPACADA, c.fontname) for c in caracteres)
     visiveis = [c for c in caracteres if c.get_text().strip()]
-    if not monoespacada:
-        letras = [Letra(c.texto, c.x0, c.x1) for c in lida.caracteres if _visivel(c)]
-        texto = juntar_letras_espacadas(letras, tamanho) or texto
+    texto = normalizar_espacos(lida.texto) if monoespacada else lido(lida, tamanho)
     # Toda letra visível, como na monoespaçada: a ênfase no meio da prosa (619 linhas no
     # Competente) não faz a linha negrito.
     negrito = all(_fonte_casa(_FONTE_NEGRITO, c.fontname) for c in visiveis)
@@ -211,10 +208,6 @@ def _caracteres(linha: LTTextLine) -> list[Caractere]:
         else:
             fim_da_anterior = caractere.x1
     return caracteres
-
-
-def _visivel(caractere: Caractere) -> bool:
-    return not caractere.virtual and caractere.texto.strip() != ""
 
 
 def _familia(visiveis: list[LTChar]) -> str:

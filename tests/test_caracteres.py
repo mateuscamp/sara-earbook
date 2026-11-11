@@ -10,7 +10,7 @@ do autor vem em Gotham-Bold com 1 pt a mais entre as letras, e o pdfminer punha 
 
 from __future__ import annotations
 
-from earbook.dominio.caracteres import Caractere, texto_da_linha
+from earbook.dominio.caracteres import Caractere, texto_da_linha, texto_lido
 
 CORPO = 10.0
 BASE = 300.0
@@ -115,3 +115,24 @@ def test_chamada_com_espaco_dentro_sai_inteira() -> None:
 def test_chamada_com_virgula_sobrescrita_no_fim_sai() -> None:
     # R6 da code-review.
     assert _texto("pain^2,^ and") == "pain and"
+
+
+def test_nome_com_kerning_em_varios_pares_sai_inteiro() -> None:
+    # Practical p. 39, com os vãos medidos: 1 pt entre as letras, 5 pt no espaço, e os pares
+    # apertados (0,8, 0,75, 0,45 e 0 no "W."). Os pares formavam "palavras" de 2 e 3 letras, e a
+    # regra antiga da letra espaçada partia o nome que o espaço falso já tinha consertado ("KAU R
+    # KO ONER").
+    vaos = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 5.0, 0.8, 0.75, 1.0, 5.0, 0.45, 1.0, 1.0, 1.0, 1.0]
+    vaos += [1.0, 5.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.75, 5.0, 0.0, 5.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+    letras = "PREETMAKAURKOONER,GREGORYW.TERMAN"
+    caracteres: list[Caractere] = []
+    x = 0.0
+    for letra, vao in zip(letras, [*vaos, 0.0], strict=True):
+        caracteres.append(Caractere(letra, x, x + LARGURA, CORPO, BASE))
+        x += LARGURA
+        if vao == 5.0:
+            caracteres.append(Caractere(" ", x + 1.0, x + 4.0, CORPO, BASE))
+        elif vao == 1.0 and letra in "RIAOE":
+            caracteres.append(Caractere(" ", x, x + vao, 0.0, 0.0, virtual=True))
+        x += vao
+    assert texto_lido(caracteres, CORPO) == "PREETMA KAUR KOONER, GREGORY W. TERMAN"

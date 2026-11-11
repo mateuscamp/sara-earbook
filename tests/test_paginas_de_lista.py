@@ -16,6 +16,7 @@ from earbook.comandos.importar_pdf import importar_pdf
 from earbook.dominio.pagina import Linha, Pagina
 from earbook.dominio.paginas_de_lista import (
     MOTIVO_DAS_REMISSOES,
+    MOTIVO_DO_SUMARIO,
     MOTIVO_DOS_COLABORADORES,
     tirar_paginas_de_lista,
 )
@@ -214,3 +215,135 @@ def test_o_indice_que_sai_ainda_prova_o_hifen_do_livro(tmp_path: Path) -> None:
     textos = " ".join(bloco.texto for bloco in importacao.livro.blocos)
     assert "east-west communication of the system." in textos
     assert "termo 1, 11" not in textos
+
+
+# Bonica p. 67 a 194: o sumário da frente não traz número de página; cada capítulo é o rótulo, o
+# título, os autores em maiúsculas e as seções, uma por linha, sem frase nenhuma.
+SUMARIO_SEM_NUMERO = [
+    "Contents",
+    "PART ONE",
+    "Basic Considerations",
+    "CHAPTER 1",
+    "Intellectual Milestones in Our Understanding and Treatment of Pain",
+    "G.F. GEBHART",
+    "Pain Understood as Part of a Larger Philosophy or Worldview",
+    "Mechanistic Views of Pain",
+    "19TH CENTURY\u2014PAIN AS A SPECIFIC SENSE",
+    "CHAPTER 2",
+    "Definition of Commonly Used Pain Terms",
+    "DENNIS C. TURK AND AKIKO OKIFUJI",
+    "Is Chronic Pain a Disease?",
+]
+SECOES_DO_SUMARIO = [
+    "CLASSIFICATION BASED ON BODY SYSTEM",
+    "CLASSIFICATION BASED ON SEVERITY",
+    "Multiaxial Classifications",
+    "Empirically Based Classification of the Psychological Components of Pain",
+]
+# Bonica p. 5899 a 6053: o sumário do fim, com o número de página sem vírgula, solto ou no fim.
+SUMARIO_DO_FIM = [
+    "CHAPTER 6: Supraspinal Mechanisms of Pain and",
+    "Nociception",
+    "377",
+    "Functional Imaging of Pain in Humans",
+    "Tumor Infiltration of Abdominal Hollow Organs 2058",
+    "CHAPTER 7: Psychological Aspects of Pain",
+    "449",
+]
+
+
+def test_sumario_sem_numero_de_pagina_sai_inteiro_e_registrado() -> None:
+    paginas = [
+        _corpo(1),
+        _pagina(2, SUMARIO_SEM_NUMERO),
+        _pagina(3, SECOES_DO_SUMARIO),
+        _pagina(4, ["CHAPTER 3", "Nociceptors", *SECOES_DO_SUMARIO]),
+        _corpo(5),
+    ]
+    limpas = tirar_paginas_de_lista(paginas)
+    assert _textos(limpas.paginas) == _textos((_corpo(1), _corpo(5)))
+    assert {(r.pagina, r.motivo) for r in limpas.remocoes} == {
+        (2, MOTIVO_DO_SUMARIO),
+        (3, MOTIVO_DO_SUMARIO),
+        (4, MOTIVO_DO_SUMARIO),
+    }
+
+
+def test_sumario_do_fim_com_numero_sem_virgula_sai() -> None:
+    paginas = [_corpo(1), _pagina(2, SUMARIO_DO_FIM), _pagina(3, SUMARIO_DO_FIM)]
+    limpas = tirar_paginas_de_lista(paginas)
+    assert _textos(limpas.paginas) == _textos((_corpo(1),))
+
+
+def test_abertura_de_capitulo_sem_frase_fica() -> None:
+    # A página que abre o capítulo com o rótulo, o título, os autores e uma figura não tem frase,
+    # mas é uma só, com um rótulo: não é sumário.
+    abertura = ["CHAPTER 3", "Nociceptors", "MICHAEL S. GOLD", "FIGURE 3.1 Nociceptor"]
+    paginas = [_corpo(1), _pagina(2, abertura), _corpo(3), _pagina(4, abertura), _corpo(5)]
+    assert tirar_paginas_de_lista(paginas).remocoes == ()
+
+
+def test_pagina_com_frase_depois_do_sumario_fica() -> None:
+    # Bonica p. 195: o capítulo 1 abre logo depois do sumário, com o rótulo e a prosa.
+    primeira = ["CHAPTER 1", "Intellectual Milestones", "G.F. GEBHART"]
+    primeira += [f"Texto corrido da linha {k} do capítulo, sem nada." for k in range(3)]
+    paginas = [_pagina(1, SUMARIO_SEM_NUMERO), _pagina(2, SUMARIO_SEM_NUMERO), _pagina(3, primeira)]
+    limpas = tirar_paginas_de_lista(paginas)
+    assert _textos(limpas.paginas) == primeira
+
+
+def test_colaboradores_da_pagina_vizinha_saem_com_a_lista() -> None:
+    # Bonica p. 9 a 54: as páginas com 3 ou 4 colaboradores, entre as de 5 ou mais, ficavam.
+    poucos = COLABORADORES[:12]
+    paginas = [_corpo(1), _pagina(2, poucos), _pagina(3, COLABORADORES), _pagina(4, poucos)]
+    paginas.append(_corpo(5))
+    limpas = tirar_paginas_de_lista(paginas)
+    assert _textos(limpas.paginas) == _textos((_corpo(1), _corpo(5)))
+    assert {r.motivo for r in limpas.remocoes} == {MOTIVO_DOS_COLABORADORES}
+
+
+def test_fim_da_lista_de_colaboradores_sem_nome_sai() -> None:
+    # Bonica p. 54: só as últimas linhas da afiliação de quem começou na página anterior.
+    fim = ["David Geffen School of Medicine at UCLA", "Pediatrics", "Los Angeles, California"]
+    paginas = [_pagina(1, COLABORADORES), _pagina(2, fim), _corpo(3)]
+    assert _textos(tirar_paginas_de_lista(paginas).paginas) == _textos((_corpo(3),))
+
+
+def test_dedicatoria_antes_dos_colaboradores_fica() -> None:
+    # Bonica p. 7 e 8: a dedicatória e a legenda da foto, sem frase e sem nome com título.
+    dedicatoria = ["TO THE LASTING MEMORY OF JOHN", "BONICA AND HIS ENDURING QUEST"]
+    paginas = [_pagina(1, dedicatoria), _pagina(2, COLABORADORES)]
+    assert _textos(tirar_paginas_de_lista(paginas).paginas) == dedicatoria
+
+
+def test_prefacio_depois_dos_colaboradores_fica() -> None:
+    prefacio = [f"Texto corrido da linha {k} do prefácio, sem nada." for k in range(30)]
+    prefacio += ["Honorio T. Benzon, MD", "Professor", "James P. Rathmell, MD", "Boston"]
+    paginas = [_pagina(1, COLABORADORES), _pagina(2, prefacio)]
+    assert _textos(tirar_paginas_de_lista(paginas).paginas) == prefacio
+
+
+def test_prosa_com_chamada_colada_ao_ponto_nao_vira_sumario() -> None:
+    # A chamada no tamanho do corpo, que o adaptador não tira ("pain.12 The"), não apaga a frase:
+    # sem isso, as páginas de prosa de três aberturas seguidas sairiam como sumário.
+    prosa = [f"Linha {k} do texto, que acaba em chamada pain.{k} The" for k in range(30)]
+    paginas = [_pagina(n, [f"CHAPTER {n}", "Title", *prosa]) for n in (1, 2, 3)]
+    assert tirar_paginas_de_lista(paginas).remocoes == ()
+
+
+def test_pagina_sem_frase_e_sem_rotulo_na_borda_do_sumario_fica() -> None:
+    # A dedicatória antes do sumário e a página da parte depois dele não têm frase, mas não são
+    # sumário: a sequência vai do primeiro rótulo ao último.
+    dedicatoria = ["TO THE LASTING MEMORY OF JOHN BONICA"]
+    parte = ["PART ONE", "Basic Considerations"]
+    paginas = [_pagina(1, dedicatoria), _pagina(2, SUMARIO_SEM_NUMERO)]
+    paginas += [_pagina(3, SUMARIO_SEM_NUMERO), _pagina(4, parte), _corpo(5)]
+    limpas = tirar_paginas_de_lista(paginas)
+    assert {r.pagina for r in limpas.remocoes} == {2, 3}
+
+
+def test_pagina_de_titulo_depois_dos_colaboradores_fica() -> None:
+    # O fim da lista é só afiliação, na letra da lista; o título maior não é fim de lista.
+    titulo = Linha("Contents", x=42.0, fim=296.0, topo=0.05, tamanho=18.0)
+    paginas = [_pagina(1, COLABORADORES), Pagina(2, (titulo,)), _corpo(3)]
+    assert {r.pagina for r in tirar_paginas_de_lista(paginas).remocoes} == {1}

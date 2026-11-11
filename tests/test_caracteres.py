@@ -149,3 +149,57 @@ def test_nome_com_kerning_em_varios_pares_sai_inteiro() -> None:
             caracteres.append(Caractere(" ", x, x + vao, 0.0, 0.0, virtual=True))
         x += vao
     assert texto_lido(caracteres, CORPO) == "PREETMA KAUR KOONER, GREGORY W. TERMAN"
+
+
+def _medida(pecas: list[tuple[str, float, float]]) -> list[Caractere]:
+    """A linha com as posições medidas no PDF; "_" é o espaço que o pdfminer inventa, e " ", o
+    espaço de verdade, que é caractere do PDF."""
+    return [
+        Caractere(" ", x0, x1, 0.0, 0.0, virtual=True)
+        if texto == "_"
+        else Caractere(texto, x0, x1, 15.0, BASE)
+        for texto, x0, x1 in pecas
+    ]
+
+
+def test_par_apertado_na_letra_espacada_com_espaco_de_verdade_sai_junto() -> None:
+    # Bonica p. 67, medido: o "PA" vem a 1,1 pt, as outras letras a 1,7 a 2,2 pt, e entre as
+    # palavras há um espaço de verdade (8 pt de vão). A regra da letra espaçada tomava o "PA" por
+    # palavra e lia "PA R T O N E" (ADR-0004, "Espaço menor que o espaço de verdade").
+    pecas = [("P", 72.0, 81.16), ("A", 82.28, 93.11), ("_", 93.11, 95.36)]
+    pecas += [("R", 95.36, 106.18), ("_", 106.18, 107.9), ("T", 107.9, 117.9)]
+    pecas += [("_", 117.9, 119.87), (" ", 119.87, 123.62), ("_", 123.62, 125.87)]
+    pecas += [("O", 125.87, 137.53), ("_", 137.53, 139.77), ("N", 139.77, 150.6)]
+    pecas += [("_", 150.6, 152.84), ("E", 152.84, 162.84)]
+    assert texto_lido(_medida(pecas), 15.0) == "PART ONE"
+
+
+def test_numero_do_capitulo_partido_pelo_kerning_sai_inteiro() -> None:
+    # Bonica p. 5315: "C H A P T E R   11 0", com o "11" a 1 pt e o "0" a 2,1 pt.
+    pecas = [("C", 72.75, 86.75), ("_", 86.75, 88.87), ("H", 88.87, 104.02)]
+    pecas += [("_", 104.02, 106.14), ("A", 106.14, 121.3), ("_", 121.3, 123.42)]
+    pecas += [("P", 123.42, 135.09), ("_", 135.09, 137.21), ("T", 137.21, 150.03)]
+    pecas += [("_", 150.03, 152.14), ("E", 152.14, 164.96), ("_", 164.96, 167.07)]
+    pecas += [("R", 167.07, 181.07), ("_", 181.07, 183.19), (" ", 183.19, 188.44)]
+    pecas += [("_", 188.44, 190.56), ("1", 190.56, 201.05), ("1", 202.03, 212.52)]
+    pecas += [("_", 212.52, 214.64), ("0", 214.64, 225.13)]
+    assert texto_lido(_medida(pecas), 21.0) == "CHAPTER 110"
+
+
+def test_espaco_inventado_do_tamanho_do_espaco_de_verdade_fica() -> None:
+    # A palavra separada só pela posição, na linha que também tem espaço de verdade: o vão é o da
+    # palavra, e o espaço fica.
+    pecas = [("o", 0.0, 5.0), ("f", 5.0, 10.0), (" ", 10.0, 13.0), ("p", 13.0, 18.0)]
+    pecas += [("a", 18.0, 23.0), ("i", 23.0, 28.0), ("n", 28.0, 33.0), ("_", 33.0, 35.5)]
+    pecas += [("a", 35.5, 40.5), ("n", 40.5, 45.5), ("d", 45.5, 50.5)]
+    assert texto_lido(_medida(pecas), 10.0) == "of pain and"
+
+
+def test_letra_espacada_irregular_com_espaco_de_verdade_ainda_se_junta() -> None:
+    # Um vão entre as letras passa da metade do espaço de verdade: a régua do espaço não serve à
+    # linha, e a regra da letra espaçada a lê ("PARTE I", e não "PAR TE I").
+    pecas = [("P", 0.0, 10.0), ("_", 10.0, 13.0), ("A", 13.0, 23.0), ("_", 23.0, 26.0)]
+    pecas += [("R", 26.0, 36.0), ("_", 36.0, 40.5), ("T", 40.5, 50.5), ("_", 50.5, 53.5)]
+    pecas += [("E", 53.5, 63.5), ("_", 63.5, 65.5), (" ", 65.5, 69.5), ("_", 69.5, 71.5)]
+    pecas += [("I", 71.5, 76.0)]
+    assert texto_lido(_medida(pecas), 15.0) == "PARTE I"

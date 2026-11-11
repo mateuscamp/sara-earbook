@@ -34,6 +34,9 @@ _PRIMEIRA_LETRA = re.compile(r"[^\W\d_]")
 # comparam a letra da linha com a do corpo (ADR-0004). Moram aqui para o `quadro` não importar o
 # `blocos`, que o importa.
 RAZAO_DO_TITULO = 1.2
+PALAVRAS_DO_ROTULO = "CHAPTER|Chapter|CAPÍTULO|Capítulo"
+"""A palavra do rótulo de capítulo ("CHAPTER 24"), que abre o capítulo (`capitulos`) e conta no
+sumário sem número de página (`paginas_de_lista`), ADR-0004."""
 DIFERENCA_DE_TAMANHO = 0.5
 
 

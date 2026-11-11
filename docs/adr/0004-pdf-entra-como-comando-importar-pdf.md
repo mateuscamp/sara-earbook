@@ -1088,10 +1088,92 @@ pasta do HEAD em `livros/trabalho/`). Em todos, a sequência de segmentos de `se
 - o rótulo que o kerning parte ("CHAPTER 11 0", do capítulo 110 ao 115 do *Bonica*) abre
   capítulo, mas é lido "eleven zero";
 - o sumário do fim do *Bonica* (p. 5899 a 6053, em 18 pt, que a regra das páginas de lista não
-  tira) fica no último capítulo e é lido.
+  tira) fica no último capítulo e é lido (os dois resolvidos na seção "Sumário sem número…", a
+  seguir).
 
 Sem precedente, decidido nesta sessão e levado à sessão principal: a parte vai com o primeiro
 capítulo dela, e não num capítulo próprio.
+
+### Sumário sem número, colaboradores vizinhos, espaço de verdade e rótulo no sumário (2026-11-11)
+
+O inventário do *Bonica* montado (commit `264949a`) achou o que ainda se lia e não devia. O
+Mateus decidiu corrigir antes da escuta e juntar o rótulo ao título no sumário do EPUB. Medido
+no HEAD `264949a`.
+
+**1. Sumário sem número de página** (`dominio/paginas_de_lista.py`, motivo próprio).
+- **O defeito:** o sumário da frente (p. 67 a 194, c001-s0226 em diante, 13.936 palavras) não
+  traz número de página: cada capítulo é o rótulo, o título, os autores em maiúsculas e as
+  seções, uma por linha. O do fim (p. 5899 a 6053, c116-s0016 a s0171, 17.047 palavras) traz o
+  número sem vírgula ("Breast Cancer 2069", ou "377" numa linha só). A regra das remissões exige
+  ", 23" no fim da linha, e nenhuma das duas casa.
+- **O sinal:** a página sem frase. Nas 283 páginas dos dois sumários não há palavra de 3
+  minúsculas ou mais seguida de ponto (o título com "?" não conta); a prosa tem dezenas. E o
+  rótulo: 1 ou 2 "CHAPTER N" por página, contra um por capítulo no corpo.
+- **A regra:** sai a sequência de páginas seguidas sem frase com 3 rótulos ou mais no começo da
+  linha ("CHAPTER 4", "CHAPTER 6: Supraspinal…", também depois do nome da subparte em
+  maiúsculas), do primeiro rótulo ao último. A abertura de capítulo sem frase é uma página, com
+  um rótulo, e fica. A frase seguida da chamada que o adaptador não tirou ("pain.12 The",
+  "pain.[3]") conta como frase. A dedicatória antes e a página da parte depois, sem frase e sem
+  rótulo, ficam (correções da code-review).
+
+**2. Colaboradores na página vizinha** (`dominio/paginas_de_lista.py`).
+- **O defeito:** a lista do *Bonica* (p. 9 a 54) tem de 3 a 7 colaboradores por página; as 21
+  páginas com 3 ou 4 não chegavam ao mínimo de 5, e a p. 54 é só o fim da afiliação de quem
+  começou na p. 53 (2.188 palavras no c001).
+- **A regra:** sai também a página vizinha de uma página de colaboradores, sem frase, com 2 nomes
+  com afiliação ou mais, em corrente para os dois lados; e a página logo depois da lista, sem
+  frase e só nas letras da lista, mesmo sem nome. Antes da lista, a página sem nome fica (a
+  dedicatória e a foto do *Bonica*, p. 7 e 8); a página de título maior depois dela também.
+
+**3. Espaço menor que o espaço de verdade** (`dominio/caracteres.py`).
+- **O defeito:** "PA R T O N E" (os 6 nomes de parte do sumário) e "CHAPTER 11 0" a "11 5" (5
+  títulos de capítulo). A letra espaçada vem com 1,7 a 2,3 pt entre as letras de 15 a 21 pt, e o
+  pdfminer põe espaço em cada vão; o par apertado pelo kerning ("PA", 1,1 pt; "11", 1 pt) não
+  ganha espaço e vira "palavra", e as duas réguas antigas falham: a do espaço falso não tem 3
+  vãos entre letras coladas para medir, e a da letra espaçada toma o "PA" por palavra comum.
+- **O sinal:** a linha tem espaço de verdade, caractere do PDF, com 8 pt da letra antes à letra
+  depois; os espaços que o pdfminer inventa têm menos da metade disso.
+- **A regra:** sai o espaço inventado com menos da metade do menor vão de espaço de verdade da
+  linha, se todos os inventados da linha cabem nessa régua. Com um vão maior, a linha é
+  irregular, e a regra da letra espaçada a lê como antes ("PARTE I", e não "PAR TE I"); a
+  palavra separada só pela posição, com o vão do espaço de verdade, fica.
+
+**4. Rótulo no sumário** (`dominio/capitulos.nome_do_capitulo`, usado pelo `adaptadores/epub_simples`).
+- **O defeito:** o sumário do EPUB dava a cada capítulo o primeiro título: "Basic
+  Considerations" (o nome da parte) no capítulo 1 do *Bonica*, e "CHAPTER 2" sozinho no *Hard
+  Parts*.
+- **A regra:** se um dos títulos da abertura do capítulo (antes do primeiro texto) traz o
+  rótulo, o capítulo leva no sumário o rótulo em caixa normal e o título: o resto do mesmo
+  bloco ou, no rótulo sozinho, o título seguinte, sem a pontuação de ligação ("Chapter 1:
+  Intellectual Milestones…", "Capítulo 3: A consciência"). O nome da parte e o da subparte,
+  antes do rótulo, ficam de fora. Sem rótulo, segue o primeiro título.
+
+**Medido** (`livros/trabalho/medicao-sumario/`, apagada depois do relatório; as páginas lidas
+uma vez, e as regras rodadas sobre elas com o código antes e depois):
+
+| Livro | Páginas de lista | Espaço de verdade | Sumário do EPUB | `limpos/` |
+|---|---|---|---|---|
+| *Bonica* | sumário sem número: 12.678 linhas e 30.981 palavras saem (p. 67 a 194 e 5899 a 6053); colaboradores: 807 → 1.398 linhas, 2.824 → 5.012 palavras (as 21 páginas de 3 ou 4 nomes e a p. 54) | 11 segmentos mudam: os 6 "PART ONE"… do sumário e "CHAPTER 110", 112 a 115 (o 111 já saía inteiro) | 115 de 116 capítulos mudam: todos "Chapter N: título"; a abertura segue "Library of Congress…" | 15.477 → 14.870 segmentos, 1.268.221 → 1.235.019 palavras; 116 capítulos |
+| *Practical* | nada muda (o sumário e os colaboradores já saíam pela vírgula e pelos 5 nomes) | ver o relatório da sessão | nada muda: o capítulo abre no número ("1", "2") | idêntico pelas regras de página |
+| *Hard Parts* | nada muda | 2 linhas: "what if ”" → "what if”" (p. 421 e 425) | os 15 "CHAPTER N" viram "Chapter 1: What Happens When There Are No “Best Practices”?"… | 2 segmentos mudam só por esse espaço |
+| *Dalgalarrondo* | nada muda | 3 linhas: "(continuação )", "Psiquiatria ." e a linha pontilhada do sumário, sem o espaço antes da pontuação | nada muda: sem rótulo | 1 segmento muda ("História psiquiátrica (continuação)") |
+
+Das 13.269 linhas novas fora do *Bonica*, nenhuma é prosa: todas estão nas páginas dos dois
+sumários e da lista; as 13 com fim de frase são títulos com "?" ("What Is Transdermal Pain?"), e
+as mais longas, títulos, autores e afiliações ("Pain Caused by Cancer of the Head and Neck and
+Oral and Oropharynx", "KELLY A. BRUNO, HOWARD S. SMITH, IRFAN LALANI, AND CHARLES E. ARGOFF").
+
+**O que fica:**
+- o "PART ONE", "PART TWO" e "PART SIX" do corpo no fim do capítulo anterior, antes do nome da
+  parte, que abre o capítulo seguinte (como no HEAD);
+- o sumário sem número sem rótulo "CHAPTER N" (rótulo por extenso, romano ou só o número), e o
+  de uma ou duas páginas, com menos de 3 rótulos;
+- o nome no sumário do EPUB não olha se o livro repete o rótulo: num livro em que o capítulo
+  abre pelo tamanho e traz "Capítulo 1" na abertura, o sumário passa a "Capítulo 1: título" (o
+  *Competente*, que não está neste Mac, não foi medido).
+
+Decidido pelo Mateus (o que sai e o formato do nome, 2026-11-11, pela sessão principal); os
+sinais e os limiares são desta sessão e foram à revisão.
 
 ## Consequências
 
@@ -1116,6 +1198,7 @@ capítulo dela, e não num capítulo próprio.
 | Negrito feito à mão | testes (`tests/test_texto_repetido.py`): a cópia do mesmo tamanho sai e fica a primeira; a cópia do texto escondido tem um registro só; o resumo do comando diz o texto repetido; as 9 linhas da p. 2 do Dalgalarrondo viram "Conheça também"; a cópia de uma letra, a deslocada mais de 10%, a de outro tamanho, a de outra altura e o texto diferente ficam; do PDF montado em código, o `importar-pdf` lê a palavra uma vez | portão | a cópia volta a ser lida, ou sai uma linha que não repete outra |
 | Tratado médico | testes (`tests/test_caracteres.py`, `tests/test_caracteres_no_pdf.py`): a chamada sobrescrita depois de ponto, colada à palavra, em lista, em faixa, com espaço dentro e com vírgula no fim sai e fica registrada; o expoente depois de algarismo, a carga do íon, a unidade ao quadrado, a letra solta, o subscrito, a letra sobrescrita e o sobrescrito no começo da linha ou depois de espaço ficam; o espaço inventado no vão da letra espaçada sai, e o do vão maior e o do texto comum ficam; do PDF montado em código, com `Ts`, `Tc` e o par apertado, a linha sai certa e traz a família da letra. (`tests/test_tabelas_e_figuras.py`): a tabela sai do rótulo à letra do corpo, também a que abre em título e a que continua na página seguinte na letra das células; a figura sai com o diagrama e a legenda; o título de seção fecha a tabela; a caixa sem rótulo, a menção na letra do corpo, a menção quebrada na linha, o rótulo em português, o crédito do autor na página seguinte, a caixa antes do diagrama e o livro sem família de letra ficam. (`tests/test_paginas_de_lista.py`): o índice, o sumário (também a página curta) e os colaboradores saem inteiros; a página de texto com poucas remissões ou com tabela de doses, a lista de anos, a vírgula decimal, as assinaturas do prefácio e os autores em maiúsculas ficam; o índice que sai ainda prova o hífen do livro | portão | volta a chamada colada, o espaço no nome, a tabela, a figura ou a lista, ou sai texto do corpo |
 | Rótulo de capítulo | testes (`tests/test_blocos_capitulos.py`): o rótulo no tamanho da seção abre capítulo, também depois do nome da subparte em maiúsculas, e a parte fica com o primeiro capítulo dela; o rótulo menor que o título vai com o capítulo que abre; o título que só cita um capítulo e a linha do sumário com dois-pontos não abrem; o número grande seguido de "Capítulo 1" continua um capítulo só | portão | o *Bonica* volta a sair por parte, o rótulo fica no capítulo anterior, ou o sumário abre capítulo |
+| Sumário sem número, colaboradores vizinhos, espaço de verdade e rótulo no sumário | testes (`tests/test_paginas_de_lista.py`): o sumário sem número e o do número sem vírgula saem, do primeiro rótulo ao último; a abertura sem frase, a página com frase depois do sumário, a prosa com chamada colada, a dedicatória e a página da parte ficam; os colaboradores da vizinha e o fim da lista saem, e a dedicatória, o prefácio e o título maior depois da lista ficam. (`tests/test_caracteres.py`, `tests/test_caracteres_no_pdf.py`): "PA R T O N E" e "CHAPTER 11 0" saem inteiros, também do PDF montado em código; o espaço do tamanho do de verdade fica; a linha irregular continua lida pela regra da letra espaçada. (`tests/test_epub_simples.py`): o rótulo e o título no sumário do EPUB; o rótulo depois do texto, o citado e o do sumário com dois-pontos não dão nome | portão | o sumário ou a lista voltam a ser lidos, sai uma página com frase, a letra espaçada volta partida, ou o sumário do EPUB volta ao nome da parte |
 | A escuta ★ | rodar `importar-pdf` + `preparar` num PDF real em `livros/` e contar o que o `limpar` ainda precisa tirar | a cada mudança no conversor | a contagem sobe |
 
 Regra derivada no `AGENTS.md`: a biblioteca de PDF só entra em `adaptadores/`.

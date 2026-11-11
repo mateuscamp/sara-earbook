@@ -9,9 +9,10 @@ from __future__ import annotations
 import re
 from collections.abc import Sequence
 from dataclasses import replace
+from itertools import takewhile
 
 from earbook.dominio.blocos import Bloco
-from earbook.dominio.pagina import DIFERENCA_DE_TAMANHO
+from earbook.dominio.pagina import DIFERENCA_DE_TAMANHO, PALAVRAS_DO_ROTULO
 from earbook.dominio.tipo_da_linha import TipoDeBloco
 
 PAGINAS_DO_CAPITULO = 3
@@ -43,7 +44,9 @@ def dividir_em_capitulos(blocos: Sequence[Bloco]) -> tuple[tuple[Bloco, ...], ..
 # O rótulo no começo do título, ou depois do nome da subparte em maiúsculas ("NEUROPATHIC PAIN
 # CONDITIONS CHAPTER 24 Painful Neuropathies", Bonica p. 1138). O dois-pontos é da linha do
 # sumário ("CHAPTER 6: Supraspinal Mechanisms of Pain and 377"), que não abre capítulo.
-_ROTULO = re.compile(r"\b(?:CHAPTER|Chapter|CAPÍTULO|Capítulo)\s+\d+(?=\s|$)")
+_ROTULO = re.compile(rf"\b(?:{PALAVRAS_DO_ROTULO})\s+\d+(?=\s|$)")
+# A pontuação que liga o rótulo ao título ("CHAPTER 6 — Gate Control") sai do nome.
+_LIGACAO = ":.\u2013\u2014- "
 
 
 def _tem_rotulo(bloco: Bloco) -> bool:
@@ -52,6 +55,28 @@ def _tem_rotulo(bloco: Bloco) -> bool:
         return False
     antes = bloco.texto[: achado.start()]
     return antes == antes.upper()
+
+
+def nome_do_capitulo(blocos: Sequence[Bloco]) -> str | None:
+    """ "Chapter 1: Pain Mechanisms", o nome do capítulo no sumário do EPUB, quando um dos títulos
+    da abertura (antes do primeiro texto) traz o rótulo; None sem ele.
+
+    O rótulo vai em caixa normal, e o título é o resto do mesmo bloco ou, no rótulo sozinho, o
+    título seguinte (ADR-0004, "Rótulo no sumário"). O nome da parte e o da subparte, antes do
+    rótulo, ficam de fora: são o primeiro título do capítulo, e o sumário dizia só eles.
+    """
+    abertura = list(takewhile(lambda b: b.tipo is TipoDeBloco.TITULO, blocos))
+    for posicao, bloco in enumerate(abertura):
+        achado = _ROTULO.search(bloco.texto)
+        if achado is None or not _tem_rotulo(bloco):
+            continue
+        palavra, numero = achado.group().split()
+        rotulo = f"{palavra.capitalize()} {numero}"
+        resto = bloco.texto[achado.end() :].strip(_LIGACAO)
+        seguinte = abertura[posicao + 1].texto if posicao + 1 < len(abertura) else ""
+        titulo = resto or seguinte
+        return f"{rotulo}: {titulo}" if titulo else rotulo
+    return None
 
 
 def _ha_rotulos(blocos: Sequence[Bloco]) -> bool:

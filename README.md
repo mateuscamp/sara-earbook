@@ -31,7 +31,9 @@ A decisão está no [ADR-0001](docs/adr/0001-reescrever-com-claude-code-orquestr
   monta uma letra de cada coluna ("d u r n n n o o , i i t f…")
   ([ADR-0004](docs/adr/0004-pdf-entra-como-comando-importar-pdf.md)).
 - No PDF, a página de lista inteira: o índice remissivo e o sumário (muitas linhas terminam em
-  ", página") e a lista de colaboradores ("Nome, MD" e a afiliação)
+  ", página"), o sumário sem número de página ou com o número sem vírgula (as páginas seguidas
+  sem frase com 3 rótulos "CHAPTER N" ou mais) e a lista de colaboradores ("Nome, MD" e a
+  afiliação, também na página vizinha com 2 nomes ou mais e na última, só de afiliação)
   ([ADR-0004](docs/adr/0004-pdf-entra-como-comando-importar-pdf.md)).
 - O trecho que seria lido duas vezes (`<p>` dentro de `<blockquote>`).
 - A página de direitos autorais.
@@ -221,9 +223,11 @@ autor do metadado do PDF (ou os de `--titulo` e `--autor`). O que ele faz:
   e acima da linha, colados a uma palavra, a uma pontuação ou a um ano ("in 1934²²¹"). O resumo
   conta quantos saíram;
 - não põe espaço no nome com letra espaçada ("NATALIE MORYL", e não "NATALI E MORY L"): o
-  espaço que o pdfminer deduz do vão sai quando o vão é o mesmo que separa as letras;
+  espaço que o pdfminer deduz do vão sai quando o vão é o mesmo que separa as letras, ou menos
+  da metade do espaço de verdade da linha ("PART ONE", e não "PA R T O N E"; "CHAPTER 110", e
+  não "CHAPTER 11 0");
 - tira o texto girado (a tabela deitada, o rótulo de lado), a página de lista (índice
-  remissivo, sumário e colaboradores) e, no livro em inglês, a tabela e a figura, pela letra. O
+  remissivo, sumário, com ou sem número de página, e colaboradores) e, no livro em inglês, a tabela e a figura, pela letra. O
   resumo conta essas linhas à parte, cada uma com o seu motivo;
 - junta as linhas em parágrafos e devolve inteira a palavra partida no fim da linha;
 - lê a página em duas colunas coluna por coluna, pela calha entre elas, quando os dois lados
@@ -238,7 +242,9 @@ autor do metadado do PDF (ou os de `--titulo` e `--autor`). O que ele faz:
   (maiúsculas de dois tamanhos) e o de fonte própria (o nome da fonte termina em "SC", como
   "Archer-Medium-SC700");
 - divide os capítulos pelo tamanho dos títulos e pelo rótulo "CHAPTER 24" ou "Capítulo 3",
-  quando o livro o repete; a parte fica no capítulo que ela abre.
+  quando o livro o repete; a parte fica no capítulo que ela abre. No sumário do EPUB, o capítulo
+  com rótulo leva o rótulo e o título, em caixa normal ("Chapter 1: Pain Mechanisms"), e não o
+  nome da parte nem o rótulo sozinho.
 
 O EPUB serve para ouvir, não para ler na tela. Sai sem imagem e sem estilo, e cada linha de
 tabela que fica (a em português, a da letra do corpo) vira um parágrafo. O bloco de código do

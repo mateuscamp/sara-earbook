@@ -35,6 +35,15 @@ def test_nome_com_letra_espacada_sai_sem_o_espaco_inventado(tmp_path: Path) -> N
     assert _linhas(pdf) == [("NATALIE MORYL, CHARLES INTURRISI", ())]
 
 
+def test_letra_espacada_com_par_apertado_e_espaco_de_verdade_sai_junta(tmp_path: Path) -> None:
+    # Bonica p. 67: 2 pt entre as letras de 15 pt, o par "PA" apertado e um espaço de verdade
+    # entre as palavras. O pdfminer põe espaço entre as letras, e a voz lia "PA R T O N E"
+    # (ADR-0004, "Espaço menor que o espaço de verdade").
+    linha = LinhaDeTeste("P|ART ONE", 72, 700, tamanho=15, espacamento=2.0)
+    pdf = montar_pdf(tmp_path / "livro.pdf", [[linha]])
+    assert _linhas(pdf) == [("PART ONE", ())]
+
+
 def test_a_linha_traz_a_familia_da_letra(tmp_path: Path) -> None:
     linhas = [
         LinhaDeTeste("Texto em Helvetica.", 72, 700),

@@ -165,3 +165,57 @@ def test_sem_autor_o_epub_sai_sem_creator(tmp_path: Path) -> None:
     gravar_epub(epub, "T", "pt-BR", [[_bloco(TipoDeBloco.PARAGRAFO, "Texto.")]])
     with zipfile.ZipFile(epub) as zip_:
         assert b"dc:creator" not in zip_.read("OEBPS/content.opf")
+
+
+def _nav(epub: Path) -> list[str]:
+    with zipfile.ZipFile(epub) as zip_:
+        nav = etree.fromstring(zip_.read("OEBPS/nav.xhtml"), PARSER_SEGURO)
+    return ["".join(a.itertext()) for a in nav.iter("{*}a")]
+
+
+def test_capitulo_com_rotulo_leva_no_sumario_o_rotulo_e_o_titulo(tmp_path: Path) -> None:
+    # Bonica: o capítulo 1 abre com o nome da parte, e o sumário dizia "Basic Considerations";
+    # Hard Parts: o rótulo vem num título só dele, e o sumário dizia "CHAPTER 2" (ADR-0004,
+    # "Rótulo no sumário").
+    titulo, texto = TipoDeBloco.TITULO, TipoDeBloco.PARAGRAFO
+    capitulos = [
+        [
+            _bloco(titulo, "PART ONE Basic Considerations"),
+            _bloco(titulo, "CHAPTER 1 Intellectual Milestones"),
+            _bloco(texto, "Texto."),
+        ],
+        [_bloco(titulo, "CHAPTER 2"), _bloco(titulo, "Pulling Apart"), _bloco(texto, "Texto.")],
+        [
+            _bloco(titulo, "NEUROPATHIC PAIN CONDITIONS CHAPTER 24 Painful Neuropathies"),
+            _bloco(texto, "Texto."),
+        ],
+        [_bloco(titulo, "CAPÍTULO 3 A consciência"), _bloco(texto, "Texto.")],
+        [_bloco(titulo, "CHAPTER 5"), _bloco(texto, "Texto.")],
+        [_bloco(titulo, "CHAPTER 6 \u2014 Gate Control"), _bloco(texto, "Texto.")],
+    ]
+    epub = tmp_path / "livro.epub"
+    gravar_epub(epub, "T", "en", capitulos)
+    assert _nav(epub) == [
+        "Chapter 1: Intellectual Milestones",
+        "Chapter 2: Pulling Apart",
+        "Chapter 24: Painful Neuropathies",
+        "Capítulo 3: A consciência",
+        "Chapter 5",
+        "Chapter 6: Gate Control",
+    ]
+
+
+def test_rotulo_depois_do_texto_ou_so_citado_nao_da_nome_ao_capitulo(tmp_path: Path) -> None:
+    titulo, texto = TipoDeBloco.TITULO, TipoDeBloco.PARAGRAFO
+    capitulos = [
+        [_bloco(titulo, "Preface"), _bloco(texto, "Texto."), _bloco(titulo, "CHAPTER 1 Pain")],
+        [_bloco(titulo, "Denervation (see also Chapter 66 Radiofrequency)")],
+        [_bloco(titulo, "CHAPTER 6: Supraspinal Mechanisms 377")],
+    ]
+    epub = tmp_path / "livro.epub"
+    gravar_epub(epub, "T", "en", capitulos)
+    assert _nav(epub) == [
+        "Preface",
+        "Denervation (see also Chapter 66 Radiofrequency)",
+        "CHAPTER 6: Supraspinal Mechanisms 377",
+    ]

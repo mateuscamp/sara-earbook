@@ -20,6 +20,7 @@ from earbook.adaptadores.pacote_epub import CONTAINER, DC, OPF, gravar_pacote
 from earbook.adaptadores.papel_do_bloco import OPS
 from earbook.adaptadores.xhtml import XHTML
 from earbook.dominio.blocos import Bloco
+from earbook.dominio.capitulos import nome_do_capitulo
 from earbook.dominio.segmento import FORA_DO_XML
 from earbook.dominio.tipo_da_linha import TipoDeBloco
 
@@ -132,9 +133,10 @@ def _sumario(
 
 
 def _rotulo(posicao: int, blocos: Sequence[Bloco]) -> str:
-    """O primeiro título do capítulo; sem título, a posição dele no livro."""
+    """O rótulo com o título ("Chapter 1: Pain Mechanisms", ADR-0004, "Rótulo no sumário"); sem
+    rótulo, o primeiro título do capítulo; sem título, a posição dele no livro."""
     titulos = (b.texto for b in blocos if b.tipo is TipoDeBloco.TITULO)
-    return _limpo(next(titulos, str(posicao)))
+    return _limpo(nome_do_capitulo(blocos) or next(titulos, str(posicao)))
 
 
 def _pacote(metadados: _Metadados, nomes: Sequence[str]) -> str:

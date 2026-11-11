@@ -35,6 +35,10 @@ FOLGA_DO_VAO = 0.03
 0,3 pt no corpo de 10. O vão da palavra, no texto comum, passa de 2 pt."""
 DIFERENCA_DE_TAMANHO = 0.5
 VAOS_MINIMOS = 3
+FRACAO_DO_ESPACO_DE_VERDADE = 0.5
+"""O espaço inventado entre as letras espaçadas tem menos da metade do vão do espaço de verdade
+da mesma linha (medido no Bonica: 1,7 a 2,3 pt contra 8 pt). O vão da palavra separada só pela
+posição é o do espaço de verdade, e fica."""
 # A vírgula do texto composta na letra pequena, no fim, vai junto (R6 da code-review).
 _CHAMADA = re.compile(r"\d+(?:\s*[,\u2010-\u2014-]\s*\d+)*,?")
 _PONTUACAO_ANTES = frozenset(".,;:)]%\u2019\u201d\"'")
@@ -156,20 +160,52 @@ def _registro(caracteres: Sequence[Caractere], inicio: int, fim: int) -> str:
 
 
 def _espacos_inventados(caracteres: Sequence[Caractere], tamanho: float) -> list[int]:
-    """Os espaços do pdfminer cujo vão não passa do vão típico entre as letras da linha."""
+    """Os espaços do pdfminer cujo vão não passa do vão típico entre as letras da linha, ou que
+    é menos da metade do vão do espaço de verdade da linha."""
+    limites = [_limite_das_letras(caracteres, tamanho), _limite_do_espaco(caracteres)]
+    limite = max((limite for limite in limites if limite is not None), default=None)
+    if limite is None:
+        return []
+    return [
+        i
+        for i, c in enumerate(caracteres)
+        if c.virtual and c.texto == " " and c.x1 - c.x0 <= limite
+    ]
+
+
+def _limite_das_letras(caracteres: Sequence[Caractere], tamanho: float) -> float | None:
+    """O vão típico entre letras coladas, mais a folga (Practical: "NATALI E MORY L")."""
     vaos = [
         depois.x0 - antes.x1
         for antes, depois in pairwise(caracteres)
         if _letra(antes) and _letra(depois)
     ]
     if len(vaos) < VAOS_MINIMOS:
-        return []
-    limite = median(vaos) + tamanho * FOLGA_DO_VAO
-    return [
-        i
-        for i, c in enumerate(caracteres)
-        if c.virtual and c.texto == " " and c.x1 - c.x0 <= limite
-    ]
+        return None
+    return median(vaos) + tamanho * FOLGA_DO_VAO
+
+
+def _limite_do_espaco(caracteres: Sequence[Caractere]) -> float | None:
+    """Menos da metade do menor vão de palavra com espaço de verdade, que é caractere do PDF: da
+    letra antes dele à letra depois. Na letra espaçada do Bonica, o par apertado ("PA R T O N E")
+    e o kerning do número ("CHAPTER 11 0") deixam a regra das letras sem vãos para medir
+    (ADR-0004, "Espaço menor que o espaço de verdade"). Vale só se todo espaço inventado da linha
+    cabe na régua: com um vão maior, a linha é irregular, e a regra da letra espaçada a lê."""
+    vaos: list[float] = []
+    fim_da_letra: float | None = None
+    espaco_aberto = False
+    for caractere in caracteres:
+        if _letra(caractere):
+            if espaco_aberto and fim_da_letra is not None:
+                vaos.append(caractere.x0 - fim_da_letra)
+            fim_da_letra, espaco_aberto = caractere.x1, False
+        elif not caractere.virtual and caractere.texto == " ":
+            espaco_aberto = True
+    if not vaos:
+        return None
+    limite = min(vaos) * FRACAO_DO_ESPACO_DE_VERDADE
+    inventados = [c.x1 - c.x0 for c in caracteres if c.virtual and c.texto == " "]
+    return limite if all(vao <= limite for vao in inventados) else None
 
 
 def _letra(caractere: Caractere) -> bool:

@@ -959,6 +959,26 @@ na asserção antes:
 | *Huxley*, *Tides* | EPUB: não passam pelo `importar-pdf`, e o `limpar` não mudou |
 | *Practical*, amostra de 146 páginas (p. 1 a 60, 400 a 430, 860 a 870, 1460 a 1503) | 454 chamadas tiradas, todas no padrão; 13 páginas de colaboradores (p. 3 e 6 a 17) e 41 de remissões (sumário p. 19 a 22 e índice p. 1467 a 1503); o prefácio (p. 18) fica; as linhas longas tiradas como tabela e figura são células, legendas e fontes, e os títulos tirados são todos títulos de tabela |
 
+**Medido nos dois tratados inteiros** (2026-11-11, HEAD `430026c`; palavras de `limpos/`
+contadas por espaço, e as do `importar-pdf`, pelas linhas tiradas):
+
+| Classe | *Practical* | *Bonica* |
+|---|---|---|
+| Número de referência sobrescrito (chamadas) | 12.344; coladas no texto limpo: 9.706 → 18 | 17.133; coladas: 13.155 → 57 |
+| Índice remissivo e sumário | 41 páginas (19 a 22, 1467 a 1503), 29.391 palavras | 433 páginas (5464 a 5898), 67.886 palavras |
+| Colaboradores | 13 páginas (3, 6 a 17), 4.584 palavras | 26 páginas, 2.824 palavras |
+| Tabela | 11.464 linhas, 24.844 palavras | 26.975 linhas, 75.035 palavras |
+| Figura e legenda | 5.157 linhas, 27.508 palavras | 2.560 linhas, 29.737 palavras |
+| Palavras de `limpos/` | 918.398 → 831.823 (−9,4%) | 1.371.709 → 1.268.221 (−7,5%); o `limpar` tira 71 mil a menos, que a regra Vancouver tirava e agora saem antes |
+| Lotes do `traduzir` | 530 → 473 | não traduzido |
+
+Procurados os falsos positivos: nenhuma página de lista fora do sumário, do índice e dos
+colaboradores, nos dois livros; nas amostras de linhas longas tiradas como tabela e figura, só
+células, notas e fontes de tabela e legendas (a "NOTE:" da tabela do Bonica p. 328, a legenda de
+4 linhas do Practical p. 1267). Créditos de autor partidos no Practical: de 10 para 0 com
+o par apertado ou espaço falso; o inventário de letra espaçada cai de 167 para 79 segmentos (o
+que sobra é maiúscula de verdade: "OF PAIN", "SECTION I").
+
 **O que fica:**
 - a chamada que o pdfminer põe numa linha só dela ("period.48,49,50", Practical p. 54): a linha
   inteira tem a letra pequena, e nada nela é menor que a linha;

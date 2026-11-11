@@ -180,6 +180,9 @@ def _linha(linha: LTTextLine, altura: float) -> Linha | None:
         versalete=_versalete(visiveis, tamanho),
         fim=linha.x1,
         fonte=_familia(visiveis),
+        # Toda letra visível, como no negrito. O `upright` do pdfminer é a matriz sem giro: a
+        # itálica, que só inclina, continua de pé (ADR-0004, "Texto girado").
+        girada=bool(visiveis) and not any(c.upright for c in visiveis),
         chamadas=lida.chamadas,
     )
 

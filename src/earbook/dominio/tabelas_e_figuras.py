@@ -22,6 +22,7 @@ from earbook.dominio.paginacao import LinhaRemovida, PaginasLimpas
 
 MOTIVO_DA_TABELA = "tabela: rótulo e letra fora do corpo"
 MOTIVO_DA_FIGURA = "figura e legenda: rótulo e letra fora do corpo"
+MOTIVO_DO_TEXTO_GIRADO = "texto girado: tabela deitada e rótulo de lado"
 # Só o rótulo em inglês: o "Quadro" e a "Tabela" do Dalgalarrondo ficam no lugar (ADR-0004,
 # "Quadro no lugar"), e o "Figura" do Competente não pôde ser medido.
 # "TABLE" sozinho na linha (o número vem na de baixo, no Practical), ou o rótulo com o número
@@ -40,6 +41,26 @@ _FECHA_FRASE = re.compile(r"[.!?:][\u201d\u2019\"')]*$")
 
 type _Posicao = tuple[int, int]
 """(índice da página, índice da linha)."""
+
+
+def tirar_texto_girado(paginas: Sequence[Pagina]) -> PaginasLimpas:
+    """As páginas sem as linhas giradas, e uma remoção registrada por linha (ADR-0004, "Texto
+    girado"). O pdfminer monta a linha na horizontal: a tabela deitada vira uma letra de cada
+    coluna, e não há o que ler. O livro com metade das letras giradas ou mais é o próprio livro de
+    lado, e não muda."""
+    caracteres: Counter[bool] = Counter()
+    for pagina in paginas:
+        for linha in pagina.linhas:
+            caracteres[linha.girada] += len(linha.texto)
+    if caracteres[True] * 2 >= caracteres.total():
+        return PaginasLimpas(tuple(paginas), ())
+    saem = {
+        (p, n): MOTIVO_DO_TEXTO_GIRADO
+        for p, pagina in enumerate(paginas)
+        for n, linha in enumerate(pagina.linhas)
+        if linha.girada
+    }
+    return _sem(paginas, saem)
 
 
 def tirar_tabelas_e_figuras(paginas: Sequence[Pagina]) -> PaginasLimpas:

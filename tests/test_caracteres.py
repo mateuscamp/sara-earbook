@@ -62,6 +62,19 @@ def test_expoente_depois_de_algarismo_fica() -> None:
     assert _texto("10^6^ cells") == "106 cells"
 
 
+def test_chamada_colada_ao_ano_sai_e_o_ano_fica() -> None:
+    # Practical p. 332: "sciatica in 1934²²¹" virava "1934221"; p. 933: "Lutz, 2017¹⁰¹".
+    assert _texto("sciatica in 1934^221^; and Lutz, 2017^101^ One and 2018^81\u201387^ of") == (
+        "sciatica in 1934; and Lutz, 2017 One and 2018 of"
+    )
+
+
+def test_expoente_depois_de_numero_que_nao_e_ano_fica() -> None:
+    assert _texto("10^6^ and 1000^2^ and 12017^3^ and 3.2017^2^") == (
+        "106 and 10002 and 120173 and 3.20172"
+    )
+
+
 def test_carga_do_ion_fica() -> None:
     assert _texto("Ca^2+^ influx") == "Ca2+ influx"
 

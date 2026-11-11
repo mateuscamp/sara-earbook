@@ -23,14 +23,22 @@ from earbook.dominio.paginas_de_lista import (
 from earbook.dominio.tabelas_e_figuras import (
     MOTIVO_DA_FIGURA,
     MOTIVO_DA_TABELA,
+    MOTIVO_DO_TEXTO_GIRADO,
     tirar_tabelas_e_figuras,
+    tirar_texto_girado,
 )
 from earbook.dominio.texto_escondido import tirar_texto_escondido
 from earbook.dominio.tipo_da_linha import TipoDeBloco
 
 MOTIVO_DA_CHAMADA = "número de referência sobrescrito"
 MOTIVOS_DO_CONTEUDO = frozenset(
-    {MOTIVO_DAS_REMISSOES, MOTIVO_DOS_COLABORADORES, MOTIVO_DA_TABELA, MOTIVO_DA_FIGURA}
+    {
+        MOTIVO_DAS_REMISSOES,
+        MOTIVO_DOS_COLABORADORES,
+        MOTIVO_DA_TABELA,
+        MOTIVO_DA_FIGURA,
+        MOTIVO_DO_TEXTO_GIRADO,
+    }
 )
 """O que sai pelo que o livro diz, e não pela borda da página: o resumo os conta à parte."""
 
@@ -74,15 +82,8 @@ def importar_pdf(
         mensagem = f"{epub} já existe"
         raise FileExistsError(mensagem)
     paginas = ler_paginas(pdf)
-    # O texto escondido sai antes da borda: em letra de título, ele contaria no corpo e na
-    # paginação (ADR-0004, "O que ficou da Fase 1").
-    visiveis = tirar_texto_escondido(paginas)
-    limpas = tirar_cabecalhos_e_rodapes(visiveis.paginas)
-    # Depois da borda, que não conta como lista; antes da tabela, porque a letra do corpo se mede
-    # sem o índice escaneado (ADR-0004, "Páginas de lista" e "Tabela e figura pela letra").
-    listas = tirar_paginas_de_lista(limpas.paginas)
-    sem_tabelas = tirar_tabelas_e_figuras(listas.paginas)
-    livro = montar_blocos(sem_tabelas.paginas, prova_do_hifen=limpas.paginas)
+    limpas = _limpar(paginas)
+    livro = montar_blocos(limpas.paginas, prova_do_hifen=limpas.prova_do_hifen)
     if not livro.blocos:
         mensagem = f"{pdf}: nenhum texto nas {len(paginas)} páginas (escaneado? não há OCR)"
         raise PdfSemTextoError(mensagem)
@@ -91,9 +92,40 @@ def importar_pdf(
     titulo = titulo or titulo_do_livro(metadados.titulo, pdf.stem)
     autor = autor or autor_do_livro(metadados.autor)
     gravar_epub(epub, titulo, idioma, capitulos, autor=autor)
-    remocoes = (*visiveis.remocoes, *limpas.remocoes, *listas.remocoes, *sem_tabelas.remocoes)
+    remocoes = limpas.remocoes
     chamadas = _chamadas(paginas)
     return Importacao(epub, len(paginas), remocoes, livro, len(capitulos), titulo, autor, chamadas)
+
+
+@dataclass(frozen=True)
+class _PaginasParaOsBlocos:
+    paginas: tuple[Pagina, ...]
+    prova_do_hifen: tuple[Pagina, ...]
+    """As páginas antes da lista e da tabela: o dicionário do hífen vem delas (ADR-0004)."""
+    remocoes: tuple[LinhaRemovida, ...]
+
+
+def _limpar(paginas: Sequence[Pagina]) -> _PaginasParaOsBlocos:
+    """O que sai da página antes dos blocos, na ordem, e o registro de cada remoção."""
+    # O texto escondido sai antes da borda: em letra de título, ele contaria no corpo e na
+    # paginação (ADR-0004, "O que ficou da Fase 1").
+    visiveis = tirar_texto_escondido(paginas)
+    # O texto girado também: a letra solta da tabela deitada contaria na paginação (ADR-0004,
+    # "Texto girado").
+    de_pe = tirar_texto_girado(visiveis.paginas)
+    sem_borda = tirar_cabecalhos_e_rodapes(de_pe.paginas)
+    # Depois da borda, que não conta como lista; antes da tabela, porque a letra do corpo se mede
+    # sem o índice escaneado (ADR-0004, "Páginas de lista" e "Tabela e figura pela letra").
+    listas = tirar_paginas_de_lista(sem_borda.paginas)
+    sem_tabelas = tirar_tabelas_e_figuras(listas.paginas)
+    remocoes = (
+        *visiveis.remocoes,
+        *de_pe.remocoes,
+        *sem_borda.remocoes,
+        *listas.remocoes,
+        *sem_tabelas.remocoes,
+    )
+    return _PaginasParaOsBlocos(sem_tabelas.paginas, sem_borda.paginas, remocoes)
 
 
 def _chamadas(paginas: Sequence[Pagina]) -> tuple[LinhaRemovida, ...]:

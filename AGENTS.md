@@ -111,7 +111,7 @@ Verificadas só em revisão (`code-audit`):
 
 ## O que atrapalha o ouvido (alvo da limpeza)
 
-- Marcador de nota no meio da frase ("...disse ele.12"). Feito no `preparar`. No PDF, o número de referência sobrescrito ("wages.¹", "et al.¹⁹⁴") sai no `importar-pdf`, pela letra menor e mais alta (ADR-0004, "Tratado médico"); a chamada que o pdfminer põe em linha própria ainda é lida.
+- Marcador de nota no meio da frase ("...disse ele.12"). Feito no `preparar`. No PDF, o número de referência sobrescrito ("wages.¹", "et al.¹⁹⁴", "in 1934²²¹") sai no `importar-pdf`, pela letra menor e mais alta, e o ano fica (ADR-0004, "Tratado médico" e "Texto girado"); a chamada que o pdfminer põe em linha própria ainda é lida.
 - Trecho lido duas vezes (`<p>` dentro de `<blockquote>`). Feito no `preparar`.
 - Número de página, cabeçalho repetido, sumário duplicado. No PDF, o cabeçalho de duas páginas vizinhas também sai; o de duas páginas alternadas ainda é lido (ADR-0004, "O que ficou da Fase 1"). Fora da faixa de 8%, saem o cabeçalho acima da mancha do corpo e o número de página ao lado da coluna (ADR-0004, "Cabeçalho fora da faixa").
 - Sumário de papel e propaganda: feitos no `preparar` (ADR-0009). Sai a linha com 5 pontos seguidos e número no fim, quando o capítulo tem 5 ou mais; sai o título "Conheça também" com até 5 parágrafos até o próximo título. Ficam o título "Sumário", os títulos das partes e a linha sem pontilhado; a propaganda com outro título ainda é lida. O pontilhado com espaços (". . . . . 23", 37 linhas no Competente e 20 no Hard Parts) ainda é lido: rodada própria, depois do Dalgalarrondo.
@@ -125,7 +125,7 @@ Verificadas só em revisão (`code-audit`):
 - `<p>` que é linha de página e parágrafo que o PDF perdeu: sem código, pelo Calibre e pelo mapa do original (ADR-0010). O `importar-pdf` ainda funde os parágrafos do PDF sem recuo, sem avisar.
 - Hífen do fim da linha do PDF tirado sem prova ("abri-|los" vira "abrilos"; ADR-0010, "Fila"). Pendente.
 - Algarismo romano em título de capítulo ("Chapter IV").
-- Tabela, figura e legenda do PDF em inglês: saem no `importar-pdf`, pela corrida em letra fora do corpo com rótulo ("TABLE", "• Figure 2.1", "FIGURE 1.1"); a tabela na letra do corpo e o "Quadro"/"Tabela" em português ficam (ADR-0004, "Tratado médico"). Índice, sumário e colaboradores do PDF saem por página no `importar-pdf`. O nome com letra espaçada e kerning ("NATALI E MORY L") sai inteiro.
+- Tabela, figura e legenda do PDF em inglês: saem no `importar-pdf`, pela corrida em letra fora do corpo com rótulo ("TABLE", "• Figure 2.1", "FIGURE 1.1"); a tabela na letra do corpo e o "Quadro"/"Tabela" em português ficam (ADR-0004, "Tratado médico"). Índice, sumário e colaboradores do PDF saem por página no `importar-pdf`. O nome com letra espaçada e kerning ("NATALI E MORY L") sai inteiro. O texto girado (a tabela deitada, lida uma letra de cada coluna) sai no `importar-pdf`; a de cabeça para baixo e a linha mista ainda são lidas (ADR-0004, "Texto girado").
 - Abreviação e URL. A lista de posts do Competente lê a URL inteira.
 - Nome próprio traduzido de um jeito num capítulo e de outro no seguinte (precisa de glossário).
 

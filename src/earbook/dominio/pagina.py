@@ -60,6 +60,10 @@ class Linha:
     """A família da letra da maioria dos caracteres visíveis, sem o prefixo do subconjunto e sem o
     estilo ("AGaramondPro", "HelveticaNeueLTStd"): a tabela e a figura vêm noutra família que a do
     corpo (ADR-0004, "Tabela e figura pela letra")."""
+    girada: bool = False
+    """Toda letra visível de lado (o `upright` do pdfminer): a tabela deitada na página, que o
+    pdfminer lê letra por letra. A de cabeça para baixo e a itálica, que só inclina, ficam de pé
+    (ADR-0004, "Texto girado")."""
     chamadas: tuple[str, ...] = ()
     """As chamadas de referência sobrescritas tiradas da linha, com a palavra antes: "wages.[1]"
     (ADR-0004, "Número de referência e espaço falso")."""

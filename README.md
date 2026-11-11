@@ -21,12 +21,15 @@ A decisão está no [ADR-0001](docs/adr/0001-reescrever-com-claude-code-orquestr
   lugar.
 - O marcador de nota no meio da frase ("…disse ele.12"). O texto da nota vai para o fim do
   capítulo, sob "Notas". No PDF, sai também o número de referência sobrescrito ("wages.¹",
-  "84%–90%.²,³", "et al.¹⁹⁴"), pela letra menor e mais alta; o expoente, a carga do íon e a
-  unidade ao quadrado ficam ([ADR-0004](docs/adr/0004-pdf-entra-como-comando-importar-pdf.md)).
+  "84%–90%.²,³", "et al.¹⁹⁴", "in 1934²²¹"), pela letra menor e mais alta; o ano fica, e o
+  expoente, a carga do íon e a unidade ao quadrado também ([ADR-0004](docs/adr/0004-pdf-entra-como-comando-importar-pdf.md)).
 - No PDF em inglês, a tabela e a figura: o rótulo ("TABLE 2.1", "• Figure 2.1", "FIGURE 1.1"),
   as células, os rótulos do diagrama e a legenda, quando vêm em letra diferente da do corpo
   ([ADR-0004](docs/adr/0004-pdf-entra-como-comando-importar-pdf.md)). O "Quadro" e a "Tabela"
   em português ficam no lugar.
+- No PDF, o texto girado: a tabela deitada na página e o rótulo de lado, que o leitor de PDF
+  monta uma letra de cada coluna ("d u r n n n o o , i i t f…")
+  ([ADR-0004](docs/adr/0004-pdf-entra-como-comando-importar-pdf.md)).
 - No PDF, a página de lista inteira: o índice remissivo e o sumário (muitas linhas terminam em
   ", página") e a lista de colaboradores ("Nome, MD" e a afiliação)
   ([ADR-0004](docs/adr/0004-pdf-entra-como-comando-importar-pdf.md)).
@@ -215,11 +218,13 @@ autor do metadado do PDF (ou os de `--titulo` e `--autor`). O que ele faz:
   tamanho, quase no mesmo lugar ("Conheça também"). A cópia de uma letra só fica. O resumo
   conta o texto escondido e o repetido junto com as linhas da borda, cada um com o seu motivo;
 - tira o número de referência sobrescrito ("wages.¹"): algarismo, vírgula e traço em letra menor
-  e acima da linha, colados a uma palavra ou a uma pontuação. O resumo conta quantos saíram;
+  e acima da linha, colados a uma palavra, a uma pontuação ou a um ano ("in 1934²²¹"). O resumo
+  conta quantos saíram;
 - não põe espaço no nome com letra espaçada ("NATALIE MORYL", e não "NATALI E MORY L"): o
   espaço que o pdfminer deduz do vão sai quando o vão é o mesmo que separa as letras;
-- tira a página de lista (índice remissivo, sumário e colaboradores) e, no livro em inglês, a
-  tabela e a figura, pela letra. O resumo conta essas linhas à parte, cada uma com o seu motivo;
+- tira o texto girado (a tabela deitada, o rótulo de lado), a página de lista (índice
+  remissivo, sumário e colaboradores) e, no livro em inglês, a tabela e a figura, pela letra. O
+  resumo conta essas linhas à parte, cada uma com o seu motivo;
 - junta as linhas em parágrafos e devolve inteira a palavra partida no fim da linha;
 - lê a página em duas colunas coluna por coluna, pela calha entre elas, quando os dois lados
   são texto corrido, também o de verbetes justificados (glossário, bibliografia). A tabela

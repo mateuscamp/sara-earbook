@@ -83,6 +83,30 @@ def test_codigo_no_meio_da_prosa_nao_faz_a_linha_monoespacada(tmp_path: Path) ->
     assert linhas == [("na pasta ss.order", False)]
 
 
+def test_texto_girado_e_marcado(tmp_path: Path) -> None:
+    # Practical p. 73: a tabela deitada, de lado na página, vinha letra por letra
+    # ("d u r n n n o o , i i t f e…", 9.664 palavras no c005).
+    paginas = _ler(
+        tmp_path,
+        [
+            LinhaDeTeste("Texto.", 72, 700),
+            LinhaDeTeste("Sweden Health System", 300, 400, girada=True),
+        ],
+    )
+    linhas = _linhas(paginas)
+    deitadas = [linha.girada for linha in linhas if linha.texto != "Texto."]
+    assert [linha.girada for linha in linhas if linha.texto == "Texto."] == [False]
+    assert deitadas
+    assert all(deitadas)
+
+
+def test_italica_pela_matriz_nao_e_girada(tmp_path: Path) -> None:
+    paginas = _ler(tmp_path, [LinhaDeTeste("Texto em itálica.", 72, 700, inclinada=True)])
+    assert [(linha.texto, linha.girada) for linha in _linhas(paginas)] == [
+        ("Texto em itálica.", False)
+    ]
+
+
 def test_fonte_negrito_e_marcada(tmp_path: Path) -> None:
     paginas = _ler(
         tmp_path,

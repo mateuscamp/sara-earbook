@@ -5,9 +5,9 @@ espaço falso").
 Duas coisas que só se veem no caractere, e não na linha pronta:
 - **o número de referência sobrescrito** ("wages.¹", "84%-90%.²,³", "et al.¹⁹⁴"), que a voz lia
   colado à palavra. Medido no Practical: 0,58 do corpo, com a linha de base 0,33 do corpo acima.
-  Sai só a chamada: algarismos, vírgula e traço, depois de letra ou de pontuação. O expoente
-  depois de algarismo ("10⁶"), a carga do íon ("Ca²⁺"), a unidade ao quadrado ("kg/m²") e a letra
-  solta ("r²") ficam;
+  Sai só a chamada: algarismos, vírgula e traço, depois de letra, de pontuação ou de ano ("in
+  1934²²¹"). O expoente depois de outro número ("10⁶"), a carga do íon ("Ca²⁺"), a unidade ao
+  quadrado ("kg/m²") e a letra solta ("r²") ficam;
 - **o espaço que o pdfminer inventa** no nome com letra espaçada (Practical: Gotham-Bold com 1 pt
   a mais entre as letras, "NATALI E MORY L"). O pdfminer põe espaço onde o vão passa de uma
   fração da letra; quando o vão é o mesmo da letra espaçada, o espaço não existe no PDF.
@@ -41,6 +41,9 @@ _PONTUACAO_ANTES = frozenset(".,;:)]%\u2019\u201d\"'")
 # A unidade ao quadrado ou ao cubo: "m²", "cm²", "mm³", "μm²".
 _UNIDADES = frozenset({"m", "cm", "mm", "km", "dm", "nm", "μm", "µm"})
 _PALAVRA_ANTES = re.compile(r"[^\W\d_]+$")
+# O ano antes da chamada ("in 1934²²¹", "Lutz, 2017¹⁰¹"): quatro algarismos de 1500 a 2099, sem
+# algarismo, ponto ou vírgula antes. O expoente de outro número ("10⁶", "1000²") fica.
+_ANO_ANTES = re.compile(r"(?:^|[^\d.,])(?:1[5-9]|20)\d\d$")
 
 
 @dataclass(frozen=True)
@@ -139,7 +142,10 @@ def _e_chamada(caracteres: Sequence[Caractere], inicio: int, fim: int) -> bool:
         return False
     if antes.texto in _PONTUACAO_ANTES:
         return True
-    palavra = _PALAVRA_ANTES.search("".join(c.texto for c in caracteres[:inicio]))
+    texto_antes = "".join(c.texto for c in caracteres[:inicio])
+    if _ANO_ANTES.search(texto_antes):
+        return True
+    palavra = _PALAVRA_ANTES.search(texto_antes)
     return palavra is not None and len(palavra.group()) > 1 and palavra.group() not in _UNIDADES
 
 

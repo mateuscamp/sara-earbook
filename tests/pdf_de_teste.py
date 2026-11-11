@@ -35,6 +35,11 @@ class LinhaDeTeste:
     "|" no texto aperta o par de letras em 0,9 pt (o kerning de "AT" no Gotham-Bold)."""
     serifa: bool = False
     """Times-Roman, em vez da Helvetica: a outra família de letra da página."""
+    inclinada: bool = False
+    """A itálica feita pela matriz (`1 0 0.2 1`): inclina, mas não gira."""
+    girada: bool = False
+    """O texto de lado, subindo a página (a matriz `0 1 -1 0`), como a tabela deitada do Practical
+    p. 73, que o pdfminer lê letra por letra."""
 
 
 def _cadeia_pdf(texto: str) -> str:
@@ -100,8 +105,16 @@ def _texto(linha: LinhaDeTeste) -> str:
     return " ".join(trechos)
 
 
+def _posicao(linha: LinhaDeTeste) -> str:
+    if linha.girada:
+        return f"0 1 -1 0 {linha.x} {linha.y} Tm"
+    if linha.inclinada:
+        return f"1 0 0.2 1 {linha.x} {linha.y} Tm"
+    return f"{linha.x} {linha.y} Td"
+
+
 def _conteudo(linhas: list[LinhaDeTeste]) -> bytes:
-    comandos = [f"BT {linha.x} {linha.y} Td {_texto(linha)} ET" for linha in linhas]
+    comandos = [f"BT {_posicao(linha)} {_texto(linha)} ET" for linha in linhas]
     return "\n".join(comandos).encode("latin-1")
 
 

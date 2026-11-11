@@ -991,6 +991,60 @@ que sobra é maiúscula de verdade: "OF PAIN", "SECTION I").
 Decidido pelo Mateus (o que sai, 2026-11-10, pela sessão principal); os sinais e os limiares são
 desta sessão e vão à revisão.
 
+### Texto girado e chamada colada ao ano (2026-11-11)
+
+O Mateus decidiu ouvir o *Practical* em inglês, limpo, sem tradução, e pediu antes a correção dos
+dois defeitos que o inventário do livro montado achou. Medido no HEAD `bd39b93`.
+
+**1. Texto girado** (`dominio/tabelas_e_figuras.tirar_texto_girado`; a linha ganha `girada`).
+- **O defeito:** a tabela dos programas de reabilitação do *Practical* (p. 70 a 73, c005) vem
+  deitada na página. A letra tem a
+  matriz de lado, e o pdfminer, que monta a linha na horizontal, fazia de cada letra uma linha e
+  lia uma letra de cada coluna: "d u r n n n o o , i i t f e i s n a n k…", 9.664 palavras no
+  c005 (s0058 a s0082), que também partiam o parágrafo em volta. O mesmo com o rótulo de eixo de
+  gráfico, de lado ("e s o d n o i t a i d a r", c074), com a Figura 40.2 (p. 724, c041) e com as Tabelas 49.1 e 49.2 (p. 899 e 900).
+- **O sinal:** a matriz, e não a letra nem o rótulo. A tabela deitada vem em HelveticaNeue
+  condensada, como as outras, mas cada letra é uma linha de 1 caractere, com o tamanho medido
+  pela altura da caixa (de 1,7 a 6,7 pt, p. 72), e nenhuma traz rótulo de tabela em pé.
+- **A regra:** o adaptador marca a linha em que toda letra visível tem o `upright` do pdfminer
+  falso, a matriz de lado. Ela sai antes da borda, porque a letra solta contaria na paginação, e
+  cada linha fica no registro, com a página e o motivo "texto girado: tabela deitada e rótulo de
+  lado"; o resumo a conta com a tabela e a figura. A itálica, que só inclina, fica de pé (teste
+  com a matriz `1 0 0.2 1`).
+- **O livro de lado** (metade das letras giradas ou mais, o `/Rotate` que o pdfminer aplica à
+  matriz) não muda: a página inteira de lado é o livro, e não uma tabela no meio dele.
+
+**2. Chamada colada ao ano** (`dominio/caracteres.py`).
+- **O defeito:** a chamada depois de algarismo ficava, para guardar o expoente ("10⁶"), e o ano
+  levava a chamada junto: "sciatica in 1934²²¹" (p. 332) virava "1934221", "Lutz, 2017¹⁰¹"
+  (p. 933), "Black et al. 2018⁸¹⁻⁸⁷"; 29 no texto limpo.
+- **A regra:** sai também a chamada depois de um ano, quatro algarismos de 1500 a 2099 sem
+  algarismo, ponto ou vírgula antes. "10⁶", "1000²", "12017³" e "3.2017²" ficam (teste).
+
+**Medido** (rodada anterior movida para `livros/trabalho/medicao-bd39b93/`; a nova, com a lista
+linha a linha, em `livros/trabalho/medicao-girado/`):
+
+| Livro | O que muda |
+|---|---|
+| *Practical* | 17.273 linhas giradas em 17 páginas (70 a 73, 724, 899, 900 e 10 com menos de 110), todas de 1 a 3 caracteres; a regra da tabela tira 5.694 linhas a menos e a da figura 528, que agora saem como girado. Chamadas: 12.344 → 12.392, as 48 novas todas depois de ano. `limpos/`: 14.017 → 14.004 segmentos, 831.823 → 820.778 palavras. Mudaram 61 segmentos: o que saiu é letra solta, e a prosa que a tabela partia voltou inteira (c005, "behavior interventions…"; a seção do TMJ, c041, na ordem). Ano com chamada colada no limpo: 29 → 0 |
+| *Bonica* | nenhuma letra girada; chamadas 17.133 → 17.147, as 14 novas todas depois de ano ("in 1940⁴ and 1959⁵", "in 2026⁸"); `limpos/` com os mesmos 15.477 segmentos e 1.268.221 palavras, 9 segmentos mudam só pelo ano |
+| *Dalgalarrondo* | `limpos/` e resumo idênticos ao HEAD |
+| *Hard Parts* | `limpos/` idêntico; saem 77 linhas giradas da última página (p. 462, o crédito "© 2019 O'Reilly Media", de lado), que viravam uma nota que o `preparar` já tirava |
+| *Huxley*, *Tides* | EPUB: não passam pelo `importar-pdf` |
+
+Da lista do inventário (89 segmentos, 11.936 palavras de letra solta), saem o c005 inteiro e o
+grosso do c041 (1.262 → 26 palavras); ficam 52 segmentos e 445 palavras de tabela em pé, na
+letra do corpo ("[ ] dull [ ] stabbing", doses do c046, c050 e c073), que esta regra não cobre.
+
+**O que fica:**
+- a linha mista, com letra girada e algarismo em pé (o eixo "100 80 60 40 20" do c074 continua
+  lido, sem as letras);
+- o texto de cabeça para baixo, que o `upright` dá como de pé;
+- o expoente de verdade de um número entre 1500 e 2099 ("2048²") sai como chamada.
+
+Decidido pelo Mateus (o que sai, 2026-11-11, pela sessão principal); o sinal e o limiar são desta
+sessão e foram à revisão.
+
 ## Consequências
 
 **Ganha:** um comando a mais na mesma esteira, sem repositório novo. Os defeitos de conversão são atacados onde nascem.

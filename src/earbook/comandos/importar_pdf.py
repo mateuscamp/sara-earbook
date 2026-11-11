@@ -17,6 +17,7 @@ from earbook.dominio.pagina import Pagina
 from earbook.dominio.paginacao import LinhaRemovida, tirar_cabecalhos_e_rodapes
 from earbook.dominio.paginas_de_lista import (
     MOTIVO_DAS_REMISSOES,
+    MOTIVO_DO_SUMARIO,
     MOTIVO_DOS_COLABORADORES,
     tirar_paginas_de_lista,
 )
@@ -34,6 +35,7 @@ MOTIVO_DA_CHAMADA = "número de referência sobrescrito"
 MOTIVOS_DO_CONTEUDO = frozenset(
     {
         MOTIVO_DAS_REMISSOES,
+        MOTIVO_DO_SUMARIO,
         MOTIVO_DOS_COLABORADORES,
         MOTIVO_DA_TABELA,
         MOTIVO_DA_FIGURA,

@@ -12,6 +12,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
+from earbook.comandos.cli import principal
 from earbook.comandos.importar_pdf import importar_pdf
 from earbook.dominio.pagina import Linha, Pagina
 from earbook.dominio.paginas_de_lista import (
@@ -347,3 +350,22 @@ def test_pagina_de_titulo_depois_dos_colaboradores_fica() -> None:
     titulo = Linha("Contents", x=42.0, fim=296.0, topo=0.05, tamanho=18.0)
     paginas = [_pagina(1, COLABORADORES), Pagina(2, (titulo,)), _corpo(3)]
     assert {r.pagina for r in tirar_paginas_de_lista(paginas).remocoes} == {1}
+
+
+def test_resumo_conta_o_sumario_sem_numero_com_as_paginas_de_lista(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # Bonica: o resumo contava as 12.678 linhas do sumário junto com a borda da página.
+    corpo = [
+        LinhaDeTeste(f"Linha {n} do texto corrido do livro, sem nada.", 72, 700 - 14 * n)
+        for n in range(10)
+    ]
+    sumario = [
+        [LinhaDeTeste(f"CHAPTER {n}", 72, 700), LinhaDeTeste("Pain Mechanisms", 72, 686)]
+        for n in (1, 2, 3)
+    ]
+    pdf = montar_pdf(tmp_path / "livro.pdf", [*sumario, corpo])
+    assert principal(["importar-pdf", str(pdf), "--epub", str(tmp_path / "livro.epub")]) == 0
+    saida = capsys.readouterr().out
+    assert "0 linhas tiradas da página: a borda, o texto escondido e o texto repetido." in saida
+    assert "6 linhas de tabela, figura e página de lista tiradas." in saida

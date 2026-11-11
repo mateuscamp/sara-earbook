@@ -237,7 +237,8 @@ autor do metadado do PDF (ou os de `--titulo` e `--autor`). O que ele faz:
 - lê o subtítulo em versalete como título, e não como nota no fim do capítulo: o feito à mão
   (maiúsculas de dois tamanhos) e o de fonte própria (o nome da fonte termina em "SC", como
   "Archer-Medium-SC700");
-- divide os capítulos pelo tamanho dos títulos.
+- divide os capítulos pelo tamanho dos títulos e pelo rótulo "CHAPTER 24" ou "Capítulo 3",
+  quando o livro o repete; a parte fica no capítulo que ela abre.
 
 O EPUB serve para ouvir, não para ler na tela. Sai sem imagem e sem estilo, e cada linha de
 tabela que fica (a em português, a da letra do corpo) vira um parágrafo. O bloco de código do

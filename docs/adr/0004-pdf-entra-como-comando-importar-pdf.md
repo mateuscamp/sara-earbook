@@ -1045,6 +1045,54 @@ letra do corpo ("[ ] dull [ ] stabbing", doses do c046, c050 e c073), que esta r
 Decidido pelo Mateus (o que sai, 2026-11-11, pela sessão principal); o sinal e o limiar são desta
 sessão e foram à revisão.
 
+### Rótulo de capítulo (2026-11-11)
+
+O *Bonica* (6.053 páginas, 115 capítulos em 6 partes) saía do `importar-pdf` com 7 capítulos.
+Medido no HEAD `c830106`.
+
+- **O defeito:** o corte de capítulo é o maior tamanho de título em 3 páginas ou mais
+  ("Segunda regra"). No *Bonica*, é o nome da parte ("Basic Considerations", 30 pt, 6 páginas).
+  O capítulo ("C H A P T E R 1", e o título embaixo) vem em 21 pt, o mesmo tamanho dos 786
+  títulos de seção; só a cor os separa, e a linha não traz cor. Nenhum tamanho separa o
+  capítulo da seção.
+- **O sinal:** o rótulo. O título que começa por "CHAPTER 24", "Chapter 24", "CAPÍTULO 3" ou
+  "Capítulo 3", seguido de espaço ou do fim, abre capítulo, quando o livro o tem em 3 páginas
+  ou mais. Antes do rótulo pode vir só texto em maiúsculas: o nome da subparte, que o título de
+  mesmo tamanho junta ("NEUROPATHIC PAIN CONDITIONS CHAPTER 24 Painful Neuropathies"). Ficam de
+  fora o título que só cita outro capítulo ("Radiofrequency Denervation (see also Chapter 66…)",
+  *Practical*) e a linha do sumário, com dois-pontos ("CHAPTER 6: Supraspinal Mechanisms of Pain
+  and 377").
+- **O capítulo só fecha depois de ter texto.** Sem isso, a parte (30 pt) abriria um capítulo e o
+  rótulo logo abaixo, outro, e a parte seria um capítulo só de título. Com isso, a parte fica
+  com o primeiro capítulo dela; e o "CHAPTER 2" pequeno do *Hard Parts*, que vem antes do título
+  de 25,2 pt, fica com o capítulo que abre. A regra vale também para o corte pelo tamanho: no
+  *Dalgalarrondo*, a página de parte ("1", "ASPECTOS GERAIS DA PSICOPATOLOGIA"), que era um
+  capítulo de dois títulos, passa a abrir o primeiro capítulo da parte.
+- O nível do título continua pelo tamanho: o rótulo do *Bonica* segue no nível da seção.
+
+**Medido** (`livros/trabalho/medicao-rotulo/`; o antes é `medicao-girado/` e, no *Practical*, a
+pasta do HEAD em `livros/trabalho/`). Em todos, a sequência de segmentos de `segmentos/` e de
+`limpos/` é idêntica, e o `limpeza.json` tem as mesmas contagens; só mudam as fronteiras:
+
+| Livro | Capítulos | O que muda |
+|---|---|---|
+| *Bonica* | 7 → 116 | a abertura e os 115 capítulos; cada parte e cada subparte ficam no primeiro capítulo delas |
+| *Practical* | 87 → 87 | nada: os capítulos são idênticos, segmento a segmento |
+| *Hard Parts* | 21 → 21 | os 15 "CHAPTER N" saem do fim do capítulo anterior e abrem o seu; o sumário do EPUB passa a chamar esses capítulos de "CHAPTER N" |
+| *Dalgalarrondo* | 42 → 39 | as 3 páginas de parte, de dois títulos cada, abrem o primeiro capítulo da parte |
+| *Huxley*, *Tides* | — | EPUB: não passam pelo `importar-pdf` |
+
+**O que fica:**
+- o rótulo em algarismo romano ("Chapter IV") e o rótulo por extenso ("Chapter One") não abrem
+  capítulo;
+- o rótulo que o kerning parte ("CHAPTER 11 0", do capítulo 110 ao 115 do *Bonica*) abre
+  capítulo, mas é lido "eleven zero";
+- o sumário do fim do *Bonica* (p. 5899 a 6053, em 18 pt, que a regra das páginas de lista não
+  tira) fica no último capítulo e é lido.
+
+Sem precedente, decidido nesta sessão e levado à sessão principal: a parte vai com o primeiro
+capítulo dela, e não num capítulo próprio.
+
 ## Consequências
 
 **Ganha:** um comando a mais na mesma esteira, sem repositório novo. Os defeitos de conversão são atacados onde nascem.
@@ -1067,6 +1115,7 @@ sessão e foram à revisão.
 | Cabeçalho fora da faixa e versalete de fonte própria | testes (`tests/test_cabecalho_fora_da_faixa.py`): o cabeçalho acima da mancha que se repete sai, e o título único acima dela fica; o número de página ao lado da coluna, dos dois lados, sai, e dentro da coluna fica; o cabeçalho e o número do tamanho do corpo saem; o cabeçalho largo em letra menor sai; a epígrafe no alto e a linha que passa da margem não deslocam a mancha; a linha repetida no alto da mancha, o texto repetido e o "x" repetido ao lado da coluna ficam; a linha toda em fonte "-SC" ou "-sc" é versalete, e a fonte comum, o "SC" sem separador e a linha que mistura versalete e corpo não são (`tests/test_versalete_de_fonte.py`, com o adaptador lendo um PDF) | portão | volta o cabeçalho no meio da frase, o versalete de fonte própria volta a ser nota, ou muda um livro sem margem larga nem fonte SC |
 | Negrito feito à mão | testes (`tests/test_texto_repetido.py`): a cópia do mesmo tamanho sai e fica a primeira; a cópia do texto escondido tem um registro só; o resumo do comando diz o texto repetido; as 9 linhas da p. 2 do Dalgalarrondo viram "Conheça também"; a cópia de uma letra, a deslocada mais de 10%, a de outro tamanho, a de outra altura e o texto diferente ficam; do PDF montado em código, o `importar-pdf` lê a palavra uma vez | portão | a cópia volta a ser lida, ou sai uma linha que não repete outra |
 | Tratado médico | testes (`tests/test_caracteres.py`, `tests/test_caracteres_no_pdf.py`): a chamada sobrescrita depois de ponto, colada à palavra, em lista, em faixa, com espaço dentro e com vírgula no fim sai e fica registrada; o expoente depois de algarismo, a carga do íon, a unidade ao quadrado, a letra solta, o subscrito, a letra sobrescrita e o sobrescrito no começo da linha ou depois de espaço ficam; o espaço inventado no vão da letra espaçada sai, e o do vão maior e o do texto comum ficam; do PDF montado em código, com `Ts`, `Tc` e o par apertado, a linha sai certa e traz a família da letra. (`tests/test_tabelas_e_figuras.py`): a tabela sai do rótulo à letra do corpo, também a que abre em título e a que continua na página seguinte na letra das células; a figura sai com o diagrama e a legenda; o título de seção fecha a tabela; a caixa sem rótulo, a menção na letra do corpo, a menção quebrada na linha, o rótulo em português, o crédito do autor na página seguinte, a caixa antes do diagrama e o livro sem família de letra ficam. (`tests/test_paginas_de_lista.py`): o índice, o sumário (também a página curta) e os colaboradores saem inteiros; a página de texto com poucas remissões ou com tabela de doses, a lista de anos, a vírgula decimal, as assinaturas do prefácio e os autores em maiúsculas ficam; o índice que sai ainda prova o hífen do livro | portão | volta a chamada colada, o espaço no nome, a tabela, a figura ou a lista, ou sai texto do corpo |
+| Rótulo de capítulo | testes (`tests/test_blocos_capitulos.py`): o rótulo no tamanho da seção abre capítulo, também depois do nome da subparte em maiúsculas, e a parte fica com o primeiro capítulo dela; o rótulo menor que o título vai com o capítulo que abre; o título que só cita um capítulo e a linha do sumário com dois-pontos não abrem; o número grande seguido de "Capítulo 1" continua um capítulo só | portão | o *Bonica* volta a sair por parte, o rótulo fica no capítulo anterior, ou o sumário abre capítulo |
 | A escuta ★ | rodar `importar-pdf` + `preparar` num PDF real em `livros/` e contar o que o `limpar` ainda precisa tirar | a cada mudança no conversor | a contagem sobe |
 
 Regra derivada no `AGENTS.md`: a biblioteca de PDF só entra em `adaptadores/`.

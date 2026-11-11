@@ -6,6 +6,7 @@ Saiu de `blocos.py` para ele caber no limite de 400 linhas do ADR-0001.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Sequence
 from dataclasses import replace
 
@@ -17,25 +18,53 @@ PAGINAS_DO_CAPITULO = 3
 
 
 def dividir_em_capitulos(blocos: Sequence[Bloco]) -> tuple[tuple[Bloco, ...], ...]:
-    """Corta o livro no maior tamanho de título que aparece em 3 páginas ou mais.
+    """Corta o livro no maior tamanho de título que aparece em 3 páginas ou mais, e no rótulo
+    de capítulo ("CHAPTER 24") que aparece em 3 páginas ou mais.
 
     No Competente é o número do capítulo (30 pt); no Hard Parts, o título do capítulo
-    (25,2 pt). O que vem antes do primeiro capítulo fica num capítulo de abertura.
+    (25,2 pt); no Bonica, o rótulo, que tem o tamanho da seção (ADR-0004, "Rótulo de
+    capítulo"). O que vem antes do primeiro capítulo fica num capítulo de abertura. O capítulo
+    só fecha depois de ter texto: a parte e o rótulo ficam com o título que vem logo depois.
     """
     capitulo = _tamanho_do_capitulo(blocos)
     niveis = _niveis(blocos, capitulo)
+    com_rotulo = _ha_rotulos(blocos)
     capitulos: list[list[Bloco]] = [[]]
     for bloco in blocos:
         if bloco.tipo is TipoDeBloco.TITULO:
             bloco = replace(bloco, nivel=niveis[round(bloco.tamanho, 1)])  # noqa: PLW2901  # motivo: o mesmo bloco, agora com o nível
-            if (
-                capitulo is not None
-                and abs(bloco.tamanho - capitulo) <= DIFERENCA_DE_TAMANHO
-                and capitulos[-1]
-            ):
+            abre = _do_tamanho(bloco, capitulo) or (com_rotulo and _tem_rotulo(bloco))
+            if abre and _tem_texto(capitulos[-1]):
                 capitulos.append([])
         capitulos[-1].append(bloco)
     return tuple(tuple(capitulo) for capitulo in capitulos if capitulo)
+
+
+# O rótulo no começo do título, ou depois do nome da subparte em maiúsculas ("NEUROPATHIC PAIN
+# CONDITIONS CHAPTER 24 Painful Neuropathies", Bonica p. 1138). O dois-pontos é da linha do
+# sumário ("CHAPTER 6: Supraspinal Mechanisms of Pain and 377"), que não abre capítulo.
+_ROTULO = re.compile(r"\b(?:CHAPTER|Chapter|CAPÍTULO|Capítulo)\s+\d+(?=\s|$)")
+
+
+def _tem_rotulo(bloco: Bloco) -> bool:
+    achado = _ROTULO.search(bloco.texto)
+    if achado is None:
+        return False
+    antes = bloco.texto[: achado.start()]
+    return antes == antes.upper()
+
+
+def _ha_rotulos(blocos: Sequence[Bloco]) -> bool:
+    paginas = {b.pagina for b in blocos if b.tipo is TipoDeBloco.TITULO and _tem_rotulo(b)}
+    return len(paginas) >= PAGINAS_DO_CAPITULO
+
+
+def _do_tamanho(bloco: Bloco, capitulo: float | None) -> bool:
+    return capitulo is not None and abs(bloco.tamanho - capitulo) <= DIFERENCA_DE_TAMANHO
+
+
+def _tem_texto(capitulo: Sequence[Bloco]) -> bool:
+    return any(b.tipo is not TipoDeBloco.TITULO for b in capitulo)
 
 
 def _tamanho_do_capitulo(blocos: Sequence[Bloco]) -> float | None:

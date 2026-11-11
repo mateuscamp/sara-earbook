@@ -7,8 +7,9 @@
 from __future__ import annotations
 
 import re
+from collections import Counter
 from collections.abc import Callable, Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from statistics import multimode
 
@@ -19,6 +20,7 @@ from pdfminer.pdfparser import PDFParser
 from pdfminer.pdftypes import PDFObjRef
 from pdfminer.utils import decode_text
 
+from earbook.dominio.caracteres import Caractere, texto_da_linha
 from earbook.dominio.pagina import Letra, Linha, Pagina, em_versalete, juntar_letras_espacadas
 from earbook.dominio.segmento import normalizar_espacos
 
@@ -33,6 +35,10 @@ _FONTE_NEGRITO = re.compile(r"[-,]\w*(?:bold|black|heavy|demi)", re.IGNORECASE)
 # "Archer-Medium-SC700" (ADR-0004, "Versalete de fonte própria"). O "SC" vem no fim do nome,
 # depois do separador: sem ele, "DiscoSC" seria versalete. Sem caixa, como as outras fontes.
 _FONTE_VERSALETE = re.compile(r"[-_]SC\d*$", re.IGNORECASE)
+# A família da letra: o nome sem o prefixo do subconjunto ("TCMKGG+") e sem o estilo, depois do
+# traço ou da vírgula ("AGaramondPro-Regular", "Arial,Bold"). ADR-0004, "Tabela e figura pela
+# letra".
+_ESTILO_DA_FONTE = re.compile(r"[-,].*$")
 
 _BOM_UTF8 = b"\xef\xbb\xbf"
 _BOM_UTF16LE = b"\xff\xfe"
@@ -147,19 +153,22 @@ def _pagina(pdf: Path, numero: int, layout: LTPage) -> Pagina:
 
 def _linha(linha: LTTextLine, altura: float) -> Linha | None:
     caracteres = [c for c in linha if isinstance(c, LTChar)]
-    texto = normalizar_espacos(linha.get_text())
-    if not caracteres or not texto:
+    if not caracteres or not normalizar_espacos(linha.get_text()):
         return None
     # A moda, não a média: nome de código em 8,5 pt numa linha de 9 pt puxava a média
     # para baixo de 0,85 do corpo, e a prosa virava nota (A1 da auditoria, Hard Parts).
     # No empate, o maior: a letra menor é a do código ou da nota (pós-revisão).
     tamanho = max(multimode(round(c.size, 1) for c in caracteres))
+    # A chamada sobrescrita e o espaço inventado saem aqui, onde o caractere ainda tem tamanho e
+    # posição (ADR-0004, "Número de referência e espaço falso").
+    lida = texto_da_linha(_caracteres(linha), tamanho)
+    texto = normalizar_espacos(lida.texto)
     # Toda letra, não alguma: no Hard Parts, as 584 linhas de código são 100% monoespaçadas
     # e as 183 de prosa com um nome de código no meio ("ss.survey") ficam entre 0 e 90%.
     monoespacada = all(_fonte_casa(_FONTE_MONOESPACADA, c.fontname) for c in caracteres)
     visiveis = [c for c in caracteres if c.get_text().strip()]
     if not monoespacada:
-        letras = [Letra(c.get_text(), c.x0, c.x1) for c in visiveis]
+        letras = [Letra(c.texto, c.x0, c.x1) for c in lida.caracteres if _visivel(c)]
         texto = juntar_letras_espacadas(letras, tamanho) or texto
     # Toda letra visível, como na monoespaçada: a ênfase no meio da prosa (619 linhas no
     # Competente) não faz a linha negrito.
@@ -173,7 +182,49 @@ def _linha(linha: LTTextLine, altura: float) -> Linha | None:
         negrito=negrito,
         versalete=_versalete(visiveis, tamanho),
         fim=linha.x1,
+        fonte=_familia(visiveis),
+        chamadas=lida.chamadas,
     )
+
+
+def _caracteres(linha: LTTextLine) -> list[Caractere]:
+    """Os caracteres da linha para o domínio. O espaço do pdfminer (`LTAnno`) não tem posição:
+    ganha o fim da letra antes e o começo da letra depois. Uma passada de trás para frente guarda
+    o começo da próxima letra."""
+    caracteres: list[Caractere] = []
+    comeco_da_seguinte: float | None = None
+    for item in reversed(list(linha)):
+        if isinstance(item, LTChar):
+            # O pé da caixa, e não a matriz: a subida do `Ts` só entra na caixa (pdfminer).
+            caracteres.append(Caractere(item.get_text(), item.x0, item.x1, item.size, item.y0))
+            comeco_da_seguinte = item.x0
+        else:
+            caracteres.append(
+                Caractere(item.get_text(), 0.0, comeco_da_seguinte or 0.0, 0.0, 0.0, virtual=True)
+            )
+    caracteres.reverse()
+    fim_da_anterior = 0.0
+    for i, caractere in enumerate(caracteres):
+        if caractere.virtual:
+            depois = caractere.x1 or fim_da_anterior
+            caracteres[i] = replace(caractere, x0=fim_da_anterior, x1=depois)
+        else:
+            fim_da_anterior = caractere.x1
+    return caracteres
+
+
+def _visivel(caractere: Caractere) -> bool:
+    return not caractere.virtual and caractere.texto.strip() != ""
+
+
+def _familia(visiveis: list[LTChar]) -> str:
+    """A família da letra da maioria dos caracteres visíveis; vazia se o nome não é texto."""
+    familias = Counter(
+        _ESTILO_DA_FONTE.sub("", c.fontname.rsplit("+", 1)[-1])
+        for c in visiveis
+        if isinstance(c.fontname, str)
+    )
+    return familias.most_common(1)[0][0] if familias else ""
 
 
 def _versalete(visiveis: list[LTChar], tamanho: float) -> bool:

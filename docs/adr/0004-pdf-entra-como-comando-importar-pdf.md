@@ -856,6 +856,114 @@ Nenhum dos três PDFs tem fonte com "SC" no nome, com ou sem caixa. Depois da au
 pelas linhas largas, o candidato ao lado da coluna só na regra do número, a regex sem caixa), os
 seis livros e o Maudlin saem iguais à medição acima.
 
+### Tratado médico: número de referência, espaço falso, tabela, figura e páginas de lista (2026-11-10)
+
+Medido no HEAD `8a0226b`, no *Practical Management of Pain* (6ª ed., 1.503 páginas) e no
+*Bonica's Management of Pain* (5ª ed., 6.053 páginas). O Mateus decidiu em 2026-11-10, antes da
+tradução do Practical, tirar do áudio o número de referência colado, as tabelas embaralhadas, os
+restos de figura e as legendas, a lista de colaboradores e o sumário. O índice remissivo já era
+alvo do ADR-0008. Tudo sai no `importar-pdf`, onde o PDF ainda tem letra, posição e página; no
+texto montado, a tabela e a lista viram blocos sem marca, misturados ao corpo.
+
+**1. Número de referência e espaço falso** (`dominio/caracteres.py`; o adaptador entrega os
+caracteres da linha, com tamanho, posição e os espaços que o pdfminer deduz).
+- **O defeito:** a chamada vem sobrescrita, a 0,58 do corpo e com a linha de base 0,33 do corpo
+  acima ("wages.¹", "84%–90%.²,³", "et al.¹⁹⁴", "syndromes.¹²⁻¹⁵"), e ia colada à palavra:
+  9.706 no Practical, 13.155 no Bonica, pelo inventário do texto limpo.
+- **A regra:** sai o trecho de caracteres com letra menor que 0,85 da letra da linha e o pé mais
+  de 0,15 dela acima do pé da linha, que é só algarismo, vírgula e traço, colado a uma palavra de
+  2 letras ou mais ou a uma pontuação que fecha (`. , ; : ) ] % ’ ” "`). Ficam o expoente depois
+  de algarismo ("10⁶"), a carga do íon ("Ca²⁺"), a unidade ao quadrado ("kg/m²", "cm²"), a letra
+  solta ("r²"), o subscrito, a letra sobrescrita ("ᵃ") e o sobrescrito no começo da linha ou
+  depois de espaço. Cada chamada fica no registro do `importar-pdf`, com a palavra antes
+  ("wages.[1]"), e o resumo a conta.
+- **O pé, e não a matriz:** o pdfminer põe a subida do `Ts` na caixa do caractere e não na
+  matriz; no Practical, a posição vem pela matriz, e a caixa sobe junto.
+- **O espaço falso:** o nome do autor vem em Gotham-Bold com 1 pt a mais entre as letras, e o
+  pdfminer punha espaço onde o vão passa de 0,1 da letra ("NATALI E MORY L, CH ARLE S", 167
+  segmentos). A regra antiga da letra espaçada não pegava, porque o par apertado ("AT", 0,1 pt)
+  parecia palavra. Agora o espaço deduzido some quando o vão dele não passa do vão típico entre
+  as letras da linha (a mediana) por mais de 0,03 da letra. No texto comum o vão entre letras é
+  quase zero, e o da palavra, mais de 2 pt.
+
+**2. Tabela e figura pela letra** (`dominio/tabelas_e_figuras.py`; a linha ganha a família da
+letra, o nome da fonte sem o prefixo do subconjunto e sem o estilo).
+- **O defeito:** no Practical, o corpo é AGaramondPro de 10 pt. O rótulo "TABLE" vem em
+  Gotham-Bold numa linha, o número em outra, o título em MyriadPro-Bold e as células em
+  HelveticaNeueLTStd-Cn de 8,5 pt, lidas coluna a coluna (78 "TABLE" soltos). A figura traz os
+  rótulos do diagrama em Helvetica de 7 pt, que viravam nota no fim do capítulo (191 notas,
+  17.631 palavras), e a legenda "• Figure 2.1 …" (204, 13.274 palavras). No Bonica, a tabela abre
+  num título "TABLE 1.1 …" e segue em nota, na letra do corpo menor, e a legenda é "FIGURE 1.1 …".
+- **A regra:** a letra do corpo é a família e o tamanho com mais caracteres no livro. Uma
+  corrida é uma sequência de linhas seguidas, no livro todo, fora da letra do corpo e da de
+  título. Sai a corrida que tem um rótulo em inglês: "TABLE" sozinho na linha, ou "TABLE",
+  "Table", "FIGURE", "Figure", "Fig." e "• Figure" com o número seguido de ponto, maiúscula ou
+  fim de linha. Da tabela, sai do rótulo em diante, também na página seguinte (a continuação);
+  da figura, a corrida na página da legenda, para os dois lados, porque o diagrama vem antes
+  dela. A linha da letra do corpo, ou de título que não é rótulo, fecha a corrida.
+- **Não é rótulo:** "Table of Contents"; a menção quebrada na linha ("Table 5-7 shows…"); e a
+  linha que continua a frase da de cima na mesma letra ("…components in" | "Figure 5-11.", na
+  prosa em MyriadPro de 9 pt da "Sysops Squad Saga" do Hard Parts).
+- **Só o rótulo em inglês:** o "Quadro" e a "Tabela" do Dalgalarrondo ficam no lugar (seção
+  "Quadro no lugar"), e o "Figura" do Competente não pôde ser medido (o PDF não está neste Mac).
+- **O livro sem família de letra** (o nome da fonte que não é texto) não muda.
+- **Recusado: pela letra, sem rótulo.** A caixa "Key Points" e a prosa da saga do Hard Parts
+  vêm noutra letra e são texto do livro.
+
+**3. Páginas de lista** (`dominio/paginas_de_lista.py`, por página, antes da tabela).
+- **O defeito:** o índice remissivo do Practical (p. 1467 a 1503) é página escaneada com OCR, em
+  Times de 8,3 pt; o pdfminer o lê intercalado entre nota e parágrafo, e a regra do ADR-0008, de
+  10 parágrafos de "termo, página" seguidos, não dispara (cerca de 28 mil palavras). O sumário
+  (p. 19 a 22) e os colaboradores (p. 6 a 13) vêm em duas colunas e se misturam.
+- **A regra:** sai a página inteira em que 8 linhas ou mais, e 25% das linhas ou mais, terminam em
+  vírgula, espaço e número de página ("pelvic pain in, 617", "Interdisciplinary Pain Management,
+  39", com "621 t", "99f" e "977- 978"), sem contar o ano ("Philadelphia, 2004") nem a vírgula
+  decimal ("17,6"). Sai também a página com 5 nomes ou mais com título acadêmico ("Honorio T.
+  Benzon, MD") que sejam 10% das linhas ou mais; o nome em maiúsculas (o autor do capítulo) não
+  conta.
+- **O resumo** do `importar-pdf` conta a tabela, a figura e a página de lista numa linha à parte,
+  cada uma com o seu motivo; a linha da borda continua contando só a borda, o texto escondido e o
+  texto repetido.
+
+**Correções da code-review (esforço alto) e da code-audit**, cada uma com o teste visto falhar
+na asserção antes:
+- **R1:** a página com mais linhas de prosa (8 palavras ou mais, sem remissão) que de remissões
+  fica: uma tabela de doses não leva a prosa da página.
+- **R2:** a tabela que vira a página só continua na letra que as células dela já usaram; o
+  crédito do autor no alto da página seguinte fica.
+- **R3:** antes da legenda, só sai o diagrama em letra não maior que a dela (mais 0,25 pt); a
+  caixa de 9 pt logo antes fica.
+- **R5 e R6:** a chamada com espaço dentro ("1,8, 9") e com a vírgula sobrescrita no fim sai
+  inteira.
+- **R9:** o adaptador acha a letra seguinte de cada espaço numa passada só.
+- **O hífen:** com o índice tirado antes dos blocos, o Hard Parts perdia a prova de "east-west"
+  e lia "eastwest". O dicionário do hífen vem agora das páginas de antes da lista e da tabela.
+- **Ficam, declarados:** R4, o expoente depois de parêntese ("(m)²") sai como chamada; R7, a
+  chamada de uma linha que depois sai inteira (célula de tabela) conta também no resumo das
+  chamadas.
+
+**Medido depois do código** (`livros/trabalho/medicao-8a0226b/` contra
+`livros/trabalho/medicao-nova-0004/`):
+
+| Livro | O que muda |
+|---|---|
+| *Dalgalarrondo* | `limpos/` idêntico, menos 2 segmentos: os marcadores sobrescritos "EUA¹ Áustria² Brasil³ Brasil⁴" da tabela e "(Balada de Loucos¹)"; o índice (p. 433 a 438, 545 linhas) sai no `importar-pdf`, e as 19 remoções de índice do `limpar` deixam de existir; nenhuma tabela, figura nem colaborador |
+| *Hard Parts* | `limpos/` idêntico, menos o marcador "Fowler's site.¹"; o índice (p. 443 a 459, 1.588 linhas) sai no `importar-pdf` (antes, 52 remoções no `limpar`), e 16 suspeitas de capitular, que eram linhas do índice, somem; capítulos 22 → 21 (o "Index"); a legenda e a tabela do Hard Parts vêm na letra do corpo e ficam |
+| *Huxley*, *Tides* | EPUB: não passam pelo `importar-pdf`, e o `limpar` não mudou |
+| *Practical*, amostra de 146 páginas (p. 1 a 60, 400 a 430, 860 a 870, 1460 a 1503) | 454 chamadas tiradas, todas no padrão; 13 páginas de colaboradores (p. 3 e 6 a 17) e 41 de remissões (sumário p. 19 a 22 e índice p. 1467 a 1503); o prefácio (p. 18) fica; as linhas longas tiradas como tabela e figura são células, legendas e fontes, e os títulos tirados são todos títulos de tabela |
+
+**O que fica:**
+- a chamada que o pdfminer põe numa linha só dela ("period.48,49,50", Practical p. 54): a linha
+  inteira tem a letra pequena, e nada nela é menor que a linha;
+- o rótulo do diagrama em letra maior que a da legenda, e o que o pdfminer põe longe da legenda
+  ("A B C", os painéis);
+- a tabela e a legenda na letra do corpo, a tabela sem rótulo e o rótulo em português;
+- a página do índice ou do sumário com menos de 5 remissões ou com mais prosa que remissão;
+- o registro do `importar-pdf` é o resumo por motivo; a lista linha a linha não é gravada.
+
+Decidido pelo Mateus (o que sai, 2026-11-10, pela sessão principal); os sinais e os limiares são
+desta sessão e vão à revisão.
+
 ## Consequências
 
 **Ganha:** um comando a mais na mesma esteira, sem repositório novo. Os defeitos de conversão são atacados onde nascem.
@@ -877,6 +985,7 @@ seis livros e o Maudlin saem iguais à medição acima.
 | O que ficou da Fase 1 | testes: o versalete feito à mão é título e o continua a linha de maiúsculas seguinte, e as maiúsculas de um tamanho só, a minúscula e o símbolo maior não são versalete, e as maiúsculas depois de uma nota continuam nota (`tests/test_versalete.py`, com o adaptador lendo um PDF); a linha de título sobre outra de outro tamanho sai, o texto repetido do mesmo tamanho não é texto escondido, e a linha ao lado e a letra miúda ficam; o `importar-pdf` não abre o capítulo falso (`tests/test_texto_escondido.py`); os verbetes justificados saem coluna a coluna, e a célula com alguma continuação sem margem comum segue linha a linha; o corpo depois da tabela de letra menor é outra faixa, e o destaque de um lado só não a corta, nem a letra menor dos dois lados sem o vão de parágrafo; a coluna de duas linhas ligadas pelo hífen vem antes da outra, e a de duas linhas sem o hífen segue linha a linha (`tests/test_colunas_curtas_e_justificadas.py`); o cabeçalho de duas páginas vizinhas sai, e o de duas com uma entre elas e a linha sem letra em duas vizinhas ficam (`tests/test_paginacao.py`) | portão | volta uma nota de versalete, o capítulo falso, a intercalação do glossário, ou muda um livro sem versalete, texto escondido nem cabeçalho de abertura |
 | Cabeçalho fora da faixa e versalete de fonte própria | testes (`tests/test_cabecalho_fora_da_faixa.py`): o cabeçalho acima da mancha que se repete sai, e o título único acima dela fica; o número de página ao lado da coluna, dos dois lados, sai, e dentro da coluna fica; o cabeçalho e o número do tamanho do corpo saem; o cabeçalho largo em letra menor sai; a epígrafe no alto e a linha que passa da margem não deslocam a mancha; a linha repetida no alto da mancha, o texto repetido e o "x" repetido ao lado da coluna ficam; a linha toda em fonte "-SC" ou "-sc" é versalete, e a fonte comum, o "SC" sem separador e a linha que mistura versalete e corpo não são (`tests/test_versalete_de_fonte.py`, com o adaptador lendo um PDF) | portão | volta o cabeçalho no meio da frase, o versalete de fonte própria volta a ser nota, ou muda um livro sem margem larga nem fonte SC |
 | Negrito feito à mão | testes (`tests/test_texto_repetido.py`): a cópia do mesmo tamanho sai e fica a primeira; a cópia do texto escondido tem um registro só; o resumo do comando diz o texto repetido; as 9 linhas da p. 2 do Dalgalarrondo viram "Conheça também"; a cópia de uma letra, a deslocada mais de 10%, a de outro tamanho, a de outra altura e o texto diferente ficam; do PDF montado em código, o `importar-pdf` lê a palavra uma vez | portão | a cópia volta a ser lida, ou sai uma linha que não repete outra |
+| Tratado médico | testes (`tests/test_caracteres.py`, `tests/test_caracteres_no_pdf.py`): a chamada sobrescrita depois de ponto, colada à palavra, em lista, em faixa, com espaço dentro e com vírgula no fim sai e fica registrada; o expoente depois de algarismo, a carga do íon, a unidade ao quadrado, a letra solta, o subscrito, a letra sobrescrita e o sobrescrito no começo da linha ou depois de espaço ficam; o espaço inventado no vão da letra espaçada sai, e o do vão maior e o do texto comum ficam; do PDF montado em código, com `Ts`, `Tc` e o par apertado, a linha sai certa e traz a família da letra. (`tests/test_tabelas_e_figuras.py`): a tabela sai do rótulo à letra do corpo, também a que abre em título e a que continua na página seguinte na letra das células; a figura sai com o diagrama e a legenda; o título de seção fecha a tabela; a caixa sem rótulo, a menção na letra do corpo, a menção quebrada na linha, o rótulo em português, o crédito do autor na página seguinte, a caixa antes do diagrama e o livro sem família de letra ficam. (`tests/test_paginas_de_lista.py`): o índice, o sumário (também a página curta) e os colaboradores saem inteiros; a página de texto com poucas remissões ou com tabela de doses, a lista de anos, a vírgula decimal, as assinaturas do prefácio e os autores em maiúsculas ficam; o índice que sai ainda prova o hífen do livro | portão | volta a chamada colada, o espaço no nome, a tabela, a figura ou a lista, ou sai texto do corpo |
 | A escuta ★ | rodar `importar-pdf` + `preparar` num PDF real em `livros/` e contar o que o `limpar` ainda precisa tirar | a cada mudança no conversor | a contagem sobe |
 
 Regra derivada no `AGENTS.md`: a biblioteca de PDF só entra em `adaptadores/`.

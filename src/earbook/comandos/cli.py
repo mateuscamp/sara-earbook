@@ -14,13 +14,12 @@ from pathlib import Path
 
 from earbook.comandos import montar as montagem
 from earbook.comandos.adaptar import ExportacaoDaAdaptacao, adaptar
-from earbook.comandos.importar_pdf import Importacao, epub_padrao, importar_pdf
+from earbook.comandos.importar_pdf import epub_padrao, importar_pdf, resumo_da_importacao
 from earbook.comandos.preparar import Preparo, pasta_padrao, preparar
 from earbook.comandos.roteiro import minutos
 from earbook.comandos.traduzir import Exportacao, traduzir
 from earbook.dominio.conferencia import Problema
 from earbook.dominio.livro_limpo import LivroLimpo
-from earbook.dominio.tipo_da_linha import TipoDeBloco
 from earbook.dominio.trabalho import LivroPreparado
 from earbook.dominio.traducao import PALAVRAS_POR_LOTE, Modo
 
@@ -83,7 +82,7 @@ def _calar_a_saida() -> None:
 def _importar(opcoes: _Opcoes) -> tuple[str, int]:
     epub = opcoes.saida or epub_padrao(opcoes.pdf)
     importacao = importar_pdf(opcoes.pdf, epub, opcoes.idioma, opcoes.titulo, opcoes.autor)
-    return _resumo_da_importacao(importacao), 0
+    return resumo_da_importacao(importacao), 0
 
 
 def _preparar(opcoes: _Opcoes) -> tuple[str, int]:
@@ -303,30 +302,6 @@ def _linhas_dos_capitulos(exportacao: Exportacao) -> list[str]:
             pendentes = f"; pendentes: {', '.join(c.pendentes)} ({palavras} palavras)"
         linhas.append(f"  {c.capitulo}: {c.traduzidos} de {c.segmentos}{pendentes}")
     return linhas
-
-
-def _resumo_da_importacao(importacao: Importacao) -> str:
-    livro = importacao.livro
-    tipos = Counter(b.tipo for b in livro.blocos)
-    paginas, capitulos = importacao.paginas, importacao.capitulos
-    linhas = [f"Importado em {importacao.epub}: {paginas} páginas, {capitulos} capítulos."]
-    de = f", de {importacao.autor}" if importacao.autor else ", sem autor"
-    linhas.append(f"Título: {importacao.titulo}{de}.")
-    titulos, paragrafos = tipos[TipoDeBloco.TITULO], tipos[TipoDeBloco.PARAGRAFO]
-    codigo, notas = tipos[TipoDeBloco.CODIGO], tipos[TipoDeBloco.NOTA]
-    linhas.append(
-        f"Blocos: {titulos} títulos, {paragrafos} parágrafos, {codigo} de código, {notas} notas."
-    )
-    tiradas = len(importacao.remocoes)
-    linhas.append(
-        f"{tiradas} linhas tiradas da página: a borda, o texto escondido e o texto repetido."
-    )
-    motivos = Counter(r.motivo for r in importacao.remocoes)
-    linhas += [f"  {motivo}: {n}" for motivo, n in motivos.most_common()]
-    tirados, mantidos = livro.hifens_tirados, livro.hifens_mantidos
-    linhas.append(f"Hífen de fim de linha: {tirados} tirados, {mantidos} mantidos.")
-    linhas.append(f"Próximo passo: earbook preparar {importacao.epub}")
-    return "\n".join(linhas)
 
 
 def _resumo(preparo: Preparo, pasta: Path) -> str:

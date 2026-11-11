@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Monta PDFs mínimos para os testes, em vez de guardar binário no repositório.
 
-Usa as fontes padrão do PDF (Helvetica, Helvetica-Bold e Courier, sem embutir) com WinAnsiEncoding,
-que cobre os acentos do português. A página tem 612 x 792 pontos (carta).
+Usa as fontes padrão do PDF (Helvetica, Helvetica-Bold, Courier e Times-Roman, sem embutir) com
+WinAnsiEncoding, que cobre os acentos do português. A página tem 612 x 792 pontos (carta).
 """
 
 from __future__ import annotations
@@ -27,6 +27,14 @@ class LinhaDeTeste:
     versalete: bool = False
     """A inicial de cada palavra maior, como o versalete feito à mão do Dalgalarrondo (10,5 pt
     sobre 7,4)."""
+    sobrescrito: bool = False
+    """O trecho entre "^" sai sobrescrito e o entre "~", subscrito: a 0,58 do tamanho, com a linha
+    de base 0,33 do tamanho acima ou abaixo, como o número de referência do Practical."""
+    espacamento: float = 0.0
+    """Pontos a mais depois de cada letra (o `Tc`), como o nome do autor do Practical. Com ele, o
+    "|" no texto aperta o par de letras em 0,9 pt (o kerning de "AT" no Gotham-Bold)."""
+    serifa: bool = False
+    """Times-Roman, em vez da Helvetica: a outra família de letra da página."""
 
 
 def _cadeia_pdf(texto: str) -> str:
@@ -43,13 +51,46 @@ def _cadeia_pdf(texto: str) -> str:
 
 
 def _fonte(linha: LinhaDeTeste) -> str:
-    return "F2" if linha.mono else "F3" if linha.negrito else "F1"
+    return "F2" if linha.mono else "F3" if linha.negrito else "F4" if linha.serifa else "F1"
+
+
+_APERTO_DO_PAR = 90
+_RAZAO_DO_SOBRESCRITO = 0.58
+_SUBIDA_DO_SOBRESCRITO = 0.33
+
+
+def _com_sobrescrito(linha: LinhaDeTeste) -> str:
+    """Os trechos entre "^" sobem e os entre "~" descem, em letra menor."""
+    fonte, tamanho = _fonte(linha), linha.tamanho
+    menor = round(tamanho * _RAZAO_DO_SOBRESCRITO, 2)
+    subida = round(tamanho * _SUBIDA_DO_SOBRESCRITO, 2)
+    comandos: list[str] = []
+    trecho, deslocamento = "", 0.0
+    for caractere in linha.texto + "\0":
+        if caractere in "^~\0":
+            if trecho:
+                letra = menor if deslocamento else tamanho
+                comandos.append(f"/{fonte} {letra} Tf {deslocamento} Ts ({_cadeia_pdf(trecho)}) Tj")
+            trecho = ""
+            if caractere != "\0":
+                alvo = subida if caractere == "^" else -subida
+                deslocamento = 0.0 if deslocamento else alvo
+        else:
+            trecho += caractere
+    return " ".join([*comandos, "0 Ts"])
 
 
 def _texto(linha: LinhaDeTeste) -> str:
     """Os comandos que escrevem o texto: um só, ou um por trecho de tamanho no versalete."""
+    espacamento = f"{linha.espacamento} Tc " if linha.espacamento else ""
+    if linha.sobrescrito:
+        return espacamento + _com_sobrescrito(linha)
+    if linha.espacamento and "|" in linha.texto:
+        pares = f" {_APERTO_DO_PAR} ".join(f"({_cadeia_pdf(p)})" for p in linha.texto.split("|"))
+        return f"{espacamento}/{_fonte(linha)} {linha.tamanho} Tf [{pares}] TJ"
     if not linha.versalete:
-        return f"/{_fonte(linha)} {linha.tamanho} Tf ({_cadeia_pdf(linha.texto)}) Tj"
+        texto = f"/{_fonte(linha)} {linha.tamanho} Tf ({_cadeia_pdf(linha.texto)}) Tj"
+        return espacamento + texto
     maior = round(linha.tamanho * 10.5 / 7.4, 1)
     trechos: list[str] = []
     for i, palavra in enumerate(linha.texto.split(" ")):
@@ -79,12 +120,13 @@ def montar_pdf(
         fonte.format("Helvetica").encode(),
         fonte.format("Courier").encode(),
         fonte.format("Helvetica-Bold").encode(),
+        fonte.format("Times-Roman").encode(),
     ]
     filhos: list[str] = []
     for linhas in paginas:
         conteudo = _conteudo(linhas)
         objetos.append(b"<< /Length %d >>\nstream\n%s\nendstream" % (len(conteudo), conteudo))
-        recursos = "<< /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >>"
+        recursos = "<< /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R /F4 6 0 R >> >>"
         objetos.append(
             (
                 f"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {LARGURA} {ALTURA}] "

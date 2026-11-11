@@ -56,6 +56,13 @@ class Linha:
     versalete: bool = False
     """Só maiúsculas, e alguma letra maior que a da linha: o subtítulo em versalete feito à mão
     (Dalgalarrondo), que pelo tamanho viraria nota."""
+    fonte: str = ""
+    """A família da letra da maioria dos caracteres visíveis, sem o prefixo do subconjunto e sem o
+    estilo ("AGaramondPro", "HelveticaNeueLTStd"): a tabela e a figura vêm noutra família que a do
+    corpo (ADR-0004, "Tabela e figura pela letra")."""
+    chamadas: tuple[str, ...] = ()
+    """As chamadas de referência sobrescritas tiradas da linha, com a palavra antes: "wages.[1]"
+    (ADR-0004, "Número de referência e espaço falso")."""
 
 
 @dataclass(frozen=True)

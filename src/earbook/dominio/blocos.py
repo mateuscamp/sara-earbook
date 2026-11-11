@@ -91,10 +91,16 @@ class _Aberto:
     """Bloco de quadro: espera em `_Montador._quadro` e não mexe na retomada do texto."""
 
 
-def montar_blocos(paginas: Sequence[Pagina]) -> LivroMontado:
-    """Junta as linhas, página por página e de cima para baixo, em blocos do livro."""
+def montar_blocos(
+    paginas: Sequence[Pagina], prova_do_hifen: Sequence[Pagina] | None = None
+) -> LivroMontado:
+    """Junta as linhas, página por página e de cima para baixo, em blocos do livro.
+
+    O dicionário do hífen vem de `prova_do_hifen`, se dada: o índice e a tabela que não se leem
+    ainda provam que o livro escreve "east-west" (ADR-0004, "Tratado médico").
+    """
     medidas = medir(paginas)
-    montador = _Montador(medidas, dicionario_do_livro(paginas))
+    montador = _Montador(medidas, dicionario_do_livro(prova_do_hifen or paginas))
     for pagina in paginas:
         anterior: Linha | None = None
         for linha, pedacos in linhas_visuais(pagina.linhas, medidas.corpo):

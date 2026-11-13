@@ -56,7 +56,7 @@ FOLGA_DO_DIAGRAMA = 0.25
 # parêntese depois ("…National Library of Medicine.)").
 _FECHA_FRASE = re.compile(r"[.!?:][\u201d\u2019\"')]*$")
 
-type _Posicao = tuple[int, int]
+type Posicao = tuple[int, int]
 """(índice da página, índice da linha)."""
 
 
@@ -77,25 +77,25 @@ def tirar_texto_girado(paginas: Sequence[Pagina]) -> PaginasLimpas:
         for n, linha in enumerate(pagina.linhas)
         if linha.girada
     }
-    return _sem(paginas, saem)
+    return sem_as_linhas(paginas, saem)
 
 
 def tirar_tabelas_e_figuras(paginas: Sequence[Pagina]) -> PaginasLimpas:
     """As páginas sem as corridas de tabela e de figura, e uma remoção registrada por linha."""
-    corpo = _letra_do_corpo(paginas)
+    corpo = letra_do_corpo(paginas)
     if corpo is None:
         return PaginasLimpas(tuple(paginas), ())
-    saem: dict[_Posicao, str] = {}
-    for corrida in _corridas(paginas, corpo):
+    saem: dict[Posicao, str] = {}
+    for corrida in corridas_fora_do_corpo(paginas, corpo):
         saem |= _da_corrida(paginas, corrida, corpo[1])
-    return _sem(paginas, saem)
+    return sem_as_linhas(paginas, saem)
 
 
 def _da_corrida(
-    paginas: Sequence[Pagina], corrida: list[_Posicao], tamanho_do_corpo: float
-) -> dict[_Posicao, str]:
+    paginas: Sequence[Pagina], corrida: list[Posicao], tamanho_do_corpo: float
+) -> dict[Posicao, str]:
     """O que sai da corrida: a tabela, do rótulo em diante; a figura, em volta da legenda."""
-    saem: dict[_Posicao, str] = {}
+    saem: dict[Posicao, str] = {}
     for i, (p, n) in enumerate(corrida):
         anterior = paginas[p].linhas[n - 1] if n > 0 else None
         motivo = _rotulo(paginas[p].linhas[n], tamanho_do_corpo, anterior)
@@ -106,12 +106,12 @@ def _da_corrida(
     return saem
 
 
-def _tabela(paginas: Sequence[Pagina], corrida: list[_Posicao]) -> list[_Posicao]:
+def _tabela(paginas: Sequence[Pagina], corrida: list[Posicao]) -> list[Posicao]:
     """Do rótulo em diante. Na página seguinte, a tabela continua só na letra que ela já usou: o
     crédito do autor em Gotham, no alto da página, não é célula (R2 da code-review)."""
     letras: set[tuple[str, float]] = set()
     pagina_do_rotulo = corrida[0][0]
-    saem: list[_Posicao] = []
+    saem: list[Posicao] = []
     for p, n in corrida:
         linha = paginas[p].linhas[n]
         letra = (linha.fonte, round(linha.tamanho, 1))
@@ -122,7 +122,7 @@ def _tabela(paginas: Sequence[Pagina], corrida: list[_Posicao]) -> list[_Posicao
     return saem
 
 
-def _figura(paginas: Sequence[Pagina], corrida: list[_Posicao], legenda: int) -> list[_Posicao]:
+def _figura(paginas: Sequence[Pagina], corrida: list[Posicao], legenda: int) -> list[Posicao]:
     """A legenda e o que vem depois dela na página; antes dela, o diagrama, que vem em letra não
     maior que a da legenda (Practical: 7 pt contra 8). A caixa de 9 pt logo antes fica (R3 da
     code-review)."""
@@ -137,7 +137,7 @@ def _figura(paginas: Sequence[Pagina], corrida: list[_Posicao], legenda: int) ->
     return saem
 
 
-def _letra_do_corpo(paginas: Sequence[Pagina]) -> tuple[str, float] | None:
+def letra_do_corpo(paginas: Sequence[Pagina]) -> tuple[str, float] | None:
     """A família e o tamanho com mais caracteres no livro; None se o PDF não diz a família."""
     letras: Counter[tuple[str, float]] = Counter()
     for pagina in paginas:
@@ -149,11 +149,13 @@ def _letra_do_corpo(paginas: Sequence[Pagina]) -> tuple[str, float] | None:
     return (familia, tamanho) if familia else None
 
 
-def _corridas(paginas: Sequence[Pagina], corpo: tuple[str, float]) -> list[list[_Posicao]]:
+def corridas_fora_do_corpo(
+    paginas: Sequence[Pagina], corpo: tuple[str, float]
+) -> list[list[Posicao]]:
     """As corridas de linhas seguidas fora da letra do corpo e da de título, no livro todo."""
     # No livro de corpo em negrito, a linha em negrito é a prosa, e não título de quadro.
     com_titulo_em_negrito = not corpo_em_negrito(paginas, corpo[1])
-    corridas: list[list[_Posicao]] = [[]]
+    corridas: list[list[Posicao]] = [[]]
     for p, pagina in enumerate(paginas):
         restam = 0  # o título do rótulo não passa de página
         for n, linha in enumerate(pagina.linhas):
@@ -229,7 +231,7 @@ def _continua_a_frase(anterior: Linha, linha: Linha) -> bool:
     return mesma_letra and _FECHA_FRASE.search(anterior.texto) is None
 
 
-def _sem(paginas: Sequence[Pagina], saem: dict[_Posicao, str]) -> PaginasLimpas:
+def sem_as_linhas(paginas: Sequence[Pagina], saem: dict[Posicao, str]) -> PaginasLimpas:
     limpas: list[Pagina] = []
     remocoes: list[LinhaRemovida] = []
     for p, pagina in enumerate(paginas):

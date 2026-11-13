@@ -1417,6 +1417,119 @@ Procurados os falsos positivos, sobre as páginas lidas uma vez e as regras roda
 Decidido pelo Mateus (o que sai, 2026-11-13, pela sessão principal); o sumário interno como
 fonte dos capítulos, os sinais e os limiares são desta sessão e vão à revisão.
 
+### Bibliografia pela letra e rótulo com a caixa trocada (2026-11-13)
+
+A rodada do `limpar` nos dois tratados (ADR-0008, "Tratado em português e em espanhol") mediu
+antes de desenhar, no HEAD `fee3cb5`, e achou que duas das cinco correções nascem na página e
+não se consertam no texto.
+
+**1. A bibliografia sai pela letra** (`dominio/bibliografia_do_pdf.py`).
+- **O defeito:** no *Miller*, a bibliografia do fim do capítulo vem em StoneSerif de 7,5 pt, a
+  família do corpo (9 pt), uma referência por linha ("1. Bedford PD: Lancet 269:259, 1955."), na
+  coluna ao lado do fim da prosa. A coluna de linhas curtas não é texto corrido para a regra
+  "Duas colunas" (continua em 0,2 dos pares; o limite é 0,4), a página é lida por altura, e a
+  prosa sai intercalada com as referências ("…el descontrol percibido Bibliografía completa
+  disponible… del período perioperatorio… 3. Brown JK, et al: …"). Medido: 432 parágrafos, em 88
+  dos 112 capítulos, misturam prosa e referência (37,8 mil palavras), e 249 páginas trocam de
+  coluna 4 vezes ou mais na leitura. Uma regra do `limpar` não desfaz a mistura: ou a referência
+  fica no meio da frase, ou a prosa sai com ela.
+- **O sinal:** a letra e o conteúdo, juntos. No *Miller*, 37.706 das 94.811 linhas de StoneSerif
+  de 7,5 pt trazem citação de periódico, contra 2 das 263.328 linhas do corpo; no *Manica*,
+  7.249 das 32.890 linhas de MyriadPro de 6 pt, contra 3 das 107.103 do corpo.
+- **A regra:** na corrida de linhas seguidas fora da letra do corpo e da de título (a mesma
+  corrida da tabela e da figura), a **letra das citações** é a letra, menor que a do corpo, com
+  mais linhas de citação de periódico ("269:259, 1955", "1980;62:358"; a mesma citação do
+  `limpar`, ADR-0008). Sai o **trecho** de linhas nessa letra com **10 linhas de citação ou
+  mais**. Até 3 linhas seguidas de outra letra entre duas dele saem junto: o cabeçalho e o
+  número das páginas de bibliografia online ("Capítulo 2: …", "47.e1"). Saem também até 2 linhas
+  em negrito ou versalete logo antes do trecho: o título ("BiBliografía", "referências").
+- **O que fica:** a caixa em outra letra antes da lista, na mesma corrida (no *Miller*, 227
+  linhas de StoneSans de 8 pt em 6 corridas: objetivos, listas de recursos); a fonte da tabela e
+  a legenda com menos de 10 citações; a referência na letra do corpo, que continua com o
+  `limpar`.
+- Roda depois da tabela e da figura, e antes dos blocos: a ordem de leitura da página já não vê
+  a lista. Cada linha fica registrada com a página e o motivo "bibliografia: letra menor que a do
+  corpo, com citações de periódico", e o resumo do `importar-pdf` as conta numa linha própria.
+
+| Alternativa | Ganha | Perde | Por que não |
+|---|---|---|---|
+| **A. Tirar a corrida pela letra e pelo conteúdo, antes da ordem de leitura** (escolhida) | usa a ordem do pdfminer, em que as linhas da lista vêm seguidas; a mistura some qualquer que seja o desenho da página; não toca na regra das colunas | a remoção fica no registro do `importar-pdf` (página e motivo), e não em `limpeza.json`; no livro com a bibliografia em letra menor, ela deixa de passar pelo `limpar` | — |
+| B. Consertar a regra "Duas colunas": a coluna de lista ao lado da prosa é coluna | as referências chegariam inteiras ao `limpar`, que as registra em `limpeza.json` | a regra das colunas foi medida no *Dalgalarrondo*, no *Hard Parts* e no *Competente*, que não estão neste Mac; o sinal geométrico (linhas desalinhadas dos dois lados) acerta por acaso em cerca de 1 de 4 páginas quando a lista começa na coluna da prosa | muda a ordem de leitura de livros que não dá para medir |
+| C. Só o `limpar`, pelo conteúdo | nenhuma regra nova na página | tira os 432 parágrafos de prosa misturada, ou deixa as referências dentro deles | falso positivo medido |
+
+**2. A palavra de rótulo com a caixa trocada** (`dominio/caixa_do_rotulo.py`).
+- **O defeito:** o versalete do *Manica* mapeia parte das letras pequenas para a maiúscula, e a
+  menção no corpo sai "No QuAdro 13.1", "ver FigurA 12.3", "(tAb. 4.2)". Medido: 802 menções
+  fora de título (289 "QuAdro", 97 "FigurA", 93 "tAb.", 49 "tAbelA" e outras 26 formas) e 3 em
+  título; nenhuma no *Miller*, cujo versalete trocado só está nos títulos.
+- **A regra:** nos blocos que não são título, a palavra de rótulo em português ou em espanhol
+  ("figura", "fig.", "quadro", "tabela", "tab.", "tabla", "cuadro", com o plural) seguida de
+  número, quando tem maiúscula depois da primeira letra sem estar toda em maiúsculas, fica com a
+  primeira letra como veio e o resto em minúscula: "QuAdro 13.1" vira "Quadro 13.1", e "tAb. 4.2",
+  "tab. 4.2". "QUADRO 2.1", "Quadro 2.1" e "quadro 2.1" não mudam, nem a palavra sem número depois
+  ("a FigurA mostra"), nem outra palavra ("AnestesiA").
+- **Decisão do Mateus (2026-11-13):** acertar só as palavras de rótulo nas menções; os títulos
+  ficam como estão. A caixa certa das outras palavras não está no PDF.
+- Mora no `importar-pdf`, depois dos blocos, porque o defeito é do PDF, como o hífen invisível.
+  No `limpar` ele pediria um registro novo em `limpeza.json` (texto trocado, e não tirado) e a
+  conferência dele. O resumo conta os rótulos acertados.
+
+Decidido pelo Mateus (a bibliografia sai; a caixa só nas menções); os sinais e os limiares são
+desta sessão e vão à revisão.
+
+**Medição (2026-11-13, depois do código; HEAD `fee3cb5` → esta mudança).** Um PDF por vez.
+
+| | *Manica* | *Miller* |
+|---|---|---|
+| Linhas de bibliografia tiradas | 32.272, em 93 trechos (cerca de 208 mil palavras); 88 com o título "referências" | 94.747, em 120 trechos (cerca de 802 mil palavras); 101 linhas de título |
+| Blocos (títulos, parágrafos, notas) | 5.060, 17.187, 806 → 4.971, 17.151, 599 | 5.802, 21.358, 2.572 → 5.750, 20.814, 544 |
+| Parágrafos com prosa e referência misturadas | 0 → 0 | 432 → 2 |
+| Páginas que trocam de coluna 4 vezes ou mais na leitura | 159 → 148 | 372 → 125; entre as que tinham bibliografia, 249 → 2 |
+| Linhas com citação de periódico que ficam | 20 (listas curtas) | 29 (fonte de tabela e de figura, em StoneSans) |
+| Palavras de rótulo acertadas | 802; ficam 0 fora de título e 3 em título | 0 |
+| Hífen de fim de linha (tirados, mantidos) | 34.772, 824 → 33.250, 582 | 48.744, 1.876 → 40.722, 252 |
+
+- **O que saiu é referência:** no *Miller*, 94.548 das linhas são StoneSerif de 7,5 pt, a letra
+  das citações; o resto é o título (101) e as linhas de outra letra presas entre duas
+  referências (98, quase todas o cabeçalho e o número das páginas online). No *Manica*, 32.152 são MyriadPro de
+  6 pt, 88 o título e 32 linhas de MyriadPro de 10 pt entre referências ("Leituras sugeridas").
+- **A frase da bibliografia online:** no *Miller*, "Bibliografía completa disponible online en
+  expertconsult.com." fica sozinha em 97 dos 118 capítulos, e a regra da marca d'água do
+  `limpar` a tira sem regra nova (ADR-0008).
+- **Falsos positivos procurados:** a linha logo antes de cada trecho (no *Manica*, "Questão de
+  prova", "Estimulação dos receptores…" e outras 3, que ficam; no *Miller*, a frase da
+  bibliografia online, em letra do corpo, que fica); a caixa em outra letra na mesma corrida
+  (227 linhas de StoneSans de 8 pt em 6 corridas do *Miller*, que ficam); as corridas com 1 a 9
+  linhas de citação (26 no *Miller*, 5 no *Manica*: fonte de tabela, que fica). Nenhuma linha na
+  letra do corpo sai. A primeira versão levava como título 4 linhas em negrito de outra seção
+  no *Manica*: a segunda linha do título passou a exigir a letra da primeira (R2 da revisão).
+- **O `limpar` sozinho, medido no EPUB de antes:** com a citação "volume:página, ano" e sem esta
+  regra, saem 2.946 segmentos do *Miller* (819 mil palavras), e 455 deles (39 mil palavras)
+  levam prosa junto. É a alternativa C.
+
+**O que fica:**
+- **a lista curta,** com menos de 10 linhas de citação no trecho: 11 notas com cara de
+  referência no *Manica* (2,6 mil palavras; eram 13, com 3,2 mil) e 7 títulos "referências"
+  soltos; no *Miller*, 3 títulos "BiBliografía" de capítulos com poucas referências;
+- **o título no pé de uma coluna,** quando a lista abre o alto da outra: fica, porque na ordem
+  do PDF ele não se distingue do título de outra seção;
+- **o cabeçalho da página online antes da primeira referência dela** (3 no *Miller*: "Capítulo
+  4: … 72.e1"), e a frase da bibliografia online colada ao fim de um parágrafo (2);
+- **o bloco de notas de rodapé com 10 linhas de citação ou mais** sairia inteiro, com o
+  comentário que estiver na mesma letra. Não há caso nos dois livros;
+- **a ordem das colunas:** a coluna de linhas curtas ao lado da prosa continua lida por altura
+  quando não é bibliografia. No *Miller*, 125 páginas ainda trocam de coluna 4 vezes ou mais, e
+  110 segmentos trazem o hífen da quebra seguido de uma linha da outra coluna ("…incre- rápido,
+  la Palv…"). A causa mora na regra "Duas colunas", e consertá-la pede os livros em que ela foi
+  medida;
+- **os livros cujo PDF não está neste Mac** (*Practical*, *Bonica*, *Dalgalarrondo*,
+  *Competente*, *Hard Parts*, *Maudlin*) não foram medidos: numa reimportação, a bibliografia em
+  letra menor com 10 linhas de citação sai na página, e não mais no `limpar`;
+- **a chamada de referência que ainda fica colada** no *Miller*: cerca de 360 ("anestésico24,
+  105-107", "»106"), de 22.492 tiradas; e 10 rótulos que abrem segmento (5 "CUADRO" abaixo de
+  outro negrito, 3 "TABLA" e 2 legendas na letra do corpo). São limites das regras de
+  2026-11-10 e 2026-11-13, medidos e não consertados nesta rodada.
+
 ## Consequências
 
 **Ganha:** um comando a mais na mesma esteira, sem repositório novo. Os defeitos de conversão são atacados onde nascem.
@@ -1442,6 +1555,7 @@ fonte dos capítulos, os sinais e os limiares são desta sessão e vão à revis
 | Rótulo de capítulo | testes (`tests/test_blocos_capitulos.py`): o rótulo no tamanho da seção abre capítulo, também depois do nome da subparte em maiúsculas, e a parte fica com o primeiro capítulo dela; o rótulo menor que o título vai com o capítulo que abre; o título que só cita um capítulo e a linha do sumário com dois-pontos não abrem; o número grande seguido de "Capítulo 1" continua um capítulo só | portão | o *Bonica* volta a sair por parte, o rótulo fica no capítulo anterior, ou o sumário abre capítulo |
 | Sumário sem número, colaboradores vizinhos, espaço de verdade e rótulo no sumário | testes (`tests/test_paginas_de_lista.py`): o sumário sem número e o do número sem vírgula saem, do primeiro rótulo ao último; a abertura sem frase, a página com frase depois do sumário, a prosa com chamada colada, a dedicatória e a página da parte ficam; os colaboradores da vizinha e o fim da lista saem, e a dedicatória, o prefácio e o título maior depois da lista ficam. (`tests/test_caracteres.py`, `tests/test_caracteres_no_pdf.py`): "PA R T O N E" e "CHAPTER 11 0" saem inteiros, também do PDF montado em código; o espaço do tamanho do de verdade fica; a linha irregular continua lida pela regra da letra espaçada. (`tests/test_epub_simples.py`): o rótulo e o título no sumário do EPUB; o rótulo depois do texto, o citado e o do sumário com dois-pontos não dão nome | portão | o sumário ou a lista voltam a ser lidos, sai uma página com frase, a letra espaçada volta partida, ou o sumário do EPUB volta ao nome da parte |
 | Tratado em português e em espanhol | testes (`tests/test_sumario_interno.py`): a parte no nível de cima e o capítulo com rótulo abrem capítulo, com o nome do item; a seção abaixo do nível do capítulo não abre; o sumário sem rótulo, o plano, o de dois rótulos e o de três rótulos na mesma página não servem. (`tests/test_capitulos_pelo_sumario.py`): o capítulo abre no primeiro título da página, e o que vem antes fica no anterior; a página sem título abre no primeiro bloco; a parte fica com o primeiro capítulo, com o nome dele; o rótulo dentro do anexo e o resto de figura não abrem capítulo; a abertura em página que saiu inteira abre no bloco seguinte; o nível conta do tamanho que mais abre capítulo. (`tests/test_sumario_do_pdf.py`, com o adaptador lendo um PDF com marcadores montado em código): nível, título e página, pelo destino direto, pela ação e pelo nome; o nome que não existe, a referência a si mesma e a referência a objeto que não existe ficam de fora; o PDF sem sumário devolve vazio sem aviso, e o arquivo que não é PDF, vazio com aviso; o sumário em círculo acaba onde o círculo fecha, o plano de 1.200 itens é lido inteiro, e o sumário e a árvore de nomes que apontam para si mesmos não travam; o `importar-pdf` corta pelo sumário e dá os nomes ao sumário do EPUB, e com sumário que não serve corta como antes. (`tests/test_cabecalho_na_altura_do_numero.py`): o cabeçalho maior que o corpo na altura do número sai sem se repetir; com o número no pé, de outro tamanho, em duas páginas ou sem letra, fica; a linha do corpo na altura do número do pé fica; o carimbo de data e hora sai, e a data sem hora fica. (`tests/test_rotulo_em_portugues_e_espanhol.py`): a legenda, o quadro, a tabela, a "TABLA" e o "CUADRO" em negrito na letra do corpo saem; o rótulo em letra de título, a menção na letra do corpo, a que continua a frase, o número simples e o rótulo em inglês em negrito na letra do corpo ficam. (`tests/test_hifen_invisivel.py`): o U+00AD no meio da linha vira hífen, o do fim só no livro que o usa no meio em 3 linhas ou mais; o número partido na quebra volta inteiro, e a letra antes do hífen segue com espaço. (`tests/test_colaboradores_em_maiusculas.py`): a lista com o nome em maiúsculas sai; três autores com afiliação e o nome sem título acadêmico ficam | portão | o *Manica* volta a sair com capítulo falso, o cabeçalho, o rótulo, o hífen invisível ou a lista voltam a ser lidos, sai texto do corpo, ou muda o quadro do *Dalgalarrondo* |
+| Bibliografia pela letra e rótulo com a caixa trocada | testes (`tests/test_bibliografia_do_pdf.py`): 10 linhas de citação em letra menor e o título em negrito saem, registrados com a página; 9 ficam; a citação "ano;volume:página" conta; a linha sem citação no meio sai; o título em letra de título logo acima sai, e o que fica abaixo da lista na página não; a linha do corpo antes fica; a caixa em outra letra antes fica; o cabeçalho da página online entre as referências sai, e 4 linhas de outra letra partem o trecho; dois trechos de 9 ficam; a lista continua na página seguinte; as citações na letra do corpo, em outra família do tamanho do corpo e no PDF sem família ficam; do PDF de ponta a ponta, o resumo conta as linhas. (`tests/test_caixa_do_rotulo.py`): "FigurA 12.3", "QuAdro 13.1", "tAb. 4.2", "tAblA 6-1" voltam à caixa normal no parágrafo e na nota; a caixa normal, as maiúsculas, a palavra sem número, outra palavra e o título não mudam; do PDF de ponta a ponta, o resumo conta as palavras | portão | o *Miller* volta a sair com a prosa intercalada com as referências, sai linha do corpo, ou muda palavra que não é rótulo |
 | A escuta ★ | rodar `importar-pdf` + `preparar` num PDF real em `livros/` e contar o que o `limpar` ainda precisa tirar | a cada mudança no conversor | a contagem sobe |
 
 Regra derivada no `AGENTS.md`: a biblioteca de PDF só entra em `adaptadores/`.

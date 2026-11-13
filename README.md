@@ -38,6 +38,12 @@ A decisão está no [ADR-0001](docs/adr/0001-reescrever-com-claude-code-orquestr
   "NOME, MD" e a afiliação, também na página vizinha com 2 nomes ou mais e na última, só de
   afiliação)
   ([ADR-0004](docs/adr/0004-pdf-entra-como-comando-importar-pdf.md)).
+- No PDF, a bibliografia em letra menor que a do corpo: o trecho de linhas na letra das
+  referências com 10 linhas de citação de periódico ou mais ("Lancet 269:259, 1955", "J Bone
+  Joint Surg Br. 1980;62:358"), com o título logo antes e o cabeçalho das páginas de
+  bibliografia entre elas. Sai antes da ordem de leitura, para a lista ao lado da prosa não se
+  intercalar com ela
+  ([ADR-0004](docs/adr/0004-pdf-entra-como-comando-importar-pdf.md)).
 - O trecho que seria lido duas vezes (`<p>` dentro de `<blockquote>`).
 - A página de direitos autorais.
 - O bloco de código e o índice remissivo que o EPUB marca como tais. Sai também o parágrafo
@@ -61,6 +67,18 @@ A decisão está no [ADR-0001](docs/adr/0001-reescrever-com-claude-code-orquestr
   e o título logo antes ([ADR-0008](docs/adr/0008-codigo-e-indice-saem-do-audio.md)). A
   referência partida que a limpeza tinha juntado sai inteira, e cada pedaço fica em `remocoes`.
   A lista curta, com menos de 10 citações, fica; a prosa que cita "et al." também.
+  A citação com o ano no fim ("1. Bedford PD: Lancet 269:259, 1955.") conta do mesmo jeito.
+- A seção de questões de prova, do título até a última alternativa: o enunciado com a prova
+  entre parênteses ("34.1 (TSA/2012) …") e as alternativas ("A. …", "b) …"), quando são metade
+  dos parágrafos ou mais e há dois enunciados, ou um enunciado e um grupo de 3 alternativas. Sem
+  enunciado de prova nada sai: a lista de letras no meio da prosa fica
+  ([ADR-0008](docs/adr/0008-codigo-e-indice-saem-do-audio.md)).
+- O título sem letra nem algarismo ("•", "---", "~"), resto de figura; o parágrafo que ele
+  partia volta a ser um só. O título só de algarismo ("2012") e o de letra solta ("A") ficam
+  ([ADR-0008](docs/adr/0008-codigo-e-indice-saem-do-audio.md)).
+- O capítulo que você declarar: `preparar --sem-capitulo c006` tira o capítulo inteiro (a lista
+  de autores, o sumário de papel, um anexo)
+  ([ADR-0008](docs/adr/0008-codigo-e-indice-saem-do-audio.md)).
 - O sumário de papel: a linha com 5 pontos seguidos e número no fim ("1. Introdução ……… 23"),
   quando o capítulo tem 5 ou mais. O título "Sumário", os títulos das partes e a linha sem
   pontilhado ficam
@@ -81,6 +99,17 @@ Nada sai em silêncio: cada remoção fica registrada em `limpeza.json`, com o s
 uv sync
 uv run earbook preparar livro.epub
 ```
+
+Para deixar um capítulo inteiro fora do áudio, declare-o pelo ID, quantas vezes precisar:
+
+```bash
+uv run earbook preparar livro.epub --sem-capitulo c006 --sem-capitulo c110
+```
+
+O ID é a posição do capítulo no livro (`c006` é o 6º arquivo do spine; `livro.json` lista todos,
+com o arquivo de cada um). Cada segmento do capítulo fica em `limpeza.json`, com o motivo
+"capítulo fora do áudio: pedido no preparar". O ID que o livro não tem é erro. No EPUB montado, o
+capítulo continua no sumário, vazio.
 
 O comando `preparar` cria `livro.earbook/` (ou onde `--pasta` mandar) com:
 
@@ -238,7 +267,12 @@ autor do metadado do PDF (ou os de `--titulo` e `--autor`). O que ele faz:
   remissivo, sumário, com ou sem número de página, e colaboradores) e a tabela, o quadro e a
   figura, pela letra e pelo rótulo em inglês, em português ou em espanhol. O resumo conta essas
   linhas à parte, cada uma com o seu motivo;
+- tira a bibliografia em letra menor que a do corpo, pelas citações de periódico, antes de montar
+  os parágrafos. O resumo conta essas linhas numa linha própria;
 - junta as linhas em parágrafos e devolve inteira a palavra partida no fim da linha;
+- acerta a caixa da palavra de rótulo que o versalete do PDF trocou nas menções ("No QuAdro
+  13.1" vira "No Quadro 13.1"; "tAb. 4.2", "tab. 4.2"): só "figura", "fig.", "quadro", "tabela",
+  "tab.", "tabla" e "cuadro" antes de número, e nunca no título. O resumo conta quantas;
 - lê a página em duas colunas coluna por coluna, pela calha entre elas, quando os dois lados
   são texto corrido, também o de verbetes justificados (glossário, bibliografia). A tabela
   continua lida linha a linha;

@@ -18,12 +18,14 @@ from earbook.dominio.direitos import nas_pontas, pagina_de_direitos
 from earbook.dominio.fora_do_audio import (
     MOTIVO_DO_PAPEL,
     bibliografia,
+    capitulos_pedidos,
     destaques,
     indice_pelo_conteudo,
     marcas_dagua,
     pelo_papel,
     propaganda,
     sumario_de_papel,
+    titulos_sem_letra,
 )
 from earbook.dominio.livro_limpo import (
     Aparo,
@@ -34,6 +36,7 @@ from earbook.dominio.livro_limpo import (
     Remocao,
     Suspeita,
 )
+from earbook.dominio.questoes_de_prova import secoes_de_questoes
 from earbook.dominio.segmento import Papel, Segmento, primeira_letra
 
 # Termina frase. Aspas e apóstrofo não estão aqui: a fala que fecha aspas com vírgula segue
@@ -64,35 +67,51 @@ def limpar_para_o_ouvido(
     capitulos: Sequence[tuple[str, Sequence[Segmento]]],
     titulo: str,
     autor: str,
+    fora: Sequence[str] = (),
 ) -> LivroLimpo:
-    """A limpeza inteira, na ordem: direitos, marca d'água, cabeçalho solto, cabeçalho colado,
-    destaque de margem, parágrafo partido, capitular e, por último, código, índice, bibliografia e o
-    índice sem marcação.
+    """A limpeza inteira, na ordem: o capítulo declarado em `fora`, direitos, marca d'água,
+    cabeçalho solto, cabeçalho colado, destaque de margem, parágrafo partido, capitular e, por
+    último, código, índice, bibliografia e o índice sem marcação.
 
     A ordem importa: o cabeçalho, solto ou colado, fica exatamente onde o parágrafo se
     partiu, e só some do meio depois que as duas metades ficam lado a lado.
     """
-    sem_cabecalho = _tirar_paginas_marcas_e_cabecalhos(capitulos, titulo, autor)
-    frases = frases_do_cabecalho(capitulos, titulo, autor)
+    # ADR-0008: o capítulo declarado sai antes de tudo, e não conta como prova de nada.
+    ficam, pedidos = _tirar(capitulos, capitulos_pedidos(capitulos, fora))
+    sem_cabecalho = _tirar_paginas_marcas_e_cabecalhos(ficam, titulo, autor)
+    frases = frases_do_cabecalho(ficam, titulo, autor)
     aparado = _aparar_cabecalhos_colados(sem_cabecalho, frases)
     # ADR-0003: o livro inteiro, com o destaque que vai sair, prova a palavra sem o hífen.
-    vocabulario = Vocabulario(s.texto for _, segmentos in capitulos for s in segmentos)
-    # ADR-0008: o destaque sai antes da junção, que emenda a frase partida por ele.
-    juntado = _juntar_paragrafos_partidos(
-        _tirar_do_livro(aparado, _destaques_de_margem), vocabulario
-    )
+    vocabulario = Vocabulario(s.texto for _, segmentos in ficam for s in segmentos)
+    # ADR-0008: o título sem letra e o destaque saem antes da junção, que emenda a frase partida
+    # por eles.
+    sem_restos = _tirar_do_livro(_tirar_do_livro(aparado, titulos_sem_letra), _destaques_de_margem)
+    juntado = _juntar_paragrafos_partidos(sem_restos, vocabulario)
     # ADR-0007: sem a letra solta, uma continuação em minúscula pode aparecer ("he" + "demanded.").
     juntado = _juntar_paragrafos_partidos(
         _devolver_capitulares(_marcar_capitulares_perdidas(juntado)), vocabulario
     )
-    # ADR-0008: código, índice e bibliografia saem por último: até aqui, separam os parágrafos em
-    # volta deles. O índice sem marcação também ("Índice pelo conteúdo").
-    # O sumário de papel e a propaganda, pelo mesmo motivo (ADR-0009).
-    regras = (pelo_papel, bibliografia, indice_pelo_conteudo, sumario_de_papel, propaganda)
-    for escolher in regras:
-        juntado = _tirar_do_livro(juntado, escolher)
+    juntado = _tirar_por_ultimo(juntado)
+    juntado = replace(juntado, remocoes=(*pedidos, *juntado.remocoes))
     originais = {s.id: s.texto for _, segmentos in capitulos for s in segmentos}
     return _juncoes_saem_com_a_cabeca(juntado, originais)
+
+
+def _tirar_por_ultimo(livro: LivroLimpo) -> LivroLimpo:
+    """ADR-0008: código, índice e bibliografia saem por último: até aqui, separam os parágrafos
+    em volta deles. O índice sem marcação também ("Índice pelo conteúdo"). O sumário de papel e
+    a propaganda, pelo mesmo motivo (ADR-0009), e a seção de questões de múltipla escolha."""
+    regras = (
+        pelo_papel,
+        bibliografia,
+        indice_pelo_conteudo,
+        sumario_de_papel,
+        propaganda,
+        secoes_de_questoes,
+    )
+    for escolher in regras:
+        livro = _tirar_do_livro(livro, escolher)
+    return livro
 
 
 def _juncoes_saem_com_a_cabeca(livro: LivroLimpo, originais: Mapping[str, str]) -> LivroLimpo:

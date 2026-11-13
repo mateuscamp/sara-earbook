@@ -59,6 +59,12 @@ _LINHA_DE_SUMARIO = re.compile(r"\.{5,}\s*\d+\s*$")
 TITULO_DA_PROPAGANDA = "conheça também"
 PARAGRAFOS_DA_PROPAGANDA = 5
 MOTIVO_DA_PROPAGANDA = "propaganda do livro: Conheça também"
+# O capítulo que quem prepara o livro declara fora do áudio (ADR-0008, "Tratado em português e em
+# espanhol"): a lista de autores, o sumário de papel, o anexo de respostas.
+MOTIVO_DO_CAPITULO_FORA = "capítulo fora do áudio: pedido no preparar"
+# O título sem letra nem algarismo ("•", "• •", "---", "~"): o resto de figura que o OCR do PDF
+# deixou (ADR-0008, "Tratado em português e em espanhol"). Medido: 375 no Manica.
+MOTIVO_DO_TITULO_SEM_LETRA = "título sem letra nem algarismo"
 # ", 346-347", ", 66", ", 200-203". A vírgula decimal ("2,0", as tabelas do Dalgalarrondo) não tem
 # espaço; o ano ("Porto Alegre, 2004") e o número antes do parêntese ("(Cummings, 20)") não contam.
 _PAGINA_DO_INDICE = re.compile(
@@ -68,6 +74,28 @@ _AUTOR_ABNT = re.compile(r"[A-ZÀ-Ý][A-ZÀ-Ý'\u2019-]+(?:\s+[A-ZÀ-Ý(][A-ZÀ-
 _ANO = re.compile(r"\b(?:1[5-9]|20)\d\d\b")
 # O número conta: o destaque com "3 a 25 segundos" não repete o texto com "5 a 30".
 _PALAVRA_OU_NUMERO = re.compile(rf"{PALAVRA.pattern}|\d+")
+
+
+class CapituloDesconhecidoError(ValueError):
+    pass
+
+
+def capitulos_pedidos(
+    capitulos: Sequence[tuple[str, Sequence[Segmento]]], fora: Sequence[str]
+) -> dict[str, str]:
+    """ID → motivo de cada segmento dos capítulos que o `preparar --sem-capitulo` declarou fora do
+    áudio (ADR-0008, "Tratado em português e em espanhol"). O capítulo que o livro não tem é erro:
+    o pedido errado não pode passar calado."""
+    desconhecidos = sorted(set(fora) - {capitulo for capitulo, _ in capitulos})
+    if desconhecidos:
+        mensagem = f"o livro não tem o capítulo {', '.join(desconhecidos)}"
+        raise CapituloDesconhecidoError(mensagem)
+    return {
+        segmento.id: MOTIVO_DO_CAPITULO_FORA
+        for capitulo, segmentos in capitulos
+        if capitulo in fora
+        for segmento in segmentos
+    }
 
 
 def bibliografia(capitulos: Sequence[tuple[str, Sequence[Segmento]]]) -> dict[str, str]:
@@ -164,6 +192,18 @@ def _referencia(segmento: Segmento) -> bool:
     texto = segmento.texto
     abnt = _AUTOR_ABNT.match(texto) is not None and _ANO.search(texto) is not None
     return segmento.papel is Papel.PARAGRAFO and abnt
+
+
+def titulos_sem_letra(capitulos: Sequence[tuple[str, Sequence[Segmento]]]) -> dict[str, str]:
+    """ID → motivo de cada título sem letra nem algarismo. O de algarismo ("2012", o ano; "1", o
+    número do capítulo) e o de letra solta ("V", o capítulo em romano; "A", a letra do índice)
+    ficam: também são título de verdade. Só título: a pausa de cena ("* * *") vem como parágrafo."""
+    return {
+        segmento.id: MOTIVO_DO_TITULO_SEM_LETRA
+        for _, segmentos in capitulos
+        for segmento in segmentos
+        if segmento.papel is Papel.TITULO and not any(c.isalnum() for c in segmento.texto)
+    }
 
 
 def sumario_de_papel(capitulos: Sequence[tuple[str, Sequence[Segmento]]]) -> dict[str, str]:

@@ -21,7 +21,17 @@ from earbook.dominio.segmento import Papel, Segmento
 _PARENTESE = r"(?:\s?\([^)]{1,20}\))?"
 _ANO = rf"\b\d{{4}}[a-z]?{_PARENTESE}"
 _VOLUME = rf"\d+[A-Za-z]?{_PARENTESE}(?:\s?[Ss]uppl\s?\d*)?"
-_CITACAO = re.compile(rf"{_ANO};\s*{_VOLUME}:\s*[A-Za-z]{{0,2}}\d+")
+_ANO_PONTO_E_VIRGULA = rf"{_ANO};\s*{_VOLUME}:\s*[A-Za-z]{{0,2}}\d+"
+# A citação do Miller, com o ano no fim: volume, dois-pontos, página, vírgula e ano ("269:259,
+# 1955", "27(8):673, 2010", "62:4-11, 2007", "121:e4, 2008"; ADR-0008, "Tratado em português e em
+# espanhol"). A proporção e a hora da prosa não têm o ano depois da vírgula ("1:2 en 2010").
+_PAGINA = r"[A-Za-z]?\d+"
+_VOLUME_PAGINA_ANO = (
+    rf"\b\d{{1,4}}{_PARENTESE}:\s?{_PAGINA}(?:[-\u2013]{_PAGINA})?,\s?(?:19|20)\d\d\b"
+)
+CITACAO_DE_PERIODICO = re.compile(rf"{_ANO_PONTO_E_VIRGULA}|{_VOLUME_PAGINA_ANO}")
+"""A citação de periódico, nas duas formas. A bibliografia do PDF, que sai pela letra, conta a
+mesma (ADR-0004, "Bibliografia pela letra")."""
 # O sobrenome com minúscula e as iniciais: "Adams MA", "Kirkaldy-Willis WH", "van Tulder MW". O
 # crédito do capítulo em maiúsculas ("JIMMY CHEN YANG, ATHAR N. MALIK", Bonica) não é autor, e o
 # romano não é inicial ("Stage IV,", "Type II,").
@@ -63,7 +73,7 @@ def regioes_de_referencias(segmentos: Sequence[Segmento]) -> list[tuple[int, int
     Readings") se junta à região logo depois do título seguinte ("References"); o título do
     próximo capítulo não se atravessa, porque a prosa dele nunca soma 10 citações.
     """
-    citacoes = [len(_CITACAO.findall(s.texto)) for s in segmentos]
+    citacoes = [len(CITACAO_DE_PERIODICO.findall(s.texto)) for s in segmentos]
     sinais = [_sinal(s, n) for s, n in zip(segmentos, citacoes, strict=True)]
     regioes: list[tuple[int, int]] = []
     for inicio, fim in reversed(_corridas(sinais)):

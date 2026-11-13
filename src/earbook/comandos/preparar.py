@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import shutil
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -27,8 +28,11 @@ def pasta_padrao(epub: Path) -> Path:
     return epub.with_suffix(".earbook")
 
 
-def preparar(epub: Path, pasta: Path) -> Preparo:
+def preparar(epub: Path, pasta: Path, sem_capitulos: Sequence[str] = ()) -> Preparo:
     """Extrai, segmenta, limpa e grava o livro em `pasta`, que não pode existir ainda.
+
+    `sem_capitulos` são os IDs dos capítulos que saem inteiros do áudio, registrados em
+    `limpeza.json` (ADR-0008): `preparar(epub, pasta, sem_capitulos=("c006",))`.
 
     Se algo falhar no meio, apaga a pasta que acabou de criar: pasta pela metade
     faria o próximo `preparar` recusar sem motivo.
@@ -37,7 +41,7 @@ def preparar(epub: Path, pasta: Path) -> Preparo:
     try:
         pacote = extrair_epub(epub, trabalho.pasta_do_epub(pasta))
         livro, segmentados = _segmentar_livro(epub, pasta, pacote)
-        limpeza = limpar_para_o_ouvido(segmentados, pacote.titulo, pacote.autor)
+        limpeza = limpar_para_o_ouvido(segmentados, pacote.titulo, pacote.autor, sem_capitulos)
         for capitulo in limpeza.capitulos:
             trabalho.gravar_limpos(pasta, capitulo)
         trabalho.gravar_limpeza(pasta, limpeza)

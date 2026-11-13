@@ -11,7 +11,10 @@ O `limpar` tira também o parágrafo idêntico que se repete em metade ou mais d
 spine (a marca d'água "OceanofPDF.com") e, desde 2026-11-03, o destaque de margem que repete,
 palavra por palavra, o texto vizinho (seção "Destaque de margem repetido"), e a bibliografia no
 padrão ABNT, reconhecida pelo conteúdo (seção "Bibliografia"), e o índice remissivo sem
-marcação, também pelo conteúdo (seção "Índice pelo conteúdo"). Inverte se a escuta mostrar que o
+marcação, também pelo conteúdo (seção "Índice pelo conteúdo"). Desde 2026-11-13, saem também a
+seção de questões de múltipla escolha, pelo conteúdo, o título sem letra nem algarismo e o
+capítulo que o `preparar --sem-capitulo` declara (seção "Tratado em português e em espanhol").
+Inverte se a escuta mostrar que o
 ouvinte se perde sem o código ("depois da linha 7"), ou se um livro medido perder um texto que
 não é código, índice, marca d'água, destaque nem bibliografia.
 
@@ -658,6 +661,175 @@ toda regra que roda depois da junção, não só para a Vancouver.
 | Junções órfãs | 9 | 0 |
 | `segmentos/`, `limpos/`, `livro.json`, suspeitas | | idênticos |
 
+## Tratado em português e em espanhol: citação "volume:página, ano", seção de questões, título sem letra e capítulo declarado (2026-11-13)
+
+### Contexto
+
+Dois tratados de anestesiologia estão na esteira, vindos de PDF: o *Manica* (pt-BR, 112
+capítulos, 994.431 palavras em `limpos/`) e o *Miller* (em espanhol, 118 capítulos, 3.210.143
+palavras), no HEAD `fee3cb5`. O Mateus decidiu em 2026-11-13: vale o corte dos outros tratados
+(a bibliografia sai); no *Manica* saem as seções "Questões de provas do TSA", o Anexo 1
+(respostas), o Anexo 2 (ilustrações), a lista de autores, o sumário de papel e os títulos sem
+nenhuma palavra. O inventário por script e a leitura de amostras mediram:
+
+| O que é lido | Onde | Tamanho |
+|---|---|---|
+| Bibliografia no formato "Autor AB, et al: Periódico volume:página, ano" | *Miller*, fim de cada capítulo e páginas online ("47.e1") | 2.505 segmentos com essa citação; cerca de 800 mil palavras |
+| Seção de questões de múltipla escolha, no fim do capítulo | *Manica*, 62 capítulos | cerca de 1.500 segmentos e 23 mil palavras |
+| Título sem letra nem algarismo ("•", "• •", "-", "~") | *Manica* | 375 títulos |
+| Capítulos que o Mateus não quer ouvir | *Manica*: "Autores", "Sumário", "Anexo 1", "Anexo 2" | 740 segmentos, 33.928 palavras |
+
+A bibliografia do *Miller* não se resolve só aqui: 432 parágrafos misturam prosa e referência,
+porque a página do fim do capítulo é lida por altura. Ela sai no `importar-pdf`, pela letra
+(ADR-0004, "Bibliografia pela letra e rótulo com a caixa trocada"). A regra daqui fica para a
+referência que chega inteira: a do EPUB e a do PDF que a traz na letra do corpo.
+
+### Alternativas
+
+| Decisão | Opção | Ganha | Perde | Por que não |
+|---|---|---|---|---|
+| Citação | **A. A regra Vancouver passa a contar a citação "volume:página, ano"** (escolhida) | uma região só, os mesmos limiares, o mesmo motivo | a prosa intercalada com referência sairia inteira (o caso do *Miller* antes do ADR-0004) | — |
+| | B. Regra própria para o formato da Elsevier | limiares próprios | a segunda cópia da região, da lacuna e do título antes | duplicação sem medida que a peça |
+| Questões | **A. A seção pelo conteúdo: o enunciado de prova e as alternativas de letra** (escolhida) | não depende do título, que o OCR estraga ("Qu esõ e d Provae do tsA", "Questões de proras"); nenhum outro livro medido muda | a questão sem a prova entre parênteses fica, e a lista de exercícios de um livro que não cita prova também | — |
+| | B. Pelo título "Questões de provas" | simples | o ADR-0008 proíbe; 20 grafias do título no *Manica*, 2 delas ilegíveis | perde seções e é regra de um livro |
+| | C. Toda lista de letras "a), b), c)", ou dois grupos delas depois de um título | pega a questão sem prova citada | o PCDT tem 13 grupos assim (questionário, notas do GRADE), o *Miller* 4, o *Practical* 1, o *Bonica* 1: são prosa. Três enumerações em seções vizinhas no fim de um capítulo sairiam com a prosa entre elas (A1 da auditoria, num capítulo sintético) | a enumeração da prosa tem a forma da questão |
+| Capítulo | **A. `preparar --sem-capitulo cNNN`, repetível** (escolhida) | uma opção; serve a qualquer livro; cada segmento fica em `limpeza.json`; nenhum nome de capítulo em `src/` | quem prepara precisa saber o ID (a posição no spine); se o livro for reimportado com outro corte, o ID muda | — |
+| | B. `--sem-capitulo "Anexo 1"`, pelo nome no sumário do EPUB | o nome não muda com o corte | o `preparar` passa a ler o sumário do EPUB; nome repetido, acento e caixa pedem regra de casamento | mais superfície e mais código para o mesmo efeito |
+| | C. Regra pelo conteúdo de cada capítulo (lista de nomes, gabarito, sumário sem pontilhado) | nada a declarar | três regras novas, cada uma medida num capítulo só | heurística de um livro |
+| | D. Script fora do repositório tira os arquivos do EPUB antes do `preparar` (ADR-0010) | nenhum código | sai sem registro em `limpeza.json`; o EPUB deixa de ser o que o `importar-pdf` gravou | "nada sai em silêncio" (ADR-0003) |
+| Título sem letra | **A. Sai o título sem letra nem algarismo, antes da junção** (escolhida) | o resto de figura some, e o parágrafo que ele partia se emenda | a pausa de cena marcada como título ("* * *" num `<h3>`) sairia, registrada | — |
+| | B. Sai também o título só de algarismo e o de letras soltas | mais 314 títulos no *Manica* | "2012" e "1" são título de verdade (o ano das comissões, o número do capítulo); "I", "V" e "X" são capítulo em romano, e "A", a letra do índice | tira título de verdade |
+
+### Decisão
+
+**1. A citação "volume:página, ano".** A citação de periódico de `dominio/referencias_vancouver.py`
+passa a contar também "269:259, 1955", "27(8):673, 2010", "62:4-11, 2007" e "121:e4, 2008". O
+início numerado e a lista de autores não mudam: "39. Van Gessel E, et al:" já casava pela
+vírgula, e a referência de um autor só ("1. Bedford PD: Lancet 269:259, 1955.") entra pela
+citação. Aceitar os dois-pontos depois do autor foi medido e recusado na revisão: "3. Grupo A:
+pacientes…" tem a mesma forma, e nenhum livro medido precisa dele. A região, a lacuna, o título antes, as 10 citações e o motivo
+("bibliografia: referências no estilo Vancouver") são os mesmos.
+
+**2. A seção de questões de múltipla escolha** (`dominio/questoes_de_prova.py`).
+- **Enunciado de prova:** o parágrafo que abre com o número da questão e a prova entre
+  parênteses, sigla e ano ("34.1 (TSA/2012) As variáveis…"). É ele que abre a seção: sem
+  enunciado de prova nada sai, por mais listas de letras que o capítulo tenha.
+- **Alternativa:** o parágrafo que abre com uma letra de A a E, em qualquer caixa, e ponto ou
+  parêntese ("A. Propofol.", "b) Etomidato."). **Grupo:** 3 alternativas seguidas ou mais, em
+  ordem, a partir do A.
+- **A seção** começa no título que fica até 4 segmentos antes de um enunciado de prova: o
+  título e, no máximo, 3 parágrafos. Sem título ali, aquele enunciado não abre seção. Cada
+  enunciado do capítulo é tentado, na ordem, e o que não serve não esconde a seção que vem
+  depois.
+- **Vai até a última alternativa ou enunciado de prova do capítulo** quando, do título até
+  ali, metade dos parágrafos ou mais é alternativa ou enunciado de prova, e há 2 sinais: 2
+  enunciados, ou 1 enunciado e 1 grupo. Senão, **até a última questão antes do próximo título**,
+  com a mesma conta. Senão, nada sai. O que vem depois da última questão fica: a seção curta que
+  fecha o capítulo, o começo do capítulo seguinte que a página trouxe para cá.
+- Sai tudo o que está no trecho, com o título: o enunciado partido, o resto de figura da
+  questão, a nota. O motivo é "seção de questões: enunciados e alternativas de múltipla escolha".
+  Roda por último, com o código e a bibliografia. As contas são acumuladas uma vez por
+  capítulo: o EPUB é entrada não confiável, e 40 mil segmentos custam 0,02 s.
+
+**3. O título sem letra nem algarismo** (`fora_do_audio.titulos_sem_letra`) sai com o motivo
+"título sem letra nem algarismo". Roda antes da junção, como a marca d'água e o destaque: é resto
+de página, e as duas metades do parágrafo que ele partia se emendam pela junção de sempre. O
+parágrafo sem letra ("* * *") continua ficando, como na regra da marca d'água.
+
+**4. O capítulo declarado.** `earbook preparar livro.epub --sem-capitulo c006 --sem-capitulo c110`
+tira do áudio todos os segmentos dos capítulos pedidos, antes de qualquer outra regra, com o
+motivo "capítulo fora do áudio: pedido no preparar". O ID é o do capítulo na pasta de trabalho
+(`c006` é o 6º item do spine). O ID que o livro não tem é erro, com o valor recebido. Nenhum
+nome de capítulo, de livro ou de editora entra em `src/`.
+
+**Fronteiras:** nenhuma muda. `limpar_para_o_ouvido` ganha um parâmetro; o `preparar`, uma opção.
+`limpeza.json` não muda de forma.
+
+Decidido pelo Mateus (o que sai, pela sessão principal); o mecanismo do capítulo declarado, os
+sinais e os limiares são desta sessão e vão à revisão.
+
+### Medição (2026-11-13, depois do código)
+
+`importar-pdf` e `preparar` de novo nos dois livros, nas mesmas pastas; o estado de antes ficou
+em `*.earbook.antes2`. O *Manica* foi preparado com `--sem-capitulo c006 --sem-capitulo c013
+--sem-capitulo c110 --sem-capitulo c111`. O `conferir` aceita os dois.
+
+| | *Manica* antes → depois | *Miller* antes → depois |
+|---|---|---|
+| Segmentos na origem | 23.053 → 22.721 | 29.732 → 27.108 |
+| Segmentos em `limpos/` | 22.549 → 19.988 | 29.282 → 26.557 |
+| Palavras em `limpos/` | 994.431 → 936.907 (−5,8%) | 3.210.143 → 2.416.814 (−24,7%) |
+| Bibliografia | 348 segmentos pela regra Vancouver → 0: sai na página (ADR-0004) | 0 → 0: sai na página (ADR-0004) |
+| Seção de questões | 1.484 segmentos, 23.046 palavras, em 62 capítulos (26 deles pedaços juntados) | 0 |
+| Capítulo declarado | 740 segmentos, 33.928 palavras, em 4 capítulos | não declarado |
+| Título sem letra nem algarismo | 359 (609 "palavras"); 22 parágrafos emendados | 0 |
+| Marca d'água | 0 | 97: a frase da bibliografia online, em 97 de 118 arquivos |
+| Junções, suspeitas | 155 → 149, 547 → 503 | 447 → 451, 253 → 237 |
+
+O que o inventário por script ainda acusa (segmentos):
+
+| Classe | *Manica* | *Miller* |
+|---|---|---|
+| Referência bibliográfica que sobrou | 11 → 8 | 2.187 → 61 (prosa com "et al." e ano; fonte de tabela) |
+| Cabeçalho de página no texto | 5 → 5 | 80 → 3 |
+| Hífen de quebra que sobrou | 15 → 14 | 222 → 110 (a linha da outra coluna; ADR-0004) |
+| Rótulo abrindo o segmento | 21 → 20 | 10 → 10 |
+| Chamada colada, pela régua do inventário | 3.703 → 3.055 | 5.687 → 3.518 (quase tudo é decimal, "0,02", e símbolo, "PaCO2"; chamada de verdade, cerca de 360) |
+| Começa em minúscula | 1.272 → 615 | 1.471 → 1.058 |
+| Termina sem pontuação, com 12 palavras ou mais | 477 → 426 | 494 → 477 |
+| Pontilhado | 47 → 38 | 0 |
+| Título só de algarismo, e de letra solta | 141 e 173 → 139 e 168 | 2 e 14 → 2 e 1 (os outros eram o número das páginas online, "47.e2") |
+
+- **Falsos positivos procurados, questões:** dos 1.484 segmentos, 62 são o título, 1.362 são
+  alternativa ou enunciado de prova, e 60 não são nenhum dos dois. Os 60 foram lidos: enunciado
+  partido pela página ("Apresenta temperatura axilar…"), alternativa colada ao enunciado
+  seguinte e resto do gráfico da questão. **Nenhum é prosa.** A primeira versão, que ia até o
+  fim do capítulo, tirava 2 fragmentos de prosa (31 palavras, em `c034` e `c054`: o começo do
+  capítulo seguinte, que a página de abertura em duas colunas põe no fim do anterior); a seção
+  passou a acabar na última questão (R1 da revisão). Os títulos das 62 seções são 20 grafias de
+  "Questões de provas do TSA" e, numa, "C95", resto de gráfico.
+- **Títulos sem letra:** os 359 são "•" (89), "• •" (59), "-" (27) e outros restos. As 22
+  emendas foram lidas: nas 22 a frase continuava ("…Os indivíduos canhotos devem" | "• •" |
+  "adaptar a posição…").
+- **Regressão** (`preparar` a partir do mesmo EPUB, com o código de antes e o de depois):
+
+| Livro | Capítulos, segmentos | O que muda |
+|---|---|---|
+| *Practical* | 87, 26.994 | `limpos/` 14.004 → 14.002: dois títulos sem letra ("." depois do crédito do capítulo, "**" resto de figura); certos. Uma suspeita de capitular a menos, a que vinha depois do "**" |
+| *Bonica* | 116, 15.946 | nada: `segmentos/` e `limpos/` idênticos |
+| PCDT de dor crônica (o livro e o relatório) | 90, 9.853 e 10, 9.137 | um título "-" a menos em cada, resto de tabela; certo |
+| PCDT preliminar | 88, 1.564 | nada |
+
+  A citação "volume:página, ano" não tira nada de nenhum dos cinco, e a regra das questões
+  também não. O *Huxley*, o *Tides*, o *Dalgalarrondo*, o *Hard Parts*, o *Competente* e o
+  *Learning DDD* não estão neste Mac.
+
+### O que fica
+
+- **Duas seções de questões do *Manica*:** em `c031`, o título e os 10 primeiros segmentos (as
+  alternativas vêm coladas aos números do gráfico, "40 B. Taxa de depuração.", e menos da metade
+  do trecho é questão); em `c035`, uma questão só, com as alternativas coladas à figura. E 9
+  segmentos (44 palavras) depois da última alternativa, em 6 capítulos: a alternativa que perdeu
+  a letra e o resto de gráfico.
+- **A questão sem a prova entre parênteses** e a lista de exercícios de um livro que não cita
+  prova ficam. Não há caso nos livros medidos.
+- **O título só de algarismo** (139 no *Manica*: "1", "2012") **e o de letra solta** (168: "l",
+  "o o o o o o", "A"): ficam, porque o ano das comissões, o número do capítulo, o capítulo em
+  romano ("V") e a letra do índice têm a mesma forma. São restos de figura do OCR, e o sinal
+  que os separa está na página (a letra sem subconjunto, ADR-0004), não no texto.
+- **O parágrafo e a nota sem palavra** (no *Manica*, 25 parágrafos só de símbolo, 156 só de
+  algarismo e 89 de letras soltas; 133 notas): ficam. O parágrafo sem letra é também a pausa de
+  cena ("* * *"), e o de algarismo, a linha de uma fórmula.
+- **O capítulo declarado continua no sumário do EPUB montado,** com o corpo vazio: o `montar`
+  troca o texto no EPUB original (ADR-0005) e não tira o arquivo do spine. No *Manica*, o
+  sumário ainda lista "Autores", "Sumário", "Anexo 1" e "Anexo 2". E o texto fora de segmento
+  de um capítulo declarado, num EPUB que o tenha, continua no livro. Fica para decisão.
+- **A pausa de cena marcada como título** (`<h3>* * *</h3>`) sairia, registrada. Não há caso
+  nos livros deste Mac.
+- **O que sairia:** uma seção de prosa aberta por um item "12.3 (RDC/2010) …" logo depois do
+  título, com outro igual ou um grupo "a), b), c)" adiante, e metade dos parágrafos ou mais
+  nessas formas.
+
 ## Consequências
 
 **Ganha:**
@@ -704,6 +876,11 @@ toda regra que roda depois da junção, não só para a Vancouver.
 | Bibliografia sai, registrada, só pelo conteúdo | testes (`tests/test_bibliografia.py`): 10 referências ABNT seguidas e o título logo antes saem com o motivo "bibliografia: referências no padrão ABNT"; 9 ficam; a referência sem ano parte a sequência; a APA fica; o título sozinho não tira nada; o título longe das referências fica | portão | a bibliografia fica, ou o título sozinho tira texto |
 | Vancouver sai, registrada, só pelo conteúdo | testes (`tests/test_referencias_vancouver.py`): 10 referências numeradas e o título logo antes saem com o motivo "bibliografia: referências no estilo Vancouver"; 9 citações ficam; as coladas numa nota que abre no meio saem, e o título do capítulo seguinte e o crédito em maiúsculas ficam; o pedaço sem sinal entre referências sai; 3 parágrafos sem sinal partem a região e ficam; as "Suggested Readings" se juntam à lista depois de "References", também com o subtítulo no meio; o título do próximo capítulo e a prosa que cita um periódico ficam; "Stage IV," não é autor; a prosa com cara de autor antes do título fica; o pedaço fraco depois da última referência sai; a numerada sem citação antes da primeira sai; a prosa com URL logo antes fica; a prosa com "et al." e "2011;36" fica; o `preparar` registra em `limpeza.json` | portão | a referência fica, ou sai prosa |
 | Índice sai pelo conteúdo, registrado | testes (`tests/test_indice_pelo_conteudo.py`): 10 entradas seguidas e o título logo antes saem com o motivo "índice remissivo: termos seguidos do número da página"; 9 ficam; a letra no meio sai com o índice; a entrada que termina em remissão conta; mais de 8 palavras por número não é entrada; a vírgula sem espaço (decimal e milhar), o ano e o número antes do parêntese não são página, cada um no meio de 10 entradas; o título sozinho não tira nada | portão | o índice fica, ou sai texto que não é índice |
+| Citação "volume:página, ano" conta | testes (`tests/test_citacao_volume_pagina_ano.py`): 10 referências com a citação e o título saem com o motivo da Vancouver; 9 ficam; o fascículo, a faixa de páginas e a página com letra contam; a proporção, a hora e a diluição da prosa não são citação; a prosa que cita um artigo no meio da frase fica | portão | a referência fica, ou sai prosa |
+| Seção de questões sai, registrada, só pelo conteúdo | testes (`tests/test_questoes_de_prova.py`): duas questões depois de um título saem até o fim do capítulo, com o motivo "seção de questões: enunciados e alternativas de múltipla escolha", também com o título ilegível; uma questão com enunciado de prova sai, e dois enunciados sem alternativa; a seção seguida de prosa sai só até o próximo título; o resto de figura, a nota e o enunciado sem marca saem com ela; duas seções no capítulo saem | portão | a seção fica |
+| A lista de letras da prosa fica | testes: um grupo só, um enunciado de prova só, duas alternativas, alternativas fora de ordem ou sem o A, título a mais de 3 parágrafos, menos da metade de questões; a lista do começo do capítulo fica e não esconde a seção do fim. Cada guarda foi vista falhar com o seu mutante | portão | sai enumeração da prosa |
+| Título sem letra sai, e só ele | testes (`tests/test_titulo_sem_letra.py`): "•", "• •", "---", "~" saem com o motivo "título sem letra nem algarismo"; "2012", "1.", "A", "l", "V" ficam; "* * *" como parágrafo, nota, citação ou item fica; o parágrafo que o título partia se emenda | portão | o resto de figura fica, ou sai título de verdade |
+| Capítulo declarado sai inteiro, registrado | testes (`tests/test_capitulo_fora_do_audio.py`): cada segmento do capítulo pedido fica em `remocoes` com o motivo "capítulo fora do áudio: pedido no preparar"; sem pedido nada sai; o capítulo que o livro não tem é erro com o valor; o capítulo que sai não prova o hífen da quebra; o `conferir` aceita; a opção se repete na linha de comando, e o erro não deixa pasta | portão | o capítulo fica, sai sem registro, ou o pedido errado passa calado |
 | Nada a mais some | `preparar` no Huxley e no Tides, `importar-pdf` e `preparar` no Competente e no Hard Parts, comparados com o ADR-0003 e o ADR-0004 | a cada mudança na limpeza | `limpos/` diferente sem explicação |
 | Escuta ★ (manual) | o `montar --original` do DDD, num trecho com código e no fim do livro | depois desta mudança; responsável: Mateus | o ouvinte se perde onde o código saiu |
 
@@ -733,5 +910,8 @@ na sessão principal: "Aceitar com a marca", que acrescentou a marca d'água à 
 "Destaque de margem repetido" foi aprovada em 2026-11-03 ("Aprovar"), e a seção "Bibliografia",
 no mesmo dia ("Aprovar"). A seção "Índice pelo conteúdo" foi aprovada em 2026-11-03 ("Aprovar"),
 com a bibliografia do Competente de fora.
+A seção "Tratado em português e em espanhol" (2026-11-13) executa decisões do Mateus do mesmo
+dia (o que sai), levadas pela sessão principal; o mecanismo `--sem-capitulo`, os sinais e os
+limiares vão à revisão dele.
 O número 0008 estava reservado num rascunho para o `earbook adaptar`, que ainda não está no
 repositório: aquele ADR passa a ser o próximo número livre.

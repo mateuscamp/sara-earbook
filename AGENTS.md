@@ -18,6 +18,7 @@ ADRs em `docs/adr/`. O Claude Code traduz; o Python nunca chama o LLM (ADR-0001)
 - A limpeza nunca apaga em silêncio: toda remoção fica em `limpeza.json`, com o ID do segmento de origem.
 - Capitular deslocada (ADR-0007): o `limpar` devolve a letra quando o próprio livro prova a palavra, e registra em `capitulares`; a que o livro não prova fica suspeita. Nunca vai no brief do tradutor.
 - Código, índice e marca d'água (ADR-0008): o `<pre>` que se declara código e o índice que o EPUB marca (`epub:type`, `role`, `data-type`; nunca pelo título nem pelo nome do arquivo) saem no `limpar`, registrados; o Gherkin fica, como parágrafo. Sai também o parágrafo idêntico em metade ou mais dos arquivos do spine, e em 10 ou mais ("OceanofPDF.com").
+- Capítulo fora do áudio (ADR-0008): `preparar --sem-capitulo cNNN`, repetível, tira o capítulo inteiro (autores, sumário de papel, anexo), registrado em `limpeza.json`. Nenhum nome de capítulo, de livro ou de editora entra em `src/`: o que é escolha de um livro se declara na linha de comando.
 - Termo e decisão do livro (ADR-0007): o tradutor declara em `termos/<lote>.json` o que decidiu fora do glossário, e o `conferir` cobra. O que a amostra decidiu mora em `decisoes.md`, que todo tradutor lê.
 - Entrada: EPUB. PDF entra pelo comando `importar-pdf` (ADR-0004), só para ouvir: sem fidelidade visual, sem OCR, e a biblioteca de PDF só em `adaptadores/`.
 - Capítulos do PDF (ADR-0004): pelo sumário interno do PDF (os marcadores), quando a maioria dos itens de um nível traz o rótulo de capítulo, e o nome no sumário do EPUB é o do item; senão, pelo tamanho e pelo rótulo dos títulos.
@@ -62,7 +63,7 @@ Saída de medição vai para `livros/trabalho/`, nunca para `/tmp` nem para o sc
 
 - Setup: `uv sync`.
 - Portão: `make check` (`scripts/portao.sh`: lock, formato, lint, supressão, tipos, fronteiras, testes, `uv audit`). O hook Stop roda o mesmo. Rodar antes de declarar qualquer tarefa concluída e mostrar a saída.
-- Uso: `uv run earbook preparar livro.epub` → `livro.earbook/`.
+- Uso: `uv run earbook preparar livro.epub [--sem-capitulo cNNN]...` → `livro.earbook/`. O `--sem-capitulo` tira do áudio o capítulo inteiro, pelo ID (a posição no spine; `livro.json` lista).
 - PDF: `uv run earbook importar-pdf livro.pdf --idioma pt-BR [--titulo T] [--autor A]` → `livro.epub`, que segue para o `preparar`. Título e autor vêm do metadado do PDF quando não são dados.
 - Tradução: `uv run earbook traduzir livro.earbook [--palavras 2000]` → `pedidos/` e `nomes.json`, e diz os lotes pendentes. Depois: o glossário a partir de `nomes.json`, um subagente `tradutor` por capítulo (capítulo menor que um lote vai junto com outros) e o `conferir`. Antes de um livro inteiro, mostre ao Mateus o custo estimado (lotes e segmentos) e peça o sim.
 - Adaptação: `uv run earbook adaptar livro.earbook [--palavras 2000]` → `para-adaptar/` e `siglas.json`, e diz os lotes pendentes. Depois: o glossário das siglas a partir de `siglas.json`, `decisoes.md` com o caminho do PDF, um subagente `adaptador` por capítulo e o `conferir`, que lista também os avisos (termo omitido, descarte por decisão). No livro em adaptação, `--amostra` monta só o adaptado e `--original`, o texto limpo.
@@ -120,13 +121,16 @@ Verificadas só em revisão (`code-audit`):
 - Destaque de margem que repete a frase do texto: feito no `importar-pdf` e no `preparar` (ADR-0004, ADR-0008). O destaque resumido ou reescrito ainda é lido.
 - Quadro do PDF que vira nota e vai para o fim do capítulo, longe do texto: feito no `importar-pdf` (ADR-0004, "Quadro no lugar"). O quadro sem rótulo "Quadro N.N" ou "Tabela N.N" em letra de título ainda não é reconhecido.
 - Subtítulo em versalete do PDF que vira nota, e texto escondido debaixo de outro que abre capítulo falso: feitos no `importar-pdf` (ADR-0004, "O que ficou da Fase 1"). O versalete de fonte própria ("-SC700") vira título pelo nome da fonte (ADR-0004, "Versalete de fonte própria").
-- Bibliografia: feita no `preparar` para a do padrão ABNT, 10 referências seguidas ou mais (ADR-0008, "Bibliografia"). Desde 2026-11-10, sai também a Vancouver, das obras médicas: a região de pedaços de referência com 10 citações de periódico ou mais (ADR-0008, "Referências no estilo Vancouver"). A APA, a lista curta e a do Competente, partida entre nota e parágrafo, ainda são lidas; a do Competente se conserta no `importar-pdf`, onde nasce (decisão do Mateus, 2026-11-03).
+- Bibliografia: feita no `preparar` para a do padrão ABNT, 10 referências seguidas ou mais (ADR-0008, "Bibliografia"). Desde 2026-11-10, sai também a Vancouver, das obras médicas: a região de pedaços de referência com 10 citações de periódico ou mais (ADR-0008, "Referências no estilo Vancouver"); desde 2026-11-13, a citação com o ano no fim ("Lancet 269:259, 1955") conta igual. No PDF, a bibliografia em letra menor que a do corpo sai antes, no `importar-pdf`: o trecho na letra das citações com 10 linhas de citação ou mais, com o título logo antes e o cabeçalho das páginas de bibliografia no meio (ADR-0004, "Bibliografia pela letra e rótulo com a caixa trocada"). Sem isso, a lista ao lado do fim da prosa se intercala com ela, e o `limpar` não desfaz a mistura. A APA, a lista curta e a do Competente, partida entre nota e parágrafo, ainda são lidas; a do Competente se conserta no `importar-pdf`, onde nasce (decisão do Mateus, 2026-11-03).
 - Negrito feito à mão (o mesmo texto desenhado de novo por cima, no mesmo tamanho): feito no `importar-pdf` (ADR-0004, "Negrito feito à mão"). A cópia de uma letra só ainda é lida.
+- Seção de questões de múltipla escolha no fim do capítulo: feita no `preparar`, pelo conteúdo, nunca pelo título. O enunciado de prova ("34.1 (TSA/2012) …") abre a seção no título logo antes dele, e ela vai até a última alternativa ("A.", "b)") ou enunciado, quando metade dos parágrafos ou mais é questão e há dois sinais (ADR-0008, "Tratado em português e em espanhol"). Sem enunciado de prova nada sai: a lista de letras da prosa tem a mesma forma. A questão sem a prova entre parênteses e a seção com as alternativas coladas ao gráfico (2 no Manica) ainda são lidas.
+- Título sem letra nem algarismo ("•", "---", "~", resto de figura do OCR): feito no `preparar`, antes da junção. O título só de algarismo ("2012", "1") e o de letra solta ("A", "l", "o o o") ainda são lidos, porque também são título de verdade; o parágrafo e a nota só de símbolo também (ADR-0008, "Tratado em português e em espanhol").
+- Capítulo que não se ouve (lista de autores, sumário de papel sem pontilhado, anexo de respostas): `preparar --sem-capitulo cNNN` (ADR-0008).
 - Alternativa de exercício cuja letra só existe no CSS do `<ol>`: a voz lê "B e C" sem que nada tenha letra. Pendente.
 - `<p>` que é linha de página e parágrafo que o PDF perdeu: sem código, pelo Calibre e pelo mapa do original (ADR-0010). O `importar-pdf` ainda funde os parágrafos do PDF sem recuo, sem avisar.
 - Hífen do fim da linha do PDF tirado sem prova ("abri-|los" vira "abrilos"; ADR-0010, "Fila"). Pendente.
 - Hífen gravado como caractere invisível (U+00AD), que cola as metades ("pósanestesia", "tabla 61"): feito no `importar-pdf`. No meio da linha vira "-"; no livro que o usa assim em 3 linhas ou mais, o do fim da linha segue a regra do hífen da quebra; o número partido na quebra ("6-" | "1") volta inteiro (ADR-0004, "Tratado em português e em espanhol").
-- Versalete com a caixa trocada ("históriA", "BiBliografía"), do PDF que mapeia parte das letras pequenas para a maiúscula: ainda é lido assim; a caixa certa não está no PDF (ADR-0004, "Tratado em português e em espanhol", "O que fica").
+- Versalete com a caixa trocada ("históriA", "BiBliografía"), do PDF que mapeia parte das letras pequenas para a maiúscula: a palavra de rótulo antes de número, fora de título, volta à caixa normal no `importar-pdf` ("No QuAdro 13.1" vira "No Quadro 13.1"; ADR-0004, "Bibliografia pela letra e rótulo com a caixa trocada"). O resto ainda é lido assim, nos títulos também: a caixa certa não está no PDF (decisão do Mateus, 2026-11-13).
 - Algarismo romano em título de capítulo ("Chapter IV").
 - Tabela, quadro, figura e legenda do PDF: saem no `importar-pdf`, pela corrida em letra fora do corpo com rótulo em inglês ("TABLE", "• Figure 2.1", "FIGURE 1.1"), em português ou em espanhol ("Figura 1.2", "Quadro 1.1", "TABLA 2-1", "CUADRO 4-1", sem olhar a caixa, com número composto); a tabela na letra do corpo e o "Quadro"/"Tabela" com o rótulo em letra de título, o do Dalgalarrondo, ficam (ADR-0004, "Tratado médico" e "Tratado em português e em espanhol"). Índice, sumário e colaboradores do PDF saem por página no `importar-pdf`, também o sumário sem número de página (páginas seguidas sem frase com 3 rótulos "CHAPTER N" ou mais) e a página vizinha da lista de colaboradores; o nome do colaborador em maiúsculas com título acadêmico conta, quando a linha de baixo é a afiliação. O nome com letra espaçada e kerning ("NATALI E MORY L", "PA R T O N E", "CHAPTER 11 0") sai inteiro. O texto girado (a tabela deitada, lida uma letra de cada coluna) sai no `importar-pdf`; a de cabeça para baixo e a linha mista ainda são lidas (ADR-0004, "Texto girado").
 - Abreviação e URL. A lista de posts do Competente lê a URL inteira.
@@ -177,11 +181,15 @@ src/earbook/
                 adaptacao.py (grupo, lote que não parte frase, textos do montar), siglas.py (siglas
                 candidatas), fidelidade.py (número, termo raro e papel), conferencia_da_adaptacao.py,
                 capitular.py (a capitular devolvida), escuta.py (o minuto de cada segmento),
-                fora_do_audio.py (código, índice, marca d'água, destaque e bibliografia),
-                referencias_vancouver.py (as referências médicas), cabecalho.py (cabeçalho de página),
+                fora_do_audio.py (código, índice, marca d'água, destaque, bibliografia, título sem
+                letra e capítulo declarado), referencias_vancouver.py (as referências médicas),
+                questoes_de_prova.py (a seção de questões de múltipla escolha),
+                cabecalho.py (cabeçalho de página),
                 colunas.py (a ordem de leitura da página em colunas), caracteres.py (a chamada
                 sobrescrita e o espaço falso do PDF), tabelas_e_figuras.py (a tabela e a figura do
-                PDF pela letra), paginas_de_lista.py (índice, sumário e colaboradores do PDF)
+                PDF pela letra), paginas_de_lista.py (índice, sumário e colaboradores do PDF),
+                bibliografia_do_pdf.py (a bibliografia do PDF pela letra), caixa_do_rotulo.py (a
+                palavra de rótulo que o versalete do PDF trocou)
   adaptadores/  xml_seguro.py (parser), pacote_epub.py (zip + OPF), xhtml.py, papel_do_bloco.py (o papel
                 pela marcação), pasta_de_trabalho.py (o layout), registros_da_pasta.py (o JSON
                 validado campo a campo),

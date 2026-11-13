@@ -46,6 +46,7 @@ class _Opcoes(argparse.Namespace):
     modo: Modo | None = None
     capitulo: str | None = None
     ids: list[str] | None = None
+    sem_capitulo: list[str] | None = None
 
 
 def principal(argumentos: list[str] | None = None) -> int:
@@ -87,7 +88,7 @@ def _importar(opcoes: _Opcoes) -> tuple[str, int]:
 
 def _preparar(opcoes: _Opcoes) -> tuple[str, int]:
     pasta = opcoes.pasta or pasta_padrao(opcoes.epub)
-    return _resumo(preparar(opcoes.epub, pasta), pasta), 0
+    return _resumo(preparar(opcoes.epub, pasta, opcoes.sem_capitulo or ()), pasta), 0
 
 
 def _conferir(opcoes: _Opcoes) -> tuple[str, int]:
@@ -179,6 +180,12 @@ def _analisador() -> argparse.ArgumentParser:
     preparo = comandos.add_parser("preparar", help="EPUB → pasta de trabalho com segmentos")
     _ = preparo.add_argument("epub", type=Path)
     _ = preparo.add_argument("--pasta", type=Path, help="padrão: ao lado do EPUB, com .earbook")
+    _ = preparo.add_argument(
+        "--sem-capitulo",
+        action="append",
+        metavar="cNNN",
+        help="capítulo que sai inteiro do áudio, pelo ID; pode repetir (ADR-0008)",
+    )
     importacao = comandos.add_parser("importar-pdf", help="PDF com texto → EPUB para o preparar")
     _ = importacao.add_argument("pdf", type=Path)
     _ = importacao.add_argument(

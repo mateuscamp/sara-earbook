@@ -9,9 +9,10 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from earbook.adaptadores.epub_simples import gravar_epub
-from earbook.adaptadores.pdf import ler_metadados, ler_paginas
-from earbook.dominio.blocos import LivroMontado, montar_blocos
-from earbook.dominio.capitulos import dividir_em_capitulos
+from earbook.adaptadores.pdf import ler_metadados, ler_paginas, ler_sumario
+from earbook.dominio.blocos import Bloco, LivroMontado, montar_blocos
+from earbook.dominio.capitulos import dividir_em_capitulos, dividir_pelo_sumario
+from earbook.dominio.hifen_da_quebra import mostrar_hifen_invisivel
 from earbook.dominio.metadados import autor_do_livro, titulo_do_livro
 from earbook.dominio.pagina import Pagina
 from earbook.dominio.paginacao import LinhaRemovida, tirar_cabecalhos_e_rodapes
@@ -21,6 +22,7 @@ from earbook.dominio.paginas_de_lista import (
     MOTIVO_DOS_COLABORADORES,
     tirar_paginas_de_lista,
 )
+from earbook.dominio.sumario_interno import aberturas_de_capitulo
 from earbook.dominio.tabelas_e_figuras import (
     MOTIVO_DA_FIGURA,
     MOTIVO_DA_TABELA,
@@ -89,7 +91,7 @@ def importar_pdf(
     if not livro.blocos:
         mensagem = f"{pdf}: nenhum texto nas {len(paginas)} páginas (escaneado? não há OCR)"
         raise PdfSemTextoError(mensagem)
-    capitulos = dividir_em_capitulos(livro.blocos)
+    capitulos = _dividir(pdf, livro)
     metadados = ler_metadados(pdf)
     titulo = titulo or titulo_do_livro(metadados.titulo, pdf.stem)
     autor = autor or autor_do_livro(metadados.autor)
@@ -97,6 +99,16 @@ def importar_pdf(
     remocoes = limpas.remocoes
     chamadas = _chamadas(paginas)
     return Importacao(epub, len(paginas), remocoes, livro, len(capitulos), titulo, autor, chamadas)
+
+
+def _dividir(pdf: Path, livro: LivroMontado) -> tuple[tuple[Bloco, ...], ...]:
+    """Os capítulos pelo sumário interno do PDF, se ele serve, com o nome que ele dá a cada um;
+    senão, pelo tamanho e pelo rótulo dos títulos (ADR-0004, "Capítulos pelo sumário interno do
+    PDF")."""
+    aberturas = aberturas_de_capitulo(ler_sumario(pdf))
+    if aberturas:
+        return dividir_pelo_sumario(livro.blocos, aberturas).com_o_nome_no_primeiro_bloco()
+    return dividir_em_capitulos(livro.blocos)
 
 
 @dataclass(frozen=True)
@@ -109,9 +121,11 @@ class _PaginasParaOsBlocos:
 
 def _limpar(paginas: Sequence[Pagina]) -> _PaginasParaOsBlocos:
     """O que sai da página antes dos blocos, na ordem, e o registro de cada remoção."""
+    # Antes de tudo: o hífen gravado como U+00AD volta a ser hífen, e o dicionário do hífen e as
+    # regras de texto já o veem (ADR-0004, "Hífen invisível").
     # O texto escondido sai antes da borda: em letra de título, ele contaria no corpo e na
     # paginação (ADR-0004, "O que ficou da Fase 1").
-    visiveis = tirar_texto_escondido(paginas)
+    visiveis = tirar_texto_escondido(mostrar_hifen_invisivel(paginas))
     # O texto girado também: a letra solta da tabela deitada contaria na paginação (ADR-0004,
     # "Texto girado").
     de_pe = tirar_texto_girado(visiveis.paginas)

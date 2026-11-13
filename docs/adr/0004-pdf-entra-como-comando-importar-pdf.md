@@ -1175,6 +1175,248 @@ Oral and Oropharynx", "KELLY A. BRUNO, HOWARD S. SMITH, IRFAN LALANI, AND CHARLE
 Decidido pelo Mateus (o que sai e o formato do nome, 2026-11-11, pela sessão principal); os
 sinais e os limiares são desta sessão e foram à revisão.
 
+### Tratado em português e em espanhol: sumário interno, cabeçalho na altura do número, rótulo, hífen invisível e colaboradores (2026-11-13)
+
+Dois tratados de anestesiologia entraram pelo `importar-pdf` no HEAD `8b8352e`: o *Manica*
+(*Anestesiologia*, 4ª ed., pt-BR, 1.601 páginas) e o *Miller* (*Miller Anestesia*, 8ª ed., em
+espanhol, 3.787 páginas). O inventário por script do texto limpo achou seis defeitos. O Mateus
+decidiu em 2026-11-13 que nos dois vale o corte dos tratados em inglês ("Tratado médico"): saem
+tabela, quadro, figura, legenda, bibliografia e colaboradores, agora também pelo rótulo em
+português e em espanhol. A bibliografia e as questões de prova do *Manica* são do `limpar` e
+ficam para outra rodada.
+
+**1. Capítulos pelo sumário interno do PDF** (`adaptadores/pdf.ler_sumario`,
+`adaptadores/sumario_do_pdf.py`, `dominio/sumario_interno.py`,
+`dominio/capitulos.dividir_pelo_sumario`).
+- **O defeito:** o *Manica* saía com 86 capítulos falsos, o primeiro com 239 mil palavras. O corte
+  é o maior tamanho de título em 3 páginas ou mais, e os restos de figura (o texto que o OCR leu
+  dentro das imagens, em Times e Helvetica de 20 a 82 pt) passam de 3 páginas e ganham. Sem
+  eles ganharia a parte ("Parte I", 55 pt, 12 páginas), e não o capítulo, que abre no número
+  ("84.", 30 pt, 98 páginas). E o rótulo "Capítulo N" do gabarito do fim do livro abria 59
+  capítulos de poucas linhas.
+- **O sinal:** o sumário interno do PDF (os marcadores), que diz a página de cada item. No
+  *Manica*, o nível 1 é a parte e o nível 2, o capítulo ("Capítulo 1. …", 95 dos 107 itens; os
+  outros são a abertura e um erro de digitação). No *Miller*, o capítulo está no nível 1
+  ("Capitulo 1_ …", sem acento) e no nível 2 ("Capítulo 1 - …", os 112 itens), e as seções vão
+  do nível 3 ao 9 (7.078 itens).
+- **A regra:** o nível do capítulo é o mais fundo em que a maioria dos itens (mais da metade, e 3
+  ou mais) começa pelo rótulo de capítulo, "Capítulo", "Capitulo" ou "Chapter" e um número, sem
+  olhar a caixa. Todo item desse nível e dos níveis acima dele abre capítulo, na página que o
+  sumário diz: o prefácio, a parte e o anexo são irmãos do capítulo. O capítulo abre no primeiro
+  título da página (o que vem antes dele na página é o fim do capítulo anterior) ou, na página
+  sem título, no primeiro bloco. Continua valendo que o capítulo só fecha depois de ter texto: a
+  página da parte fica com o primeiro capítulo dela. Com o sumário interno, o rótulo e o tamanho
+  dos títulos não abrem capítulo: o "Capítulo N" do gabarito fica dentro do anexo.
+- **O nome no sumário do EPUB** é o título do item, como o PDF o escreve ("Capítulo 1. A
+  história da anestesia"), e não o título lido da página, que no *Manica* vem com a caixa
+  trocada. Com mais de um item na mesma página, ou com a parte que se junta ao capítulo, vale o
+  último: o do capítulo.
+- **O nível dos títulos** conta do tamanho mais comum entre os títulos que abrem capítulo (30 pt
+  no *Manica*).
+- **O sumário que não serve não muda nada:** sem sumário interno, ou sem rótulo de capítulo na
+  maioria de um nível (o *Practical*, cujos 970 itens são "1 History…"; o sumário plano do
+  *Bonica*, com capítulo e seção no mesmo nível, 115 rótulos em 3.826 itens), vale a regra de
+  antes, pelo tamanho e pelo rótulo. O item cujo destino não leva a uma página fica de fora.
+- **Entrada não confiável:** o sumário é lido só pelo adaptador, e o percurso é nosso
+  (`adaptadores/sumario_do_pdf.py`, que não importa o pdfminer), não o `get_outlines` da
+  biblioteca: ele segue referência sem limite e desce um nível por item irmão (os 3.826 itens
+  do *Bonica* estouravam a recursão). Cada item e cada nó da árvore de nomes de destino é
+  visitado uma vez só, pelo número do objeto, e cada referência é seguida por um número fixo de
+  passos. A falha ao abrir o documento não derruba a importação, que já leu as páginas: vira
+  aviso no log e sumário vazio.
+
+**2. Cabeçalho na altura do número de página** (`dominio/paginacao.py`).
+- **O defeito:** o cabeçalho do *Manica* fica a 6,4% do alto, em MyriadPro negrito de 10 pt, com
+  o corpo de 9,3: nas páginas pares, o número e "Anestesiologia"; nas ímpares, o título do
+  capítulo e o número. A regra da linha repetida só vale para a letra não maior que a do corpo
+  (mais 0,5 pt), porque o título e o número do capítulo também caem na faixa. Só o número saía,
+  e 1.573 linhas de cabeçalho ficavam no texto, uma por página.
+- **O sinal:** o número de página. A linha da borda na mesma altura do número que segue a
+  paginação, na letra dele, é o cabeçalho corrente, repita ou não: o título do capítulo de 3
+  páginas aparece uma vez só.
+- **A regra:** sai a linha com letra, na faixa da borda ou acima da mancha, maior que a letra de
+  rodapé (o que a regra da repetição não olha), a menos de 0,01 da altura do número de página
+  da mesma página e a menos de 0,5 pt do tamanho dele, quando isso acontece em 3 páginas ou
+  mais. Motivo próprio no registro: "cabeçalho de página na altura do número". O número ao
+  lado da coluna (o do *Maudlin*, na margem) não serve de régua: na altura dele mora o corpo.
+- **O carimbo da gráfica:** cada página do *Manica* traz no pé, fora da área impressa, o nome do
+  arquivo e a data com a hora ("27/09/2017 20:12:36", Helvetica de 6 pt). O nome saía como
+  rodapé repetido; a data, que muda a cada página, virava nota (cerca de 400). A linha sem
+  letra só se agrupa pelo texto literal, para "2020." e "1999." não formarem um rodapé falso;
+  a que tem a forma de data com hora (`dd/mm/aaaa hh:mm`, com ou sem segundos) se agrupa pela
+  forma, e sai quando se repete na mesma altura em 3 páginas ou mais.
+
+**3. Rótulo de tabela, quadro e figura em português e em espanhol**
+(`dominio/tabelas_e_figuras.py`).
+- **O defeito:** a regra da tabela e da figura só conhecia o rótulo em inglês. No *Manica*, a
+  legenda ("Figura 1.2 …", MyriadPro de 9 pt), o rótulo do quadro e da tabela ("Quadro 1.1 …",
+  "Tabela 8.1 …", MyriadPro de 10 pt) e as células (MyriadPro de 9,7 pt) vêm fora da letra do
+  corpo (Times New Roman de 9,3 pt), como nos tratados em inglês.
+- **A regra:** o rótulo é também "Figura", "Fig.", "Quadro", "Tabela", "Tabla" e "Cuadro", sem
+  olhar a caixa (o versalete do *Manica* sai "FigurA", "quAdro", "tAbelA"), seguido de número
+  composto, com ponto ou traço ("1.2", "2-1", "2.7.1"). O que sai é o mesmo da regra em inglês:
+  a corrida fora da letra do corpo que tem o rótulo; a menção na letra do corpo e a que continua
+  a frase da linha de cima ficam.
+- **O Quadro que fica no lugar** ("Quadro no lugar", *Dalgalarrondo*) não muda: lá o rótulo vem
+  em letra de título (12 pt, com o corpo de 10), e é ele que abre o quadro que o `adaptar`
+  reescreve. O rótulo em português ou em espanhol em letra de título (1,2 vez o corpo ou mais)
+  não é rótulo desta regra, e fecha a corrida como qualquer título. O sinal é o do livro: no
+  livro didático o quadro é texto com manchete; no tratado, o rótulo é uma legenda pequena
+  sobre células.
+- **O rótulo em negrito na letra do corpo:** no *Miller*, a figura ("Figura 1-1. …", StoneSans
+  de 8 pt) e a tabela ("TABLA 2-1 …", StoneSans de 9 pt, com as células em 8) vêm fora da letra
+  do corpo (StoneSerif de 9 pt), mas o título do quadro ("CUADRO 4-1 …") vem em StoneSerif
+  negrito de 9,5 pt, a letra do corpo, em uma ou duas linhas, e só o conteúdo vem em StoneSans
+  de 8 pt. A linha toda em negrito que abre com o rótulo em português ou em espanhol é rótulo
+  também na letra do corpo, e as linhas em negrito da mesma letra logo abaixo continuam o título
+  dele, até 6 linhas e sem passar de página (medido: de 1 a 5 linhas nos 308 "CUADRO"). Só para
+  esses rótulos: o rótulo em inglês em negrito continua como estava. No livro de corpo em
+  negrito a regra não vale: lá a linha em negrito é a prosa.
+- **Recusado: juntar "TimesNewRomanPSMT" e "TimesNewRomanPS-ItalicMT" numa família só**,
+  tirando o "MT" do fim do nome. No *Manica* não muda linha nenhuma (os mesmos 22.535 e 11.451),
+  e no *Bonica* as tabelas deixavam de sair (26.975 → 227 linhas): lá o rótulo "TABLE 1.1" vem
+  em negrito na família e no tamanho do corpo, e só não conta como letra do corpo porque o nome
+  da fonte em negrito difere. A regressão achou; a família continua como o nome a dá.
+
+**4. Hífen invisível** (`dominio/hifen_da_quebra.mostrar_hifen_invisivel`).
+- **O defeito:** uma parte do *Manica* e o *Miller* gravam o hífen como U+00AD, que a voz não
+  lê e que cola as duas metades ("pós" + U+00AD + "anestesia", "tabla 6" + U+00AD + "1"). No
+  *Manica*, 459 no meio da linha e 1.443 no fim, onde ele é o hífen da quebra. O `blocos` só
+  conhecia o do fim da linha, do *Competente*, e o tirava sem consultar o livro.
+- **A regra:** o U+00AD seguido de letra ou de algarismo, no meio da linha, é hífen de verdade
+  e vira "-". O livro que o usa assim em 3 linhas ou mais usa-o como o hífen dele: o do fim da
+  linha também vira "-" e segue para a regra do hífen da quebra, que consulta o livro
+  ("pós-" | "operatório" fica com o hífen, porque o livro escreve "pós-operatório"). No livro
+  sem U+00AD no meio da linha (o *Competente*), o do fim continua saindo como antes.
+- **O número partido na quebra:** "tabla 6-" | "1" e "684-" | "696" se juntam sem espaço, com o
+  hífen: algarismo, hífen, fim da linha e algarismo no começo da linha de baixo.
+
+**5. Colaboradores com o nome em maiúsculas** (`dominio/paginas_de_lista.py`).
+- **O defeito:** a lista do *Miller* (p. 5 a 19, 5,8 mil palavras) ficava no texto. O nome vem
+  em maiúsculas com o título acadêmico ("NOME SOBRENOME, MD"), e a regra só contava o nome com
+  minúscula, para o crédito de autor do capítulo não parecer colaborador.
+- **A regra:** o nome em maiúsculas com título acadêmico também conta. O que separa a lista do
+  crédito de autor continua sendo a linha de baixo: só conta o nome seguido de uma linha que não
+  é nome, a afiliação. Os autores do capítulo vêm um embaixo do outro, e a página deles não
+  chega a 5 nomes com afiliação.
+
+**6. Versalete com a caixa trocada: fica.** Os dois livros desenham o versalete com a fonte
+comum, e o PDF mapeia uma parte das letras pequenas para a maiúscula ("históriA", "BiBliografía",
+"FigurA"). Qual letra troca muda de fonte para fonte, e a caixa certa não está no PDF: uma regra
+que a refizesse apagaria a sigla de verdade ("TSA", "EEG") e a unidade ("mmHg"). Ver "O que
+fica".
+
+**Medido nos dois livros inteiros** (2026-11-13; o antes é o HEAD `8b8352e`, guardado em
+`livros/trabalho/<nome>.earbook.antes`; palavras de `limpos/` contadas por espaço, e as do
+`importar-pdf`, pelas linhas tiradas):
+
+| Classe | *Manica* | *Miller* |
+|---|---|---|
+| Capítulos | 86 → 112: 13 de abertura, os 96, os 2 anexos e o material de apoio; o número de 30 pt de cada um dos 96 está na página que o sumário interno diz | 118 → 118: os 112 abrem nos mesmos três títulos de antes; na abertura, a lista de colaboradores e o índice de vídeos saem, e a capa, os créditos e a dedicatória passam a ser capítulos |
+| Nome no sumário do EPUB | "Capítulo 1. A história da anestesia" … "Anexo 2. Ilustrações e fotos coloridas" (antes, o primeiro título lido, com a caixa trocada) | "Capítulo 1 - Ámbito de la práctica anestésica moderna" (antes "Capítulo 1: …", pelo rótulo); a abertura leva o nome do item ("5. Prologo") |
+| Cabeçalho na altura do número | 1.573 linhas, uma por página; "Anestesiologia" como segmento: 645 → 5 (os 5 são da capa e da última página) | nenhuma: o cabeçalho tem o tamanho do corpo e já saía pela repetição (3.700) |
+| Carimbo da gráfica | 395 linhas (rodapé repetido: 2.818 → 3.213); notas sem palavra: 653 → 159 | não tem |
+| Tabela e quadro | 22.535 linhas, 96.537 palavras | 35.132 linhas, 141.994 palavras |
+| Figura e legenda | 11.451 linhas, 46.248 palavras | 11.355 linhas, 131.672 palavras |
+| Segmento que abre em rótulo, sem olhar a caixa | 1.291 → 21 | 1.632 → 11 |
+| Hífen invisível no texto limpo | 470 → 0 | 7.619 → 0 |
+| Colaboradores | o *Manica* lista os autores sem título acadêmico: ficam (ver "O que fica") | 16 páginas (5 a 19 e 26, o índice de vídeos, que tem a mesma forma), 1.644 linhas, 5.982 palavras |
+| `limpos/` | 36.225 → 22.549 segmentos; 1.141.900 → 994.431 palavras (−12,9%) | 39.706 → 29.282 segmentos; 3.488.861 → 3.210.143 palavras (−8,0%) |
+| Suspeitos do `preparar` | 1.537 → 547 | 558 → 253 |
+
+**Regressão nos tratados em inglês** (`importar-pdf` e `preparar` para pasta nova, contra as
+pastas e os resumos de referência em `livros/trabalho/`):
+
+| Livro | Capítulos | Resumo do `importar-pdf` | `segmentos/` e `limpos/` |
+|---|---|---|---|
+| *Practical* | 87 → 87 | idêntico, menos o hífen mantido: 1.268 → 1.345 | os mesmos 26.994 e 14.004 segmentos; mudam 77 e 2, todos o número partido na quebra que volta inteiro ("684-" e "696") |
+| *Bonica* | 116 → 116 | idêntico, menos o hífen mantido: 1.291 → 1.309 | os mesmos 15.946 e 14.870 segmentos; mudam 16 e 1, pelo mesmo motivo |
+
+O sumário interno dos dois é lido (970 e 3.826 itens) e não serve: nenhum nível tem o rótulo
+de capítulo na maioria dos itens.
+
+Procurados os falsos positivos, sobre as páginas lidas uma vez e as regras rodadas nelas:
+- **tabela e figura, pela letra de cada linha tirada:** no *Manica*, tudo em MyriadPro (9,7, 8, 9
+  e 10 pt), a família das células e das legendas; nenhuma linha em Times New Roman. No *Miller*,
+  a figura sai em StoneSans de 8 pt (11.130 das 11.355 linhas, a letra da legenda, que lá tem
+  até 9 linhas) e a tabela em StoneSans de 8, 7,5 e 6,5 pt e no StoneSerif negrito de 9,5 pt dos
+  títulos de "CUADRO" (664 linhas); nenhuma linha em StoneSerif de 9 pt, o corpo. As linhas
+  longas amostradas são legenda, célula, nota de tabela, fonte e item de quadro;
+- **páginas de lista:** só as 16 do *Miller*; no *Manica*, nenhuma;
+- **cabeçalho:** as 1.573 linhas são o título do livro (785) e os títulos de capítulo, todas em
+  negrito de 10 pt a 6,4% (ou 2,9%) do alto;
+- **quadro do *Dalgalarrondo*:** os testes de `tests/test_quadro.py` e o teste do rótulo em
+  português em letra de título seguem verdes, sem mudança.
+
+**Correções da code-review (esforço alto)**, com o teste visto falhar na asserção antes:
+- **o título em negrito do rótulo não tinha fim:** toda linha em negrito na letra do corpo
+  depois do rótulo seguia na corrida, também na página seguinte, e num livro de corpo em negrito
+  a prosa sairia com a caixa seguinte. Agora são até 6 linhas, na mesma página, e só no livro
+  de corpo regular. No *Miller* nada muda (as mesmas 35.132, 11.355 e 1.644 linhas).
+- **Medidos e mantidos:** a leitura do sumário do *Miller* (7.079 itens, 6.960 destinos com
+  nome) leva 2,9 s; depois do número, o rótulo tirado traz ponto ou maiúscula em 2.362 dos
+  2.371 do *Miller*, e no *Manica* os 85 com minúscula são legendas com a caixa trocada
+  ("Figura 1.3 deusa…"), que uma regra mais estreita perderia.
+
+**Correções da code-audit**, com o teste junto:
+- **o sumário que aponta para si mesmo travava a importação:** com `/Outlines` levando a um
+  objeto que é a referência a ele mesmo, o `get_outlines` do pdfminer não voltava, num PDF cujas
+  páginas se leem (visto com tempo limite de 15 s; o teste não tem vermelho na asserção, porque
+  a falha era não acabar). O mesmo valia para a árvore de nomes de destino. O percurso passou a
+  ser nosso, com cada objeto visitado uma vez. De quebra, o sumário plano de mais de mil itens
+  é lido inteiro (teste visto falhar: 0 de 1.200) e o sumário em círculo acaba onde o círculo
+  fecha. No *Manica* e no *Miller* os itens lidos são os mesmos (124 e 7.079), em 0,5 e 2,5 s.
+- **o U+00AD literal num teste** virou a sequência de escape.
+- **Fica, de antes:** o PDF cuja árvore de páginas aponta para si mesma trava o `ler_paginas`
+  dentro do pdfminer, no HEAD também; o sumário não acrescenta esse caminho.
+
+**O que fica:**
+- **a menção que abre a frase numa caixa em outra letra** ("Tabla 6-1 muestra…" depois de uma
+  linha que fecha a frase) é lida como rótulo, e o resto da caixa sai; nos dois livros não houve
+  caso;
+- **o bloco antes do primeiro título da página de abertura** fica no capítulo anterior: 4
+  aberturas do *Manica*, 39 palavras (p. 3, 306, 324 e 639), nenhuma no *Miller*;
+- **o título do tamanho do número de página, na linha dele, no alto de 3 páginas ou mais** sairia
+  como cabeçalho; nos dois livros, as 1.573 linhas são cabeçalho;
+- **o livro com 3 U+00AD perdidos no meio da linha** passa a tratar o do fim da linha pela regra
+  do "-": antes de maiúscula ou de algarismo, a palavra partida sai com hífen e espaço;
+- **a faixa com meia-risca partida na quebra** ("684–" | "696") segue com espaço;
+- **a ordem na página de abertura em duas colunas:** em 10 dos 96 capítulos do *Manica* o
+  primeiro título não é o número, porque o título do capítulo, na coluna da esquerda, se
+  intercala com o texto da direita, ou porque o resto de figura vem antes ("10." colado à linha
+  ao lado). O corte está na página certa; a ordem dentro dela é a da regra "Duas colunas";
+- **o capítulo que abre no meio da página, depois de outro título:** o corte cai no primeiro
+  título da página;
+- **o resto de figura:** o texto que o OCR leu dentro das imagens do *Manica* (Times, Helvetica
+  e HiddenHorzOCR sem subconjunto, de 4 a 82 pt) continua virando título e nota: 748 títulos
+  sem nenhuma palavra ("•", "---", "l"), 1.368 "palavras". Com o sumário interno ele não abre
+  mais capítulo;
+- **a lista de autores do *Manica*** (p. 6 a 12, 4,6 mil palavras, o nome com o capítulo entre
+  parênteses e sem título acadêmico) e **o sumário de papel dele** (p. 19 a 22, 1,5 mil
+  palavras, sem pontilhado nem vírgula antes da página): ficam, cada um no seu capítulo
+  ("Autores", "Sumário");
+- **o rótulo que continua a linha de cima na mesma letra**, sem ponto: a legenda logo abaixo do
+  rótulo solto do diagrama (19 no *Manica*) e o "CUADRO" logo abaixo de outro negrito (5 no
+  *Miller*);
+- **o quadro, a tabela e a legenda na letra do corpo**, o rótulo com número simples ("Figura
+  3") e o rótulo em inglês em negrito na letra do corpo;
+- **o hífen do fim da linha antes de maiúscula ou depois de letra e antes de número** ("pré-" |
+  "2010") segue com espaço; o inventário de "hífen de quebra que sobrou" fica em 18 ocorrências
+  no *Manica* (eram 96) e 294 no *Miller* (eram 297);
+- **o cabeçalho das páginas de bibliografia do *Miller*** numeradas "49.e1": 80 parágrafos
+  "Capítulo N: …" no fim dos capítulos, em 1 ou 2 páginas cada, que não se repetem 3 vezes e
+  cujo número não segue a paginação. Saem com a bibliografia, na rodada do `limpar`;
+- **o versalete com a caixa trocada:** 159 títulos no *Manica* ("AnestesiA", "cirurgiA") e 231
+  no *Miller* ("BiBliografía", "EfEctos"), e as menções no corpo ("QuAdro 1.1", cerca de 450 no
+  *Manica*);
+- **os livros que não estão neste Mac** (*Dalgalarrondo*, *Hard Parts*, *Competente*,
+  *Maudlin*) não foram medidos: o sumário interno deles, se a maioria de um nível trouxer o
+  rótulo de capítulo, passa a cortar os capítulos; a legenda "Figura N.N" em letra fora do
+  corpo passa a sair; a linha em negrito do corpo que abre com esse rótulo passa a contar.
+
+Decidido pelo Mateus (o que sai, 2026-11-13, pela sessão principal); o sumário interno como
+fonte dos capítulos, os sinais e os limiares são desta sessão e vão à revisão.
+
 ## Consequências
 
 **Ganha:** um comando a mais na mesma esteira, sem repositório novo. Os defeitos de conversão são atacados onde nascem.
@@ -1199,6 +1441,7 @@ sinais e os limiares são desta sessão e foram à revisão.
 | Tratado médico | testes (`tests/test_caracteres.py`, `tests/test_caracteres_no_pdf.py`): a chamada sobrescrita depois de ponto, colada à palavra, em lista, em faixa, com espaço dentro e com vírgula no fim sai e fica registrada; o expoente depois de algarismo, a carga do íon, a unidade ao quadrado, a letra solta, o subscrito, a letra sobrescrita e o sobrescrito no começo da linha ou depois de espaço ficam; o espaço inventado no vão da letra espaçada sai, e o do vão maior e o do texto comum ficam; do PDF montado em código, com `Ts`, `Tc` e o par apertado, a linha sai certa e traz a família da letra. (`tests/test_tabelas_e_figuras.py`): a tabela sai do rótulo à letra do corpo, também a que abre em título e a que continua na página seguinte na letra das células; a figura sai com o diagrama e a legenda; o título de seção fecha a tabela; a caixa sem rótulo, a menção na letra do corpo, a menção quebrada na linha, o rótulo em português, o crédito do autor na página seguinte, a caixa antes do diagrama e o livro sem família de letra ficam. (`tests/test_paginas_de_lista.py`): o índice, o sumário (também a página curta) e os colaboradores saem inteiros; a página de texto com poucas remissões ou com tabela de doses, a lista de anos, a vírgula decimal, as assinaturas do prefácio e os autores em maiúsculas ficam; o índice que sai ainda prova o hífen do livro | portão | volta a chamada colada, o espaço no nome, a tabela, a figura ou a lista, ou sai texto do corpo |
 | Rótulo de capítulo | testes (`tests/test_blocos_capitulos.py`): o rótulo no tamanho da seção abre capítulo, também depois do nome da subparte em maiúsculas, e a parte fica com o primeiro capítulo dela; o rótulo menor que o título vai com o capítulo que abre; o título que só cita um capítulo e a linha do sumário com dois-pontos não abrem; o número grande seguido de "Capítulo 1" continua um capítulo só | portão | o *Bonica* volta a sair por parte, o rótulo fica no capítulo anterior, ou o sumário abre capítulo |
 | Sumário sem número, colaboradores vizinhos, espaço de verdade e rótulo no sumário | testes (`tests/test_paginas_de_lista.py`): o sumário sem número e o do número sem vírgula saem, do primeiro rótulo ao último; a abertura sem frase, a página com frase depois do sumário, a prosa com chamada colada, a dedicatória e a página da parte ficam; os colaboradores da vizinha e o fim da lista saem, e a dedicatória, o prefácio e o título maior depois da lista ficam. (`tests/test_caracteres.py`, `tests/test_caracteres_no_pdf.py`): "PA R T O N E" e "CHAPTER 11 0" saem inteiros, também do PDF montado em código; o espaço do tamanho do de verdade fica; a linha irregular continua lida pela regra da letra espaçada. (`tests/test_epub_simples.py`): o rótulo e o título no sumário do EPUB; o rótulo depois do texto, o citado e o do sumário com dois-pontos não dão nome | portão | o sumário ou a lista voltam a ser lidos, sai uma página com frase, a letra espaçada volta partida, ou o sumário do EPUB volta ao nome da parte |
+| Tratado em português e em espanhol | testes (`tests/test_sumario_interno.py`): a parte no nível de cima e o capítulo com rótulo abrem capítulo, com o nome do item; a seção abaixo do nível do capítulo não abre; o sumário sem rótulo, o plano, o de dois rótulos e o de três rótulos na mesma página não servem. (`tests/test_capitulos_pelo_sumario.py`): o capítulo abre no primeiro título da página, e o que vem antes fica no anterior; a página sem título abre no primeiro bloco; a parte fica com o primeiro capítulo, com o nome dele; o rótulo dentro do anexo e o resto de figura não abrem capítulo; a abertura em página que saiu inteira abre no bloco seguinte; o nível conta do tamanho que mais abre capítulo. (`tests/test_sumario_do_pdf.py`, com o adaptador lendo um PDF com marcadores montado em código): nível, título e página, pelo destino direto, pela ação e pelo nome; o nome que não existe, a referência a si mesma e a referência a objeto que não existe ficam de fora; o PDF sem sumário devolve vazio sem aviso, e o arquivo que não é PDF, vazio com aviso; o sumário em círculo acaba onde o círculo fecha, o plano de 1.200 itens é lido inteiro, e o sumário e a árvore de nomes que apontam para si mesmos não travam; o `importar-pdf` corta pelo sumário e dá os nomes ao sumário do EPUB, e com sumário que não serve corta como antes. (`tests/test_cabecalho_na_altura_do_numero.py`): o cabeçalho maior que o corpo na altura do número sai sem se repetir; com o número no pé, de outro tamanho, em duas páginas ou sem letra, fica; a linha do corpo na altura do número do pé fica; o carimbo de data e hora sai, e a data sem hora fica. (`tests/test_rotulo_em_portugues_e_espanhol.py`): a legenda, o quadro, a tabela, a "TABLA" e o "CUADRO" em negrito na letra do corpo saem; o rótulo em letra de título, a menção na letra do corpo, a que continua a frase, o número simples e o rótulo em inglês em negrito na letra do corpo ficam. (`tests/test_hifen_invisivel.py`): o U+00AD no meio da linha vira hífen, o do fim só no livro que o usa no meio em 3 linhas ou mais; o número partido na quebra volta inteiro, e a letra antes do hífen segue com espaço. (`tests/test_colaboradores_em_maiusculas.py`): a lista com o nome em maiúsculas sai; três autores com afiliação e o nome sem título acadêmico ficam | portão | o *Manica* volta a sair com capítulo falso, o cabeçalho, o rótulo, o hífen invisível ou a lista voltam a ser lidos, sai texto do corpo, ou muda o quadro do *Dalgalarrondo* |
 | A escuta ★ | rodar `importar-pdf` + `preparar` num PDF real em `livros/` e contar o que o `limpar` ainda precisa tirar | a cada mudança no conversor | a contagem sobe |
 
 Regra derivada no `AGENTS.md`: a biblioteca de PDF só entra em `adaptadores/`.

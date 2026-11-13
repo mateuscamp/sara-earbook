@@ -42,6 +42,7 @@ nenhuma linha de corpo entre 1 e 3."""
 CELULAS_DA_TABELA = 3
 _FIM_DE_FRASE = tuple('.!?:\u201d"')
 _HIFEN_NO_FIM = re.compile(r"\w[-\u2010]$")
+_NUMERO_NO_HIFEN = re.compile(r"\d[-\u2010]$")
 # Norma brasileira: o hífen do composto se repete no começo da linha de baixo.
 _HIFEN_REPETIDO = re.compile(r"[-\u2010][^\W\d_]")
 # Fecha a frase para a regra do recuo. A aspa de fechamento não: "uma “transformação”"
@@ -62,6 +63,9 @@ class Bloco:
     """Tamanho da fonte da primeira linha, em pontos: decide o nível do título."""
     nivel: int = 0
     """Nível do título (1 = capítulo); 0 nos outros blocos."""
+    capitulo: str = ""
+    """No primeiro bloco do capítulo, o nome que o sumário interno do PDF dá a ele (ADR-0004,
+    "Capítulos pelo sumário interno do PDF"); vazio nos outros e no livro sem sumário interno."""
 
 
 @dataclass(frozen=True)
@@ -304,6 +308,10 @@ class _Montador:
             self._hifens_mantidos += 1
         elif _HIFEN_NO_FIM.search(aberto.partes[-1]) and linha.texto[:1].islower():
             aberto.partes.append(self._depois_do_hifen(aberto, linha.texto))
+        elif _NUMERO_NO_HIFEN.search(aberto.partes[-1]) and linha.texto[:1].isdigit():
+            # O número partido na quebra ("tabla 6-" | "1", "684-" | "696", Miller) volta inteiro.
+            aberto.partes.append(linha.texto)
+            self._hifens_mantidos += 1
         else:
             aberto.partes.append(" " + linha.texto)
 

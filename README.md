@@ -23,17 +23,20 @@ A decisão está no [ADR-0001](docs/adr/0001-reescrever-com-claude-code-orquestr
   capítulo, sob "Notas". No PDF, sai também o número de referência sobrescrito ("wages.¹",
   "84%–90%.²,³", "et al.¹⁹⁴", "in 1934²²¹"), pela letra menor e mais alta; o ano fica, e o
   expoente, a carga do íon e a unidade ao quadrado também ([ADR-0004](docs/adr/0004-pdf-entra-como-comando-importar-pdf.md)).
-- No PDF em inglês, a tabela e a figura: o rótulo ("TABLE 2.1", "• Figure 2.1", "FIGURE 1.1"),
-  as células, os rótulos do diagrama e a legenda, quando vêm em letra diferente da do corpo
+- No PDF, a tabela, o quadro e a figura: o rótulo em inglês ("TABLE 2.1", "• Figure 2.1",
+  "FIGURE 1.1"), em português ou em espanhol ("Figura 1.2", "Quadro 1.1", "Tabela 8.1",
+  "TABLA 2-1", "CUADRO 4-1"), as células, os rótulos do diagrama e a legenda, quando vêm em
+  letra diferente da do corpo
   ([ADR-0004](docs/adr/0004-pdf-entra-como-comando-importar-pdf.md)). O "Quadro" e a "Tabela"
-  em português ficam no lugar.
+  com o rótulo em letra de título, do livro didático, ficam no lugar.
 - No PDF, o texto girado: a tabela deitada na página e o rótulo de lado, que o leitor de PDF
   monta uma letra de cada coluna ("d u r n n n o o , i i t f…")
   ([ADR-0004](docs/adr/0004-pdf-entra-como-comando-importar-pdf.md)).
 - No PDF, a página de lista inteira: o índice remissivo e o sumário (muitas linhas terminam em
   ", página"), o sumário sem número de página ou com o número sem vírgula (as páginas seguidas
-  sem frase com 3 rótulos "CHAPTER N" ou mais) e a lista de colaboradores ("Nome, MD" e a
-  afiliação, também na página vizinha com 2 nomes ou mais e na última, só de afiliação)
+  sem frase com 3 rótulos "CHAPTER N" ou mais) e a lista de colaboradores ("Nome, MD" ou
+  "NOME, MD" e a afiliação, também na página vizinha com 2 nomes ou mais e na última, só de
+  afiliação)
   ([ADR-0004](docs/adr/0004-pdf-entra-como-comando-importar-pdf.md)).
 - O trecho que seria lido duas vezes (`<p>` dentro de `<blockquote>`).
 - A página de direitos autorais.
@@ -213,7 +216,12 @@ autor do metadado do PDF (ou os de `--titulo` e `--autor`). O que ele faz:
 - tira o número de página, também o que é maior que o texto, e o cabeçalho repetido, pela
   posição na página. O cabeçalho que aparece só nas duas páginas de uma abertura também sai. No
   livro de margem larga, sai também o cabeçalho acima de onde o texto começa e o número de página
-  na margem, ao lado da coluna;
+  na margem, ao lado da coluna. O cabeçalho em letra maior que a do texto sai pela linha do
+  número de página: o que está na altura do número, na letra dele, em 3 páginas ou mais. O
+  carimbo de data e hora da gráfica no pé da página ("27/09/2017 20:12:36") sai também;
+- devolve o hífen gravado como caractere invisível (U+00AD): no meio da linha ele vira "-"
+  ("pós-anestesia", "tabela 6-1"), e no livro que o usa assim o do fim da linha segue a regra da
+  palavra partida. O número partido na quebra ("6-" | "1") volta inteiro;
 - tira o texto escondido: a linha em letra de título desenhada por cima de uma linha de outro
   tamanho, na mesma altura;
 - lê uma vez só o negrito feito à mão: o mesmo texto desenhado de novo por cima, no mesmo
@@ -227,27 +235,31 @@ autor do metadado do PDF (ou os de `--titulo` e `--autor`). O que ele faz:
   da metade do espaço de verdade da linha ("PART ONE", e não "PA R T O N E"; "CHAPTER 110", e
   não "CHAPTER 11 0");
 - tira o texto girado (a tabela deitada, o rótulo de lado), a página de lista (índice
-  remissivo, sumário, com ou sem número de página, e colaboradores) e, no livro em inglês, a tabela e a figura, pela letra. O
-  resumo conta essas linhas à parte, cada uma com o seu motivo;
+  remissivo, sumário, com ou sem número de página, e colaboradores) e a tabela, o quadro e a
+  figura, pela letra e pelo rótulo em inglês, em português ou em espanhol. O resumo conta essas
+  linhas à parte, cada uma com o seu motivo;
 - junta as linhas em parágrafos e devolve inteira a palavra partida no fim da linha;
 - lê a página em duas colunas coluna por coluna, pela calha entre elas, quando os dois lados
   são texto corrido, também o de verbetes justificados (glossário, bibliografia). A tabela
   continua lida linha a linha;
 - separa do texto o destaque de margem, que fica numa coluna estreita ao lado dele e tem letra
   de outro tamanho, para que o `preparar` o tire;
-- deixa o quadro no lugar. O quadro abre no rótulo "Quadro 5.1" ou "Tabela 5.1" em letra de
-  título, e o conteúdo dele, em letra menor, é lido como parágrafo, e não como nota no fim do
+- deixa no lugar o quadro do livro didático. Ele abre no rótulo "Quadro 5.1" ou "Tabela 5.1" em
+  letra de título (1,2 vez a do texto ou mais), e o conteúdo dele, em letra menor, é lido como parágrafo, e não como nota no fim do
   capítulo. Ele entra depois da frase que interrompe, e a frase volta a ser uma só;
 - lê o subtítulo em versalete como título, e não como nota no fim do capítulo: o feito à mão
   (maiúsculas de dois tamanhos) e o de fonte própria (o nome da fonte termina em "SC", como
   "Archer-Medium-SC700");
-- divide os capítulos pelo tamanho dos títulos e pelo rótulo "CHAPTER 24" ou "Capítulo 3",
-  quando o livro o repete; a parte fica no capítulo que ela abre. No sumário do EPUB, o capítulo
-  com rótulo leva o rótulo e o título, em caixa normal ("Chapter 1: Pain Mechanisms"), e não o
-  nome da parte nem o rótulo sozinho.
+- divide os capítulos pelo sumário interno do PDF (os marcadores), quando a maioria dos itens
+  de um nível traz o rótulo "Capítulo 3" ou "Chapter 24": cada item desse nível e dos de cima
+  abre capítulo na página que o sumário diz, e dá o nome dele no sumário do EPUB. Sem sumário
+  interno que sirva, divide pelo tamanho dos títulos e pelo rótulo "CHAPTER 24" ou "Capítulo 3",
+  quando o livro o repete, e o capítulo com rótulo leva no sumário do EPUB o rótulo e o título,
+  em caixa normal ("Chapter 1: Pain Mechanisms"). Nos dois casos, a parte fica no capítulo que
+  ela abre.
 
 O EPUB serve para ouvir, não para ler na tela. Sai sem imagem e sem estilo, e cada linha de
-tabela que fica (a em português, a da letra do corpo) vira um parágrafo. O bloco de código do
+tabela que fica (a da letra do corpo, a sem rótulo) vira um parágrafo. O bloco de código do
 PDF ainda é lido; o índice remissivo sai pela página no `importar-pdf` e, o que sobrar, no
 `preparar`, pelo conteúdo. PDF
 escaneado, sem camada de texto, é recusado, porque não há OCR.

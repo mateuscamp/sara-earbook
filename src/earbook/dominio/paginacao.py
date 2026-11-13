@@ -59,6 +59,8 @@ _SEPARADORES = re.compile(r"[\s|\u00b7\u2022\-\u2013\u2014]")
 _ARABICO = re.compile(r"[0-9]{1,5}")
 _ROMANO = re.compile(r"M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})")
 _LETRA = re.compile(r"[^\W\d_]")
+# Data com hora, já sem os espaços: "27/09/2017 20:12:36", com ou sem os segundos.
+_CARIMBO = re.compile(r"\d{1,2}/\d{1,2}/\d{4}\d{1,2}:\d{2}(?::\d{2})?")
 _VALOR_ROMANO = {"M": 1000, "D": 500, "C": 100, "L": 50, "X": 10, "V": 5, "I": 1}
 
 type _Ocorrencia = tuple[int, int, Linha]
@@ -102,7 +104,8 @@ def tirar_cabecalhos_e_rodapes(paginas: Sequence[Pagina]) -> PaginasLimpas:
     repetidas = _repetidas(
         o for o in na_borda if o[2].tamanho <= limite and (o[0], o[1]) not in numeros
     )
-    motivos = dict.fromkeys(numeros, "número de página") | repetidas
+    na_altura = _na_altura_do_numero(na_borda, numeros, limite)
+    motivos = dict.fromkeys(numeros, "número de página") | repetidas | na_altura
     limpas: list[Pagina] = []
     remocoes: list[LinhaRemovida] = []
     for pagina in paginas:
@@ -135,6 +138,46 @@ def _candidatas(
             elif _ao_lado_da_mancha(linha, mancha):
                 ao_lado.append((pagina.numero, posicao, linha))
     return na_borda, ao_lado
+
+
+def _na_altura_do_numero(
+    na_borda: Sequence[_Ocorrencia], numeros: set[tuple[int, int]], limite: float
+) -> dict[tuple[int, int], str]:
+    """O cabeçalho maior que o corpo, que a regra da repetição não olha: a linha com letra na
+    altura do número de página da mesma página, na letra dele, em 3 páginas ou mais (ADR-0004,
+    "Cabeçalho na altura do número").
+
+    No Manica, o título do livro e o do capítulo vêm em negrito de 10 pt, com o corpo de 9,3, na
+    linha do número; o título do capítulo de 3 páginas aparece uma vez só. O número ao lado da
+    coluna não serve de régua: na altura dele mora o corpo.
+    """
+    numeros_da_pagina: defaultdict[int, list[Linha]] = defaultdict(list)
+    for pagina, posicao, linha in na_borda:
+        if (pagina, posicao) in numeros:
+            numeros_da_pagina[pagina].append(linha)
+    achadas = [
+        (pagina, posicao, linha)
+        for pagina, posicao, linha in na_borda
+        if (pagina, posicao) not in numeros
+        and linha.tamanho > limite
+        and _LETRA.search(linha.texto)
+        and any(_na_linha_do_numero(linha, numero) for numero in numeros_da_pagina[pagina])
+    ]
+    if len({pagina for pagina, _, _ in achadas}) < PAGINAS_MINIMAS:
+        return {}
+    return {
+        (pagina, posicao): f"{_lugar(linha)} de página na altura do número"
+        for pagina, posicao, linha in achadas
+    }
+
+
+def _na_linha_do_numero(linha: Linha, numero: Linha) -> bool:
+    mesma_altura = abs(linha.topo - numero.topo) <= TOLERANCIA_DO_TOPO
+    return mesma_altura and abs(linha.tamanho - numero.tamanho) <= FOLGA_DA_FONTE
+
+
+def _lugar(linha: Linha) -> str:
+    return "cabeçalho" if linha.topo < METADE_DA_PAGINA else "rodapé"
 
 
 def _mancha(paginas: Sequence[Pagina], corpo: float) -> _Mancha | None:
@@ -233,8 +276,7 @@ def _repetidas(candidatas: Iterable[_Ocorrencia]) -> dict[tuple[int, int], str]:
             if not _cabecalho_corrente(paginas, com_letra=com_letra):
                 continue
             for pagina, posicao, linha in mesma_altura:
-                lugar = "cabeçalho" if linha.topo < METADE_DA_PAGINA else "rodapé"
-                motivos[pagina, posicao] = f"{lugar} de página repetido"
+                motivos[pagina, posicao] = f"{_lugar(linha)} de página repetido"
     return motivos
 
 
@@ -248,8 +290,11 @@ def _grupos(candidatas: Iterable[_Ocorrencia]) -> dict[tuple[str, bool], list[_O
         # O1: sem letra, o "#" juntaria números diferentes ("2020.", "1999.", "1984.") num
         # rodapé falso. A chave vira o texto literal: só o mesmo rodapé em toda página sai
         # ("2021", "© 2020", uma data; A3 da auditoria).
-        if not _LETRA.search(chave):
-            chave = "".join(ocorrencia[2].texto.split())
+        # O carimbo da gráfica, que muda a cada página, se agrupa pela forma (ADR-0004, "Cabeçalho
+        # na altura do número"): "27/09/2017 20:12:36" no pé das páginas do Manica.
+        literal = "".join(ocorrencia[2].texto.split())
+        if not _LETRA.search(chave) and not _CARIMBO.fullmatch(literal):
+            chave = literal
         grupos[chave, ocorrencia[2].topo < METADE_DA_PAGINA].append(ocorrencia)
     return grupos
 

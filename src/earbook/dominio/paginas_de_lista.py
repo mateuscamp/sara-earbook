@@ -7,7 +7,7 @@ Duas listas que o pdfminer embaralha, por virem em duas colunas, e que não se l
   Practical, o índice é página escaneada com OCR, lida intercalada entre nota e parágrafo, e a
   regra do ADR-0008 ("Índice pelo conteúdo"), de 10 parágrafos seguidos, não dispara;
 - **a página de colaboradores**: o nome com o título acadêmico ("Honorio T. Benzon, MD") e a
-  afiliação, linha a linha.
+  afiliação, linha a linha. O nome também vem em maiúsculas (Miller, p. 5 a 19).
 
 A decisão é por página, onde o PDF ainda as separa; no texto montado, a lista vira um bloco com
 o texto vizinho.
@@ -55,13 +55,19 @@ _FIM_DE_FRASE = re.compile(
 _ROTULO_DO_SUMARIO = re.compile(
     rf"(?:[A-ZÀ-Ý][A-ZÀ-Ý ]*\s)?(?:{PALAVRAS_DO_ROTULO})\s+\d+(?=[\s:]|$)"
 )
-# O nome, com minúscula (o autor do capítulo vem em maiúsculas), e o título acadêmico.
+# O nome e o título acadêmico. O nome em maiúsculas é o da lista do Miller e também o do crédito
+# de autor do capítulo; quem os separa é a linha de baixo, em `_nomes` (ADR-0004, "Tratado em
+# português e em espanhol").
 _TITULOS = (
     "MD|DO|PhD|PharmD|PsyD|DDS|DMD|DNP|RN|MBBS|MB|BS|BSc|MS|MSc|MA|BA|MPH|MSN|PT|DPT|DC|"
     "FRCA|FRCPC|FRCP"
 )
 _NOME_COM_TITULO = re.compile(
     rf"[A-ZÀ-Ý][a-zà-ÿ'\u2019.-]+(?:\s+[A-ZÀ-Ýa-zà-ÿ][\w.'\u2019-]*){{0,5}},\s*(?:{_TITULOS})\b"
+)
+# No crédito todo em maiúsculas o título também vem assim ("CHARLES INTURRISI, PHD").
+_NOME_EM_MAIUSCULAS = re.compile(
+    rf"[A-ZÀ-Ý][A-ZÀ-Ý'\u2019.-]*(?:\s+[A-ZÀ-Ý][A-ZÀ-Ý'\u2019.-]*){{1,5}},\s*(?i:{_TITULOS})\b"
 )
 
 
@@ -101,9 +107,15 @@ def _motivo(linhas: Sequence[Linha]) -> str | None:
 
 
 def _nomes(linhas: Sequence[Linha]) -> int:
-    """Os nomes com título acadêmico seguidos de uma linha que não é nome: a afiliação."""
-    nome = [_NOME_COM_TITULO.match(linha.texto) is not None for linha in linhas]
+    """Os nomes com título acadêmico seguidos de uma linha que não é nome: a afiliação. Os
+    autores do capítulo, um embaixo do outro, contam uma vez só."""
+    nome = [_e_nome(linha.texto) for linha in linhas]
     return sum(e_nome and not seguinte for e_nome, seguinte in pairwise(nome))
+
+
+def _e_nome(texto: str) -> bool:
+    com_titulo = _NOME_COM_TITULO.match(texto) or _NOME_EM_MAIUSCULAS.match(texto)
+    return com_titulo is not None
 
 
 def _frases(linhas: Sequence[Linha]) -> int:

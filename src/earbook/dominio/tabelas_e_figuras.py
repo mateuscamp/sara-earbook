@@ -9,6 +9,10 @@ letra do corpo que tem um rótulo em inglês ("TABLE", "Table 3.1", "• Figure 
 "Fig. 4"): o rótulo, o número, o título, as células, a fonte, os rótulos do diagrama e a legenda.
 A corrida atravessa a página (a tabela continua na seguinte) e para na primeira linha da letra do
 corpo ou de título. A caixa em outra letra sem rótulo ("Key Points") fica.
+
+O rótulo em português e em espanhol ("Figura 1.2", "Quadro 1.1", "Tabela 8.1", "TABLA 2-1",
+"CUADRO 4-1") vale também, fora da letra de título (ADR-0004, "Tratado em português e em
+espanhol"): em letra de título ele abre o Quadro que fica no lugar (`dominio/quadro.py`).
 """
 
 from __future__ import annotations
@@ -17,14 +21,18 @@ import re
 from collections import Counter
 from collections.abc import Sequence
 
-from earbook.dominio.pagina import DIFERENCA_DE_TAMANHO, RAZAO_DO_TITULO, Linha, Pagina
+from earbook.dominio.pagina import (
+    DIFERENCA_DE_TAMANHO,
+    RAZAO_DO_TITULO,
+    Linha,
+    Pagina,
+    corpo_em_negrito,
+)
 from earbook.dominio.paginacao import LinhaRemovida, PaginasLimpas
 
 MOTIVO_DA_TABELA = "tabela: rótulo e letra fora do corpo"
 MOTIVO_DA_FIGURA = "figura e legenda: rótulo e letra fora do corpo"
 MOTIVO_DO_TEXTO_GIRADO = "texto girado: tabela deitada e rótulo de lado"
-# Só o rótulo em inglês: o "Quadro" e a "Tabela" do Dalgalarrondo ficam no lugar (ADR-0004,
-# "Quadro no lugar"), e o "Figura" do Competente não pôde ser medido.
 # "TABLE" sozinho na linha (o número vem na de baixo, no Practical), ou o rótulo com o número
 # seguido de ponto, maiúscula ou fim de linha: "Table 2.1 Pain Axes", "Table 5-7. Components",
 # "• Figure 2.1  International…". A menção que a linha quebrou ("Table 5-7 shows…", "Figure 5-2),
@@ -32,7 +40,16 @@ MOTIVO_DO_TEXTO_GIRADO = "texto girado: tabela deitada e rótulo de lado"
 _NUMERO_E_LEGENDA = r"\s+\d+(?:[.\-\u2013]\d+)*[A-Z]?(?:\.?\s+[A-Z]|\.?\s*$)"
 _ROTULO_DA_TABELA = re.compile(rf"TABLE\s*$|(?:TABLE|Table){_NUMERO_E_LEGENDA}")
 _ROTULO_DA_FIGURA = re.compile(rf"(?:•\s*)?(?:FIGURE|Figure|Fig\.){_NUMERO_E_LEGENDA}")
+# O rótulo em português e em espanhol, sem olhar a caixa: o versalete do Manica sai "FigurA",
+# "quAdro", "tAbelA", e o do Miller, "TABLA" e "CUADRO". O número é composto, com ponto ou traço
+# ("1.2", "2-1", "2.7.1", "42.1a"): "Figura 3 mostra…" não é rótulo.
+_NUMERO_COMPOSTO = r"\s+\d+(?:[.\-\u2013]\d+)+[A-Za-z]?(?!\w)"
+_TABELA_LOCAL = re.compile(rf"(?:quadro|tabela|tabla|cuadro){_NUMERO_COMPOSTO}", re.IGNORECASE)
+_FIGURA_LOCAL = re.compile(rf"(?:•\s*)?(?:figura|fig\.){_NUMERO_COMPOSTO}", re.IGNORECASE)
 
+LINHAS_DO_TITULO_DO_ROTULO = 6
+"""O título em negrito do quadro, na letra do corpo, tem até 6 linhas (medido no Miller: de 1 a 5
+nos 308 "CUADRO")."""
 FOLGA_DO_DIAGRAMA = 0.25
 """Pontos: o rótulo do diagrama pode ter a letra da legenda, mas não maior."""
 # A frase da linha de cima acabou: ponto, interrogação, exclamação ou dois-pontos, com aspa ou
@@ -70,16 +87,18 @@ def tirar_tabelas_e_figuras(paginas: Sequence[Pagina]) -> PaginasLimpas:
         return PaginasLimpas(tuple(paginas), ())
     saem: dict[_Posicao, str] = {}
     for corrida in _corridas(paginas, corpo):
-        saem |= _da_corrida(paginas, corrida)
+        saem |= _da_corrida(paginas, corrida, corpo[1])
     return _sem(paginas, saem)
 
 
-def _da_corrida(paginas: Sequence[Pagina], corrida: list[_Posicao]) -> dict[_Posicao, str]:
+def _da_corrida(
+    paginas: Sequence[Pagina], corrida: list[_Posicao], tamanho_do_corpo: float
+) -> dict[_Posicao, str]:
     """O que sai da corrida: a tabela, do rótulo em diante; a figura, em volta da legenda."""
     saem: dict[_Posicao, str] = {}
     for i, (p, n) in enumerate(corrida):
         anterior = paginas[p].linhas[n - 1] if n > 0 else None
-        motivo = _rotulo(paginas[p].linhas[n], anterior)
+        motivo = _rotulo(paginas[p].linhas[n], tamanho_do_corpo, anterior)
         if motivo == MOTIVO_DA_TABELA:
             return saem | dict.fromkeys(_tabela(paginas, corrida[i:]), motivo)
         if motivo == MOTIVO_DA_FIGURA:
@@ -132,25 +151,48 @@ def _letra_do_corpo(paginas: Sequence[Pagina]) -> tuple[str, float] | None:
 
 def _corridas(paginas: Sequence[Pagina], corpo: tuple[str, float]) -> list[list[_Posicao]]:
     """As corridas de linhas seguidas fora da letra do corpo e da de título, no livro todo."""
+    # No livro de corpo em negrito, a linha em negrito é a prosa, e não título de quadro.
+    com_titulo_em_negrito = not corpo_em_negrito(paginas, corpo[1])
     corridas: list[list[_Posicao]] = [[]]
     for p, pagina in enumerate(paginas):
+        restam = 0  # o título do rótulo não passa de página
         for n, linha in enumerate(pagina.linhas):
-            if _fecha(linha, corpo):
+            restam = _linhas_do_titulo(linha, corpo, restam) if com_titulo_em_negrito else 0
+            if _fecha(linha, corpo) and not restam:
                 corridas.append([])
             else:
                 corridas[-1].append((p, n))
     return [corrida for corrida in corridas if corrida]
 
 
+def _linhas_do_titulo(linha: Linha, corpo: tuple[str, float], restam: int) -> int:
+    """Quantas linhas o título do rótulo ainda pode ter, contando esta; 0 se ela não é dele.
+
+    A linha toda em negrito, na letra do corpo, que abre com o rótulo em português ou em espanhol,
+    e as linhas em negrito da mesma letra logo abaixo, não fecham a corrida: o título do quadro
+    do Miller ("CUADRO 4-1 …", StoneSerif negrito de 9,5 pt, de 1 a 5 linhas). O limite é para o
+    parágrafo de destaque em negrito que começa por uma menção não sair inteiro.
+    """
+    if not linha.negrito or not _do_corpo(linha, corpo):
+        return 0
+    if _rotulo_local(linha, corpo[1]) is not None:
+        return LINHAS_DO_TITULO_DO_ROTULO
+    return max(restam - 1, 0)
+
+
+def _do_corpo(linha: Linha, corpo: tuple[str, float]) -> bool:
+    familia, tamanho = corpo
+    return linha.fonte == familia and abs(linha.tamanho - tamanho) <= DIFERENCA_DE_TAMANHO
+
+
 def _fecha(linha: Linha, corpo: tuple[str, float]) -> bool:
     """A letra do corpo, ou a de título que não é rótulo, fecha a corrida."""
-    familia, tamanho = corpo
-    do_corpo = linha.fonte == familia and abs(linha.tamanho - tamanho) <= DIFERENCA_DE_TAMANHO
-    titulo = linha.tamanho >= tamanho * RAZAO_DO_TITULO and _rotulo(linha) is None
-    return do_corpo or titulo
+    tamanho = corpo[1]
+    titulo = linha.tamanho >= tamanho * RAZAO_DO_TITULO and _rotulo(linha, tamanho) is None
+    return _do_corpo(linha, corpo) or titulo
 
 
-def _rotulo(linha: Linha, anterior: Linha | None = None) -> str | None:
+def _rotulo(linha: Linha, tamanho_do_corpo: float, anterior: Linha | None = None) -> str | None:
     """O motivo, se a linha abre com rótulo de tabela ou de figura. A linha que continua a frase
     da de cima, na mesma letra, é menção quebrada, e não rótulo ("…components in" | "Figure
     5-11.", na prosa em MyriadPro de 9 pt do Hard Parts)."""
@@ -160,12 +202,29 @@ def _rotulo(linha: Linha, anterior: Linha | None = None) -> str | None:
         return MOTIVO_DA_TABELA
     if _ROTULO_DA_FIGURA.match(linha.texto):
         return MOTIVO_DA_FIGURA
+    return _rotulo_local(linha, tamanho_do_corpo)
+
+
+def _rotulo_local(linha: Linha, tamanho_do_corpo: float) -> str | None:
+    """O rótulo em português ou em espanhol, fora da letra de título: nela, "Quadro 5.1" abre o
+    quadro que fica no lugar (Dalgalarrondo, 12 pt com o corpo de 10; ADR-0004, "Quadro no
+    lugar")."""
+    if linha.tamanho >= tamanho_do_corpo * RAZAO_DO_TITULO:
+        return None
+    if _TABELA_LOCAL.match(linha.texto):
+        return MOTIVO_DA_TABELA
+    if _FIGURA_LOCAL.match(linha.texto):
+        return MOTIVO_DA_FIGURA
     return None
 
 
 def _continua_a_frase(anterior: Linha, linha: Linha) -> bool:
-    mesma_letra = anterior.fonte == linha.fonte and abs(anterior.tamanho - linha.tamanho) <= (
-        DIFERENCA_DE_TAMANHO
+    """Na mesma letra, também no negrito: o rótulo em negrito embaixo de uma linha comum não a
+    continua ("Glicogênio" | "FigurA 1.9", Manica)."""
+    mesma_letra = (
+        anterior.fonte == linha.fonte
+        and anterior.negrito == linha.negrito
+        and abs(anterior.tamanho - linha.tamanho) <= DIFERENCA_DE_TAMANHO
     )
     return mesma_letra and _FECHA_FRASE.search(anterior.texto) is None
 

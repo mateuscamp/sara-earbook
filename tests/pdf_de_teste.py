@@ -255,3 +255,112 @@ def montar_pdf_com_titulo_circular(destino: Path) -> Path:
     ]
     _ = destino.write_bytes(_arquivo(objetos, info_no=7))
     return destino
+
+
+@dataclass(frozen=True)
+class ItemDeTeste:
+    """Um item do sumário interno (os marcadores) do PDF de teste."""
+
+    nivel: int
+    titulo: str
+    pagina: int = 1
+    """A página de destino, a partir de 1."""
+    destino: bytes | None = None
+    """O valor cru de `/Dest`, no lugar da página: um nome (`(cap2)`) ou uma referência."""
+    por_acao: bool = False
+    """O destino dentro de uma ação (`/A << /S /GoTo /D … >>`), como no Manica e no Miller."""
+    em_circulo: bool = False
+    """O item aponta para si mesmo como o seguinte: o sumário que não acaba."""
+
+
+def montar_pdf_com_sumario(
+    destino: Path,
+    paginas: list[list[LinhaDeTeste]],
+    itens: list[ItemDeTeste],
+    *,
+    nomes: dict[str, int] | bytes | None = None,
+    objeto_a_mais: bytes | None = None,
+) -> Path:
+    """Como `montar_pdf`, com o sumário interno `itens`. `nomes` são os destinos com nome (nome →
+    página) ou, em bytes, o valor cru da árvore de nomes (`/Dests`); `objeto_a_mais` entra depois
+    do último item, com o número seguinte ao dele. Sem itens, o catálogo aponta o sumário para o
+    objeto a mais."""
+    _ = montar_pdf(destino, paginas)
+    objetos = _objetos_das_paginas(paginas)
+    da_pagina = [7 + 2 * n + 1 for n in range(len(paginas))]
+    raiz = len(objetos) + 1
+    numero = {i: raiz + 1 + i for i in range(len(itens))}
+    topo = [i for i, item in enumerate(itens) if item.nivel == 1]
+    if topo:
+        primeiro, ultimo = numero[topo[0]], numero[topo[-1]]
+        objetos.append(f"<< /Type /Outlines /First {primeiro} 0 R /Last {ultimo} 0 R >>".encode())
+    objetos += [_item_do_sumario(itens, i, numero, raiz, da_pagina) for i in range(len(itens))]
+    if objeto_a_mais is not None:
+        objetos.append(objeto_a_mais)
+    extras = f" /Outlines {raiz} 0 R"
+    if isinstance(nomes, bytes):
+        extras += f" /Names << /Dests {nomes.decode()} >>"
+    elif nomes:
+        pares = " ".join(
+            f"({nome}) [{da_pagina[pagina - 1]} 0 R /Fit]" for nome, pagina in sorted(nomes.items())
+        )
+        extras += f" /Names << /Dests << /Names [{pares}] >> >>"
+    objetos[0] = f"<< /Type /Catalog /Pages 2 0 R{extras} >>".encode()
+    _ = destino.write_bytes(_arquivo(objetos))
+    return destino
+
+
+def _objetos_das_paginas(paginas: list[list[LinhaDeTeste]]) -> list[bytes]:
+    """Os objetos de `montar_pdf`, na mesma ordem: o catálogo, a árvore, as 4 fontes e, para cada
+    página, o conteúdo e a página (os objetos 7 + 2n e 8 + 2n)."""
+    fonte = "<< /Type /Font /Subtype /Type1 /BaseFont /{} /Encoding /WinAnsiEncoding >>"
+    objetos: list[bytes] = [b"", b""]
+    objetos += [
+        fonte.format(n).encode() for n in ("Helvetica", "Courier", "Helvetica-Bold", "Times-Roman")
+    ]
+    filhos: list[str] = []
+    for linhas in paginas:
+        conteudo = _conteudo(linhas)
+        objetos.append(b"<< /Length %d >>\nstream\n%s\nendstream" % (len(conteudo), conteudo))
+        recursos = "<< /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R /F4 6 0 R >> >>"
+        objetos.append(
+            (
+                f"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {LARGURA} {ALTURA}] "
+                f"/Resources {recursos} /Contents {len(objetos)} 0 R >>"
+            ).encode()
+        )
+        filhos.append(f"{len(objetos)} 0 R")
+    objetos[1] = f"<< /Type /Pages /Kids [{' '.join(filhos)}] /Count {len(filhos)} >>".encode()
+    return objetos
+
+
+def _item_do_sumario(
+    itens: list[ItemDeTeste],
+    i: int,
+    numero: dict[int, int],
+    raiz: int,
+    da_pagina: list[int],
+) -> bytes:
+    item = itens[i]
+    depois = list(range(i + 1, len(itens)))
+    fim = next((j for j in depois if itens[j].nivel <= item.nivel), len(itens))
+    filhos = [j for j in range(i + 1, fim) if itens[j].nivel == item.nivel + 1]
+    irmao = fim if fim < len(itens) and itens[fim].nivel == item.nivel else None
+    pai = next((j for j in reversed(range(i)) if itens[j].nivel == item.nivel - 1), None)
+    partes = [
+        f"/Title ({_cadeia_pdf(item.titulo)})",
+        f"/Parent {numero[pai] if pai is not None else raiz} 0 R",
+    ]
+    if irmao is not None:
+        partes.append(f"/Next {numero[irmao]} 0 R")
+    elif item.em_circulo:
+        partes.append(f"/Next {numero[i]} 0 R")
+    if filhos:
+        partes.append(f"/First {numero[filhos[0]]} 0 R /Last {numero[filhos[-1]]} 0 R")
+    alvo = (
+        item.destino.decode("latin-1")
+        if item.destino
+        else f"[{da_pagina[item.pagina - 1]} 0 R /Fit]"
+    )
+    partes.append(f"/A << /S /GoTo /D {alvo} >>" if item.por_acao else f"/Dest {alvo}")
+    return f"<< {' '.join(partes)} >>".encode("latin-1")

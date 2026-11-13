@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import logging
 import re
 from collections import Counter
 from collections.abc import Callable, Iterator
@@ -16,13 +17,16 @@ from statistics import multimode
 from pdfminer.high_level import extract_pages
 from pdfminer.layout import LAParams, LTChar, LTPage, LTTextBox, LTTextLine
 from pdfminer.pdfdocument import PDFDocument, PDFEncryptionError
+from pdfminer.pdfpage import PDFPage
 from pdfminer.pdfparser import PDFParser
 from pdfminer.pdftypes import PDFObjRef
 from pdfminer.utils import decode_text
 
+from earbook.adaptadores.sumario_do_pdf import itens_do_sumario
 from earbook.dominio.caracteres import Caractere, lido, texto_da_linha
 from earbook.dominio.pagina import Linha, Pagina, em_versalete
 from earbook.dominio.segmento import normalizar_espacos
+from earbook.dominio.sumario_interno import ItemDoSumario
 
 # Medido no spike: o código do "Hard Parts" vem em UbuntuMono.
 _FONTE_MONOESPACADA = re.compile(r"mono|courier|code|consol", re.IGNORECASE)
@@ -37,11 +41,16 @@ _FONTE_NEGRITO = re.compile(r"[-,]\w*(?:bold|black|heavy|demi)", re.IGNORECASE)
 _FONTE_VERSALETE = re.compile(r"[-_]SC\d*$", re.IGNORECASE)
 # A família da letra: o nome sem o prefixo do subconjunto ("TCMKGG+") e sem o estilo, depois do
 # traço ou da vírgula ("AGaramondPro-Regular", "Arial,Bold"). ADR-0004, "Tabela e figura pela
-# letra".
+# letra". O "MT" do fim fica: "TimesNewRomanPSMT" e "TimesNewRomanPS-BoldMT" saem como duas
+# famílias, e é por isso que o rótulo "TABLE 1.1" do Bonica, em negrito no tamanho do corpo, não
+# conta como letra do corpo (ADR-0004, "Tratado em português e em espanhol", "O que fica").
 _ESTILO_DA_FONTE = re.compile(r"[-,].*$")
 
 _BOM_UTF8 = b"\xef\xbb\xbf"
 _BOM_UTF16LE = b"\xff\xfe"
+_PASSOS_DA_REFERENCIA = 8
+"""Quantas referências seguidas se seguem até um valor: no PDF bem formado, uma."""
+_LOG = logging.getLogger(__name__)
 
 
 class PdfInvalidoError(ValueError):
@@ -94,6 +103,61 @@ def _decodificar(valor: bytes) -> str:
         if valor.startswith(bom):
             return valor[len(bom) :].decode(codificacao, errors="replace")
     return decode_text(valor)
+
+
+def ler_sumario(pdf: Path) -> tuple[ItemDoSumario, ...]:
+    """O sumário interno do PDF (os marcadores), com o nível, o título e a página de cada item;
+    vazio se o PDF não o tem ou se ele não se deixa ler (ADR-0004, "Capítulos pelo sumário
+    interno do PDF").
+
+    O sumário é opcional: a falha ao abri-lo vira aviso e sumário vazio, e não derruba a
+    importação de um livro cujas páginas se leem. O percurso é de `adaptadores/sumario_do_pdf.py`,
+    com passos contados, e não o `get_outlines` do pdfminer, que segue referência sem limite.
+    """
+    with pdf.open("rb") as arquivo:
+        try:
+            documento = _pelo_pdfminer(pdf, lambda: PDFDocument(PDFParser(arquivo)))
+            numeros = _pelo_pdfminer(pdf, lambda: _numeros_das_paginas(documento))
+        except PdfInvalidoError as erro:
+            _LOG.warning("o sumário interno não pôde ser lido e foi ignorado: %s", erro)
+            return ()
+        return itens_do_sumario(documento.catalog, _Leitor(pdf), numeros)
+
+
+def _numeros_das_paginas(documento: PDFDocument) -> dict[int, int]:
+    """O número de cada página (a partir de 1) pelo identificador do objeto dela no PDF."""
+    numeros: dict[int, int] = {}
+    for numero, pagina in enumerate(PDFPage.create_pages(documento), 1):
+        # O pdfminer tipa o identificador como objeto: só o inteiro serve de chave.
+        if isinstance(pagina.pageid, int):
+            numeros[pagina.pageid] = numero
+    return numeros
+
+
+@dataclass(frozen=True)
+class _Leitor:
+    """O que o percurso do sumário precisa do pdfminer (`sumario_do_pdf.Leitor`)."""
+
+    pdf: Path
+
+    def seguir(self, valor: object) -> object:
+        """Segue a referência por um número fixo de passos, sem o `resolve1` do pdfminer, que não
+        tem limite (N1 da pós-auditoria): a que aponta para si mesma, para um objeto que não
+        existe ou para um que o pdfminer não consegue ler vira None."""
+        for _ in range(_PASSOS_DA_REFERENCIA):
+            if not isinstance(valor, PDFObjRef):
+                return valor
+            try:
+                valor = _pelo_pdfminer(self.pdf, valor.resolve)  # pyright: ignore[reportAny]  # motivo: o pdfminer devolve Any; quem chama valida com isinstance
+            except PdfInvalidoError:
+                return None
+        return None
+
+    def objeto(self, valor: object) -> int | None:
+        return valor.objid if isinstance(valor, PDFObjRef) else None
+
+    def texto(self, valor: object) -> str:
+        return _decodificar(valor) if isinstance(valor, bytes) else ""
 
 
 def ler_paginas(pdf: Path) -> tuple[Pagina, ...]:

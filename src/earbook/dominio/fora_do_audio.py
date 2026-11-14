@@ -80,18 +80,6 @@ class CapituloDesconhecidoError(ValueError):
     pass
 
 
-def capitulos_declarados(motivos: Mapping[str, str]) -> frozenset[str]:
-    """Os capítulos que o `preparar --sem-capitulo` tirou do áudio, pelo registro da limpeza (ID
-    do segmento → motivo): os que saíram por pedido, e não por regra. O `montar` já não os
-    distingue: deixa fora do EPUB todo capítulo que a limpeza esvaziou (`capitulos_com_remocao`;
-    ADR-0005, "Todo capítulo sem texto fora do EPUB montado")."""
-    return frozenset(
-        id_.partition("-")[0]
-        for id_, motivo in motivos.items()
-        if motivo == MOTIVO_DO_CAPITULO_FORA
-    )
-
-
 def capitulos_com_remocao(motivos: Mapping[str, str]) -> frozenset[str]:
     """Os capítulos de que a limpeza tirou algum segmento, pelo registro (ID do segmento →
     motivo), qualquer que seja a regra. O que ficou sem nenhum em `limpos/` foi esvaziado por ela,

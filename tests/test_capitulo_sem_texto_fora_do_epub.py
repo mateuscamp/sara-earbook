@@ -21,7 +21,6 @@ from earbook.comandos.cli import principal
 from earbook.comandos.montar import MontagemRecusadaError, montar
 from earbook.comandos.preparar import preparar
 from earbook.comandos.traduzir import traduzir
-from earbook.dominio.fora_do_audio import capitulos_declarados
 from earbook.dominio.traducao import Modo
 from tests.livro_de_teste import xhtml
 
@@ -120,16 +119,6 @@ def _membros(epub: Path) -> dict[str, str]:
 def montado(tmp_path: Path) -> dict[str, str]:
     pasta = _preparado(tmp_path, _epub(tmp_path / "livro.epub"))
     return _membros(montar(pasta, tmp_path / "livro.pronto.epub").epub)
-
-
-def test_registro_da_limpeza_diz_os_capitulos_declarados(tmp_path: Path) -> None:
-    pasta = _preparado(tmp_path, _epub(tmp_path / "livro.epub"), ("c001", "c003"))
-    assert capitulos_declarados(trabalho.ler_limpeza(pasta).motivos) == {"c001", "c003"}
-
-
-def test_remocao_por_outro_motivo_nao_declara_o_capitulo() -> None:
-    motivos = {"c001-s0001": "índice remissivo", "c002-s0001": "página de direitos autorais"}
-    assert capitulos_declarados(motivos) == frozenset()
 
 
 def test_arquivo_do_capitulo_sem_texto_nao_vai_para_o_pacote(montado: dict[str, str]) -> None:

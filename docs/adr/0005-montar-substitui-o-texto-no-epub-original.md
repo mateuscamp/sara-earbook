@@ -206,9 +206,10 @@ código, saem com os mesmos arquivos e o mesmo conteúdo dos que estão em `livr
 arquivo só de direitos ou só de bibliografia.
 
 **O que fica (declarado).**
-- `capitulos_declarados` (`dominio/fora_do_audio.py`) deixa de ser usado pelo `montar` e fica,
-  coberto por dois testes existentes, que o processo não deixa apagar: diz quais capítulos saíram
-  por pedido, e não por regra.
+- `capitulos_declarados` (`dominio/fora_do_audio.py`) deixou de ser usado pelo `montar`. Ficou
+  primeiro, coberto por dois testes que o processo não deixa apagar sem autorização; em
+  2026-11-14 o Mateus autorizou, e a função e os dois testes saíram. Quem precisar saber que
+  capítulo saiu por pedido, e não por regra, lê o motivo em `limpeza.json`.
 - O capítulo que a limpeza esvaziou **por engano** (uma regra com falso positivo que leve o
   capítulo inteiro) sai do livro montado. Antes ele aparecia vazio no sumário; agora só o resumo
   do `montar` ("capítulos sem texto") e o `limpeza.json` o mostram. O resumo é para ser lido.

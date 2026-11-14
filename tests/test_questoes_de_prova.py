@@ -14,7 +14,7 @@ import time
 
 from earbook.dominio.limpeza import limpar_para_o_ouvido
 from earbook.dominio.livro_limpo import LivroLimpo
-from earbook.dominio.questoes_de_prova import MOTIVO_DAS_QUESTOES
+from earbook.dominio.questoes_de_prova import MOTIVO_DAS_QUESTOES, secoes_de_questoes
 from earbook.dominio.segmento import Papel, Segmento
 
 PROSA = (Papel.PARAGRAFO, "O equilíbrio ácido-base depende de três variáveis independentes.")
@@ -35,8 +35,16 @@ Q1 = _questao("34.1 (XYZ/2012) Qual variável determina a concentração de hidr
 Q2 = _questao("34.2 (XYZ/2013) Mulher de 51 anos chega torporosa. O distúrbio mais provável é:")
 PROVA = _questao("34.3 (XYZ/2014) As variáveis que determinam o pH são:")
 Q_SEM_PROVA = _questao("Qual destas variáveis determina a concentração de hidrogênio?")
-# Medido: 40 mil segmentos em menos de 1 s com a conta acumulada; 3 s com 16 mil sem ela.
-TEMPO_DO_CAPITULO_ENORME = 6.0
+# O capítulo enorme se mede pelo crescimento, nunca por um teto em segundos, que depende da máquina
+# e da carga dela (decisão do Mateus, 2026-11-14). Os mesmos 16 mil segmentos passam pela regra
+# num capítulo só e em 16 capítulos de mil: se a regra é linear, os dois custam o mesmo (razão 1);
+# se conta de novo a cada enunciado, o capítulo inteiro custa 16 vezes mais.
+PARTES_DO_CAPITULO_ENORME = 16
+BLOCOS_DE_CADA_PARTE = 125
+# O menor tempo de 5 medidas intercaladas: a carga só soma tempo, e o menor é a que ela menos tocou.
+MEDIDAS_DE_CADA_TAMANHO = 5
+# O meio, em proporção, entre o linear (1) e o quadrado (16).
+CRESCIMENTO_ACEITO = 4.0
 
 
 def _limpar(segmentos: list[tuple[Papel, str]]) -> LivroLimpo:
@@ -198,13 +206,30 @@ def test_listas_de_letras_sem_enunciado_de_prova_ficam_mesmo_sendo_varias() -> N
     assert _sobrou(_limpar(juntas)) == [texto for _, texto in juntas]
 
 
-def test_o_capitulo_enorme_de_listas_que_nao_servem_nao_custa_o_quadrado() -> None:
-    # A2 da code-audit: o EPUB é entrada não confiável. 16 mil segmentos levavam 3 s.
+def _capitulo_hostil(nome: str, blocos: int) -> tuple[str, list[Segmento]]:
     # Um enunciado de prova por título, com prosa demais em volta: nenhum trecho serve.
     bloco = [TITULO, (Papel.PARAGRAFO, "9.1 (XYZ/2010) Item."), FIM, FIM, FIM, FIM, FIM, FIM]
-    capitulo = [
-        Segmento(f"c001-s{n:06d}", papel, texto) for n, (papel, texto) in enumerate(bloco * 5000)
-    ]
-    inicio = time.perf_counter()
-    _ = limpar_para_o_ouvido([("c001", capitulo)], "Livro", "Autor")
-    assert time.perf_counter() - inicio < TEMPO_DO_CAPITULO_ENORME
+    segmentos = enumerate(bloco * blocos)
+    return nome, [Segmento(f"{nome}-s{n:06d}", papel, texto) for n, (papel, texto) in segmentos]
+
+
+def _tempo_de_cpu(capitulos: list[tuple[str, list[Segmento]]]) -> float:
+    # O tempo de CPU do processo, não o do relógio: a espera pela vez não é custo da regra.
+    inicio = time.process_time()
+    saem = secoes_de_questoes(capitulos)
+    tempo = time.process_time() - inicio
+    assert saem == {}
+    return tempo
+
+
+def test_o_capitulo_enorme_de_listas_que_nao_servem_nao_custa_o_quadrado() -> None:
+    # A2 da code-audit: o EPUB é entrada não confiável. 16 mil segmentos levavam 3 s.
+    partes = range(1, PARTES_DO_CAPITULO_ENORME + 1)
+    partido = [_capitulo_hostil(f"c{n:03d}", BLOCOS_DE_CADA_PARTE) for n in partes]
+    inteiro = [_capitulo_hostil("c001", BLOCOS_DE_CADA_PARTE * PARTES_DO_CAPITULO_ENORME)]
+    tempos_do_partido: list[float] = []
+    tempos_do_inteiro: list[float] = []
+    for _ in range(MEDIDAS_DE_CADA_TAMANHO):
+        tempos_do_partido.append(_tempo_de_cpu(partido))
+        tempos_do_inteiro.append(_tempo_de_cpu(inteiro))
+    assert min(tempos_do_inteiro) < CRESCIMENTO_ACEITO * min(tempos_do_partido)

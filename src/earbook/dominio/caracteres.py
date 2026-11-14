@@ -7,7 +7,9 @@ Duas coisas que só se veem no caractere, e não na linha pronta:
   colado à palavra. Medido no Practical: 0,58 do corpo, com a linha de base 0,33 do corpo acima.
   Sai só a chamada: algarismos, vírgula e traço, depois de letra, de pontuação ou de ano ("in
   1934²²¹"). O expoente depois de outro número ("10⁶"), a carga do íon ("Ca²⁺"), a unidade ao
-  quadrado ("kg/m²") e a letra solta ("r²") ficam;
+  quadrado ("kg/m²") e a letra solta ("r²") ficam. A chamada de 2 algarismos ou mais depois de
+  letra solta ou de número ("6 h¹⁴⁸", "0,62¹¹¹") é duvidosa: só sai na página que tem chamadas
+  certas (ADR-0004, "Camada do OCR sobre as figuras e chamada colada");
 - **o espaço que o pdfminer inventa** no nome com letra espaçada (Practical: Gotham-Bold com 1 pt
   a mais entre as letras, "NATALI E MORY L"). O pdfminer põe espaço onde o vão passa de uma
   fração da letra; quando o vão é o mesmo da letra espaçada, o espaço não existe no PDF.
@@ -19,6 +21,7 @@ import re
 from collections import Counter
 from collections.abc import Sequence
 from dataclasses import dataclass
+from enum import Enum
 from itertools import pairwise
 from statistics import median
 
@@ -39,15 +42,40 @@ FRACAO_DO_ESPACO_DE_VERDADE = 0.5
 """O espaço inventado entre as letras espaçadas tem menos da metade do vão do espaço de verdade
 da mesma linha (medido no Bonica: 1,7 a 2,3 pt contra 8 pt). O vão da palavra separada só pela
 posição é o do espaço de verdade, e fica."""
-# A vírgula do texto composta na letra pequena, no fim, vai junto (R6 da code-review).
-_CHAMADA = re.compile(r"\d+(?:\s*[,\u2010-\u2014-]\s*\d+)*,?")
-_PONTUACAO_ANTES = frozenset(".,;:)]%\u2019\u201d\"'")
+# A vírgula do texto composta na letra pequena, no fim, vai junto (R6 da code-review). O número
+# pode levar uma letra ("138a", a referência acrescentada), e a faixa, o hífen invisível
+# ("19\xad21", Miller): ADR-0004, "Camada do OCR sobre as figuras e chamada colada".
+_NUMERO = r"\d+[a-z]?"
+_TRACOS = "\u00ad\u2010-\u2014-"
+_CHAMADA = re.compile(rf"{_NUMERO}(?:\s*[,{_TRACOS}]\s*{_NUMERO})*,?")
+_LISTA_OU_FAIXA = re.compile(rf"\d[a-z]?\s*[,{_TRACOS}]\s*\d")
+"""Mais de um número: expoente não vem em lista, e a chamada assim é certa em qualquer lugar."""
+_DOIS_ALGARISMOS = re.compile(r"\d{2,}[a-z]?,?")
+_PONTUACAO_ANTES = frozenset(".,;:)]%\u2019\u201d\"'\u00bb!?")
+_TRAVESSOES = frozenset("\u2013\u2014")
+_PONTUACAO_DEPOIS = frozenset(".,;:)")
+_FIM_DA_LINHA = frozenset({"", "\n"})
+"""Nada depois, ou a quebra que o pdfminer põe no fim de toda linha."""
 # A unidade ao quadrado ou ao cubo: "m²", "cm²", "mm³", "μm²".
 _UNIDADES = frozenset({"m", "cm", "mm", "km", "dm", "nm", "μm", "µm"})
 _PALAVRA_ANTES = re.compile(r"[^\W\d_]+$")
 # O ano antes da chamada ("in 1934²²¹", "Lutz, 2017¹⁰¹"): quatro algarismos de 1500 a 2099, sem
 # algarismo, ponto ou vírgula antes. O expoente de outro número ("10⁶", "1000²") fica.
 _ANO_ANTES = re.compile(r"(?:^|[^\d.,])(?:1[5-9]|20)\d\d$")
+# A base da potência de dez ("10¹²", "2 vezes 10²³"): o que vem depois dela é expoente.
+_BASE_DEZ = re.compile(r"(?:^|[^\d.,])10$")
+CHAMADAS_CERTAS_NA_PAGINA = 3
+"""A página com 3 chamadas certas ou mais prova que o livro numera as referências em sobrescrito:
+nela a chamada duvidosa também sai (medido no Miller: 402 das 420 duvidosas; a mediana é 7
+chamadas certas por página)."""
+
+
+class _Chamada(Enum):
+    CERTA = "certa"
+    DUVIDOSA = "duvidosa"
+    """O número só, de 2 algarismos ou mais, depois de letra solta, de algarismo ou do sinal de
+    grau ("6 h¹⁴⁸", "0,62¹¹¹"): na linha, tem a cara de um expoente ("r¹²"). E a que abre a linha
+    antes de pontuação ("¹¹⁸. No"), que tem a cara do número de uma nota ("¹. Ver")."""
 
 
 @dataclass(frozen=True)
@@ -74,23 +102,45 @@ class TextoDaLinha:
     """Os que ficaram, na ordem: a letra espaçada se mede neles."""
     espacos_tirados: int = 0
     """Quantos espaços inventados saíram: a linha com letra espaçada e espaço de verdade."""
+    duvidosas: int = 0
+    """As chamadas duvidosas que ficaram no texto: só saem na página que tem chamadas certas
+    (ADR-0004, "Camada do OCR sobre as figuras e chamada colada")."""
 
 
-def texto_da_linha(caracteres: Sequence[Caractere], tamanho: float) -> TextoDaLinha:
-    """O texto da linha sem as chamadas sobrescritas e sem o espaço inventado no vão da letra."""
+def texto_da_linha(
+    caracteres: Sequence[Caractere], tamanho: float, *, com_duvidosas: bool = False
+) -> TextoDaLinha:
+    """O texto da linha sem as chamadas sobrescritas e sem o espaço inventado no vão da letra.
+
+    A chamada duvidosa só sai com `com_duvidosas`, que a página dá (`pagina_usa_chamadas`); sem
+    ele, fica no texto e é contada.
+    """
     fora: set[int] = set()
     chamadas: list[str] = []
-    for inicio, fim in _chamadas(caracteres, tamanho):
+    duvidosas = 0
+    for (inicio, fim), tipo in _chamadas(caracteres, tamanho):
+        if tipo is _Chamada.DUVIDOSA and not com_duvidosas:
+            duvidosas += 1
+            continue
         fora.update(range(inicio, fim))
         chamadas.append(_registro(caracteres, inicio, fim))
     inventados = _espacos_inventados(caracteres, tamanho)
     fora.update(inventados)
     ficam = tuple(c for i, c in enumerate(caracteres) if i not in fora)
-    return TextoDaLinha("".join(c.texto for c in ficam), tuple(chamadas), ficam, len(inventados))
+    texto = "".join(c.texto for c in ficam)
+    return TextoDaLinha(texto, tuple(chamadas), ficam, len(inventados), duvidosas)
 
 
-def _chamadas(caracteres: Sequence[Caractere], tamanho: float) -> list[tuple[int, int]]:
-    """(início, fim) de cada trecho sobrescrito que é chamada de referência."""
+def pagina_usa_chamadas(certas: int) -> bool:
+    """Se a página, com `certas` chamadas certas, prova as duvidosas (ADR-0004, "Camada do OCR
+    sobre as figuras e chamada colada")."""
+    return certas >= CHAMADAS_CERTAS_NA_PAGINA
+
+
+def _chamadas(
+    caracteres: Sequence[Caractere], tamanho: float
+) -> list[tuple[tuple[int, int], _Chamada]]:
+    """(início, fim) de cada trecho sobrescrito que é chamada de referência, e se é certa."""
     base = _base_da_linha(caracteres, tamanho)
     if base is None:
         return []
@@ -104,7 +154,8 @@ def _chamadas(caracteres: Sequence[Caractere], tamanho: float) -> list[tuple[int
             trechos.append((inicio, i))
             inicio = None
     aparados = [_sem_espaco_nas_pontas(caracteres, inicio, fim) for inicio, fim in trechos]
-    return [t for t in aparados if t is not None and _e_chamada(caracteres, *t)]
+    tipos = [(t, _tipo_da_chamada(caracteres, *t)) for t in aparados if t is not None]
+    return [(trecho, tipo) for trecho, tipo in tipos if tipo is not None]
 
 
 def _sem_espaco_nas_pontas(
@@ -136,21 +187,50 @@ def _sobrescrito(caractere: Caractere, tamanho: float, base: float) -> bool:
     return not caractere.virtual and menor and acima
 
 
-def _e_chamada(caracteres: Sequence[Caractere], inicio: int, fim: int) -> bool:
-    """Só algarismo, vírgula e traço, colado a uma palavra ou a uma pontuação que fecha."""
+def _tipo_da_chamada(caracteres: Sequence[Caractere], inicio: int, fim: int) -> _Chamada | None:
+    """Só algarismo, vírgula e traço, no lugar em que a chamada mora; None se é outra coisa."""
     texto = "".join(c.texto for c in caracteres[inicio:fim])
-    if inicio == 0 or _CHAMADA.fullmatch(texto) is None:
-        return False
+    if _CHAMADA.fullmatch(texto) is None:
+        return None
+    depois = caracteres[fim].texto if fim < len(caracteres) else ""
+    fecha = depois in _PONTUACAO_DEPOIS
+    solta = fecha or not depois.strip()
+    texto_antes = "".join(c.texto for c in caracteres[:inicio])
+    if not texto_antes.strip():
+        # A palavra ficou na linha de cima ("¹¹⁸. No"); o isótopo ("¹²⁵I") e o número da nota
+        # ("¹ The note") têm letra ou espaço depois.
+        return _Chamada.DUVIDOSA if fecha else None
     antes = caracteres[inicio - 1]
     if antes.virtual or not antes.texto.strip():
-        return False
-    if antes.texto in _PONTUACAO_ANTES:
-        return True
-    texto_antes = "".join(c.texto for c in caracteres[:inicio])
-    if _ANO_ANTES.search(texto_antes):
-        return True
+        # "el dolor ²⁸⁰." e a chamada no fim da linha, que o pdfminer fecha com a quebra; o
+        # número solto entre espaços ("dose ⁵ mg") e o isótopo ficam.
+        return _Chamada.CERTA if fecha or depois in _FIM_DA_LINHA else None
+    if antes.texto in _TRAVESSOES:
+        return _Chamada.CERTA if solta else None
+    if antes.texto in _PONTUACAO_ANTES or _ANO_ANTES.search(texto_antes):
+        return _Chamada.CERTA
+    return _colada(texto_antes, texto, solta=solta)
+
+
+def _colada(texto_antes: str, chamada: str, *, solta: bool) -> _Chamada | None:
+    """A chamada colada a palavra, a letra solta, a algarismo ou ao sinal de grau.
+
+    Colada à palavra de 2 letras ou mais que não é unidade, é certa. Colada a letra solta, a
+    algarismo ou ao grau, onde também mora o expoente: a lista ou faixa é certa; o número só, de
+    2 algarismos ou mais e seguido de espaço, pontuação ou fim, é duvidoso; depois da base 10, e
+    com um algarismo só, nunca ("10¹²", "m²", "T10²").
+    """
     palavra = _PALAVRA_ANTES.search(texto_antes)
-    return palavra is not None and len(palavra.group()) > 1 and palavra.group() not in _UNIDADES
+    if palavra is not None and len(palavra.group()) > 1:
+        return None if palavra.group() in _UNIDADES else _Chamada.CERTA
+    if palavra is None and not (texto_antes[-1].isdigit() or texto_antes[-1] == "\u00b0"):
+        return None
+    if _LISTA_OU_FAIXA.search(chamada):
+        return _Chamada.CERTA
+    expoente = _BASE_DEZ.search(texto_antes) is not None
+    if solta and not expoente and _DOIS_ALGARISMOS.fullmatch(chamada):
+        return _Chamada.DUVIDOSA
+    return None
 
 
 def _registro(caracteres: Sequence[Caractere], inicio: int, fim: int) -> str:

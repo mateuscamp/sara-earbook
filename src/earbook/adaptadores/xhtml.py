@@ -257,7 +257,7 @@ def _acrescentar_notas(corpo: Elemento, textos: list[str]) -> None:
 
 def _corpo(conteudo: bytes, caminho: str) -> Elemento:
     try:
-        raiz = etree.fromstring(_entidades_html_em_numericas(conteudo), PARSER_SEGURO)
+        raiz = etree.fromstring(entidades_html_em_numericas(conteudo), PARSER_SEGURO)
     except etree.XMLSyntaxError as erro:
         mensagem = f"{caminho}: XHTML malformado ({erro})"
         raise XhtmlInvalidoError(mensagem) from erro
@@ -269,7 +269,7 @@ def _corpo(conteudo: bytes, caminho: str) -> Elemento:
     return corpo
 
 
-def _entidades_html_em_numericas(conteudo: bytes) -> bytes:
+def entidades_html_em_numericas(conteudo: bytes) -> bytes:
     """`&nbsp;` → `&#160;`. O EPUB2 confia no DTD do XHTML, que o parser seguro não carrega."""
 
     def trocar(achado: re.Match[bytes]) -> bytes:

@@ -87,6 +87,74 @@ Limite registrado pela pós-auditoria: o arquivo de notas de fim de livro com um
 
 Registradas pela auditoria, sem caso nos livros: marca aninhada dentro de outro elemento marcado perde o texto de dentro (o `preparar` só marca folha); `<img>` dentro de um elemento mantido some com a marcação interna (não muda o áudio; nos três livros a contagem de imagens ficou igual); destino do `--epub` dentro da própria pasta `epub/` entra no pacote.
 
+### Capítulo sem texto fora do EPUB montado (2026-11-13)
+
+**Contexto.** O `preparar --sem-capitulo cNNN` (ADR-0008) tira o capítulo inteiro do áudio, mas o
+`montar` trocava só o texto: o arquivo do capítulo continuava no livro, com o corpo vazio, e o
+item dele no sumário também. No *Manica*, o leitor ainda listava "Autores", "Sumário", "Anexo 1" e
+"Anexo 2", quatro itens que levam a uma página em branco. Decisão do Mateus (2026-11-13): o
+capítulo vazio fica fora do EPUB montado.
+
+| Opção | Ganha | Perde | Por que não |
+|---|---|---|---|
+| A. Deixar o arquivo vazio e tirar só o item do sumário | mexe em um arquivo só | o leitor ainda passa por uma página em branco entre dois capítulos; o arquivo vazio continua no pacote | resolve metade |
+| **B. O `montar` tira o arquivo do pacote, do manifesto, do spine e do sumário (`nav` e `toc.ncx`)** | o livro montado só tem o que se ouve; a pasta de trabalho não muda | o `montar` passa a reescrever o OPF e o sumário, que antes iam como estavam | — |
+| C. O `preparar` tira o arquivo da pasta `epub/` | o `montar` não muda | a pasta `epub/` deixa de ser a cópia do original; o `conferir` cobra cada ID da origem contra o XHTML marcado, e o arquivo sumido quebraria a conta | contradiz "a pasta `epub/` continua sendo a fonte" |
+
+**Decisão (B).**
+- **Qual capítulo sai:** o que o `preparar --sem-capitulo` declarou fora do áudio. O `montar` o
+  reconhece pelo registro: todo segmento dele está em `limpeza.json` com o motivo "capítulo fora
+  do áudio: pedido no preparar" (`dominio/fora_do_audio.capitulos_declarados`), e nenhum ficou em
+  `limpos/`. Vale no livro pronto, no `--original` e no `--amostra`: o capítulo declarado não tem
+  texto limpo, nem para traduzir.
+- **O que não sai:** o capítulo que nunca teve segmento (a capa, a página só de imagem); o
+  arquivo que é o sumário do EPUB 3 (o item `nav` do manifesto), mesmo declarado, porque sem ele
+  o EPUB é inválido; na amostra, o capítulo que ainda não tem tradução ou adaptação, que não está
+  vazio, só não foi feito (ADR-0006 e ADR-0009: "a amostra monta só o traduzido").
+- **O capítulo que outra regra da limpeza esvaziou** (o do índice remissivo marcado no EPUB, o
+  que só tinha a página de direitos) **continua no livro, vazio, como antes.** A regra geral
+  ("sai todo capítulo que ficou sem segmento") foi escrita primeiro e recusada nesta rodada: o
+  teste `test_livro_montado_nao_tem_codigo_nem_indice` (ADR-0008) cobra o capítulo do índice
+  vazio no livro montado, e o processo proíbe mudar asserção de teste existente para a mudança
+  passar. Fica como decisão do Mateus (abaixo, "O que fica").
+- **O que o `montar` reescreve,** além dos capítulos: no OPF, saem o `<item>` do manifesto, o
+  `<itemref>` do spine e a `<reference>` do `<guide>` que apontam para o arquivo; no sumário do
+  EPUB 3 (todo `<nav>` do arquivo `nav`: sumário, `landmarks`, lista de páginas), sai o `<li>`
+  cujo link aponta para o arquivo; no `toc.ncx`, saem o `<navPoint>`, o `<pageTarget>` e o
+  `<navTarget>`. O item que sai e tem itens filhos de outro arquivo dá o lugar a eles: os filhos
+  sobem um nível. A lista que ficar vazia sai com o `<nav>` dela (ou com o `<pageList>`, o
+  `<navList>`, o `<guide>`).
+- **O `playOrder` do `toc.ncx`** é renumerado em sequência, na mesma ordem, e os itens que
+  dividiam um número continuam dividindo: o epubcheck recusa a sequência com salto ("playOrder
+  sequence has gaps").
+- **O que o `montar` recusa:** o livro em que todo capítulo ficaria de fora, e o livro cujo sumário
+  ficaria sem nenhum item. O spine sem `<itemref>` e o `<nav>` sem `<li>` são inválidos, e gravar
+  um EPUB que o leitor recusa seria pior do que dizer por quê.
+- **Sem capítulo declarado, nada muda:** o OPF e o sumário vão para o livro byte a byte, como
+  antes.
+- **Nada some calado:** o resumo do `montar` diz quantos capítulos ficaram de fora e quais
+  ("4 capítulos sem texto ficaram fora do EPUB: c006, c013, c110, c111"), e `Montagem.capitulos`
+  conta os que foram para o livro. Cada segmento desses capítulos já está em `limpeza.json`, com o
+  motivo.
+- **Onde mora:** a escolha do capítulo, em `comandos/montar.py`; o OPF, em
+  `adaptadores/pacote_epub.py`; o sumário (`nav` e `toc.ncx`), em `adaptadores/sumario_do_epub.py`,
+  novo, porque o `xhtml.py` está no limite de linhas e o sumário é outro assunto. Tudo pelo
+  `PARSER_SEGURO`; nenhum caminho sai da pasta de trabalho.
+
+**O que fica (declarado).**
+- **O capítulo esvaziado por outra regra da limpeza** fica no EPUB, com o corpo vazio e o item
+  no sumário. Estender a regra a ele é tirar a condição do motivo em `_sem_texto` e trocar uma
+  asserção de `tests/test_codigo_e_indice.py` (`[[…], []]` por `[[…]]`): decisão do Mateus.
+- O link para o capítulo que saiu, fora do sumário (num `<a href>` do corpo de outro capítulo que
+  o `montar` não troca, num trecho fora de segmento): o destino some e o epubcheck acusa o link
+  quebrado. O `montar` já tira a marcação interna de todo segmento, link inclusive, e nenhum livro
+  medido tem o caso.
+- O `<meta refines="#id">` do OPF que descreve o item tirado fica órfão. Nenhum livro medido tem.
+- Com o sumário (`nav`) no spine, o item dele que aponta para o capítulo declarado é segmento
+  mantido e sai do livro com o `<li>`: continua contado em "segmentos" no resumo do `montar` e,
+  na amostra, em "itens do sumário no original" (achado da code-review). Nenhum livro medido
+  tem o `nav` no spine e capítulo declarado.
+
 ## Consequências
 
 **Ganha:** o livro limpo chega ao ElevenReader com a estrutura do original, e o `conferir` vira
@@ -109,8 +177,12 @@ fica onde está, porque o fim do "capítulo" dela já é ela mesma.
 |---|---|---|---|
 | Nada some entre a origem e o livro montado | `conferir` antes de todo `montar` | `montar` (recusa) e testes | ID faltando, sobrando ou repetido |
 | O livro montado é lido pela esteira | teste de contrato: EPUB montado → `preparar` → textos e papéis esperados | portão | papel ou texto diferente |
+| O capítulo declarado fica fora do EPUB | testes (`tests/test_capitulo_sem_texto_fora_do_epub.py`): o arquivo sai do pacote, do manifesto, do spine, do `nav` e do `toc.ncx`, com os filhos de outro arquivo subindo um nível, a lista vazia e o `landmarks` vazio saindo, a referência do `<guide>` também, e o `playOrder` sem salto; vale no original e na amostra; o resumo e a `Montagem` dizem quais saíram; o livro montado volta pelo `preparar` só com os capítulos que se ouvem; o capítulo que nunca teve segmento, o `nav` no spine, o capítulo esvaziado por outro motivo e o capítulo sem tradução na amostra ficam; sem capítulo declarado o OPF e o sumário vão byte a byte; o livro em que nada ficaria e o sumário que ficaria vazio são recusados. O epubcheck, rodado à mão no livro montado | portão; epubcheck a cada livro | o capítulo vazio fica no livro, ou sai o que não foi declarado |
 | Escuta ★ (manual) | ouvir o livro de `livros/prontos/` no ElevenReader | a cada mudança no `montar`; responsável: Mateus | tropeço audível |
 
 ## Notas
 
 Autor: Mateus, com o Claude Code · Criado em: 2026-11-01 · Aprovado em: 2026-11-01
+A seção "Capítulo sem texto fora do EPUB montado" (2026-11-13) executa a decisão do Mateus do
+mesmo dia (o capítulo vazio fica fora do EPUB montado), levada pela sessão principal. O alcance
+(só o capítulo declarado no `--sem-capitulo`) e o mecanismo vão à revisão dele.

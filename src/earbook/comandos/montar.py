@@ -11,7 +11,12 @@ from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 from earbook.adaptadores import pasta_de_trabalho as trabalho
-from earbook.adaptadores.pacote_epub import empacotar_pasta, opf_em_outro_idioma
+from earbook.adaptadores.pacote_epub import (
+    arquivos_do_sumario,
+    empacotar_pasta,
+    opf_em_outro_idioma,
+)
+from earbook.adaptadores.sumario_do_epub import tirar_do_pacote
 from earbook.adaptadores.xhtml import (
     acrescentar_paragrafos,
     ids_marcados,
@@ -32,6 +37,7 @@ from earbook.dominio.conferencia_da_adaptacao import (
     conferir_sumario,
 )
 from earbook.dominio.conferencia_da_traducao import conferir_termos, conferir_traducao
+from earbook.dominio.fora_do_audio import capitulos_declarados
 from earbook.dominio.livro_limpo import CapituloLimpo
 from earbook.dominio.segmento import Segmento, notas_para_o_fim
 from earbook.dominio.trabalho import CapituloPreparado
@@ -74,6 +80,9 @@ class Montagem:
     """Na amostra, os itens do sumário sem tradução, que ficam no original (ADR-0005)."""
     adaptado: bool = False
     """O livro em português adaptado (ADR-0009): o que fica de fora está sem adaptação."""
+    sem_texto: tuple[str, ...] = ()
+    """Os capítulos que o `preparar --sem-capitulo` tirou do áudio: fora do EPUB (ADR-0005,
+    "Capítulo sem texto fora do EPUB montado")."""
 
 
 @dataclass(frozen=True)
@@ -130,7 +139,7 @@ def conferencia_da_pasta(
     recusado: o filtro vazio diria que está tudo certo (lote A da revisão).
     """
     livro = _ler_livro(pasta, modo)
-    problemas = _conferir(pasta, livro)
+    problemas = _conferir(pasta, livro, trabalho.ler_limpeza(pasta))
     avisos = avisos_da_adaptacao(livro.adaptados) if livro.adaptado else ()
     if capitulo is None:
         return Conferencia(problemas, avisos)
@@ -150,17 +159,49 @@ def montar(pasta: Path, destino: Path, modo: Modo | None = None) -> Montagem:
         mensagem = f"{destino} já existe"
         raise FileExistsError(mensagem)
     livro = _ler_livro(pasta, modo)
-    if problemas := _conferir(pasta, livro):
+    limpeza = trabalho.ler_limpeza(pasta)
+    if problemas := _conferir(pasta, livro, limpeza):
         raise MontagemRecusadaError(_recusa(pasta, problemas))
+    vazios = _sem_texto(pasta, livro, capitulos_declarados(limpeza.motivos))
+    fora = frozenset(c.arquivo for c in vazios)
+    empacotar_pasta(trabalho.pasta_do_epub(pasta), destino, _trocas(pasta, livro, fora), fora)
+    no_original = sum(len(_no_sumario_sem_traducao(pasta, c, livro)) for c in livro.capitulos)
+    return _montagem(destino, livro, no_original, tuple(c.id for c in vazios))
+
+
+def _sem_texto(
+    pasta: Path, livro: _Livro, declarados: frozenset[str]
+) -> tuple[CapituloPreparado, ...]:
+    """Os capítulos que o `preparar --sem-capitulo` tirou do áudio: saem do EPUB (ADR-0005,
+    "Capítulo sem texto fora do EPUB montado").
+
+    Vale em todo modo: o capítulo declarado não tem texto limpo, nem para traduzir. O arquivo que
+    é o sumário do EPUB 3 nunca sai. Recusa o livro em que nenhum capítulo ficaria.
+    """
+    vazios = [c for c in livro.capitulos if c.id in declarados and not livro.limpos[c.id]]
+    if not vazios:
+        return ()
+    if len(vazios) == len(livro.capitulos):
+        mensagem = f"{pasta}: nenhum capítulo com texto; o livro montado ficaria vazio"
+        raise MontagemRecusadaError(mensagem)
+    sumario = arquivos_do_sumario(trabalho.pasta_do_epub(pasta)).nav
+    return tuple(c for c in vazios if c.arquivo != sumario)
+
+
+def _trocas(pasta: Path, livro: _Livro, fora: frozenset[str]) -> dict[str, bytes]:
+    """O conteúdo novo de cada arquivo do pacote: os capítulos com o texto final, o OPF no idioma
+    da tradução e, se algum capítulo sai, o OPF e o sumário sem ele."""
     no_idioma_dele = livro.modo is Modo.ORIGINAL or livro.adaptado
     troca = None if no_idioma_dele else TrocaDeIdioma(livro.idioma, IDIOMA_DE_SAIDA)
-    substituicoes = {c.arquivo: _montar_capitulo(pasta, c, livro, troca) for c in livro.capitulos}
+    trocas = {
+        c.arquivo: _montar_capitulo(pasta, c, livro, troca)
+        for c in livro.capitulos
+        if c.arquivo not in fora
+    }
     if troca is not None:
         opf, conteudo = opf_em_outro_idioma(trabalho.pasta_do_epub(pasta), troca)
-        substituicoes[opf] = conteudo
-    empacotar_pasta(trabalho.pasta_do_epub(pasta), destino, substituicoes)
-    no_original = sum(len(_no_sumario_sem_traducao(pasta, c, livro)) for c in livro.capitulos)
-    return _montagem(destino, livro, no_original)
+        trocas[opf] = conteudo
+    return tirar_do_pacote(trabalho.pasta_do_epub(pasta), fora, trocas) if fora else trocas
 
 
 def _modo(pasta: Path, pedido: Modo | None) -> tuple[Modo, str]:
@@ -212,8 +253,9 @@ def _ler_livro(pasta: Path, pedido: Modo | None) -> _Livro:
     return _Livro(modo, idioma, capitulos, limpos, finais, respostas, frozenset(traducao))
 
 
-def _conferir(pasta: Path, livro: _Livro) -> tuple[Problema, ...]:
-    limpeza = trabalho.ler_limpeza(pasta)
+def _conferir(
+    pasta: Path, livro: _Livro, limpeza: trabalho.LimpezaRegistrada
+) -> tuple[Problema, ...]:
     ids = conferir(
         [_para_conferir(pasta, c, livro.limpos[c.id]) for c in livro.capitulos],
         limpeza.removidos,
@@ -287,7 +329,9 @@ def _no_sumario_sem_traducao(
     return ids_no_sumario(conteudo, capitulo.arquivo) & sem_traducao
 
 
-def _montagem(destino: Path, livro: _Livro, no_original: int) -> Montagem:
+def _montagem(
+    destino: Path, livro: _Livro, no_original: int, sem_texto: tuple[str, ...]
+) -> Montagem:
     usados = sum(len(lista) for lista in livro.finais.values())
     notas = sum(
         len(notas_para_o_fim(livro.limpos[capitulo]) & {s.id for s in lista})
@@ -295,9 +339,9 @@ def _montagem(destino: Path, livro: _Livro, no_original: int) -> Montagem:
     )
     todos = {s.id for lista in livro.limpos.values() for s in lista}
     fora = len(todos - livro.cobertos) - no_original
-    return Montagem(
-        destino, len(livro.capitulos), usados, notas, fora, no_original, adaptado=livro.adaptado
-    )
+    capitulos = len(livro.capitulos) - len(sem_texto)
+    feita = Montagem(destino, capitulos, usados, notas, fora, no_original, adaptado=livro.adaptado)
+    return replace(feita, sem_texto=sem_texto)
 
 
 def _recusa(pasta: Path, problemas: tuple[Problema, ...]) -> str:

@@ -22,7 +22,8 @@ import contextlib
 import json
 import posixpath
 import re
-from dataclasses import asdict, dataclass
+from collections.abc import Mapping
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 from earbook.adaptadores.registros_da_pasta import (
@@ -58,6 +59,8 @@ class LimpezaRegistrada:
     removidos: tuple[str, ...]
     juntados: tuple[tuple[str, str], ...]
     """Pares (ID, destino), com as repetições do registro: o `conferir` as conta (A7)."""
+    motivos: Mapping[str, str] = field(default_factory=dict[str, str])
+    """O motivo de cada ID removido: o `montar` acha por ele o capítulo declarado (ADR-0005)."""
 
 
 def criar_pasta_de_trabalho(pasta: Path) -> None:
@@ -160,6 +163,12 @@ def ler_limpeza(pasta: Path) -> LimpezaRegistrada:
             (campo_texto(juncao, "id", caminho), campo_texto(juncao, "em", caminho))
             for juncao in juncoes
         ),
+        # O motivo é para a leitura de quem decide; o registro escrito à mão pode não o trazer.
+        {
+            campo_texto(remocao, "id", caminho): motivo
+            for remocao in remocoes
+            if isinstance(motivo := remocao.get("motivo"), str)
+        },
     )
 
 

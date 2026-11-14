@@ -70,6 +70,9 @@ class Linha:
     chamadas: tuple[str, ...] = ()
     """As chamadas de referência sobrescritas tiradas da linha, com a palavra antes: "wages.[1]"
     (ADR-0004, "Número de referência e espaço falso")."""
+    nao_pintada: bool = False
+    """Toda letra visível no modo de pintura 3 do PDF: o texto que a página não desenha, a camada
+    que o OCR põe sobre a imagem (ADR-0004, "Camada do OCR sobre as figuras")."""
 
 
 @dataclass(frozen=True)

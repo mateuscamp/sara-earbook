@@ -21,8 +21,15 @@ A decisão está no [ADR-0001](docs/adr/0001-reescrever-com-claude-code-orquestr
   lugar.
 - O marcador de nota no meio da frase ("…disse ele.12"). O texto da nota vai para o fim do
   capítulo, sob "Notas". No PDF, sai também o número de referência sobrescrito ("wages.¹",
-  "84%–90%.²,³", "et al.¹⁹⁴", "in 1934²²¹"), pela letra menor e mais alta; o ano fica, e o
-  expoente, a carga do íon e a unidade ao quadrado também ([ADR-0004](docs/adr/0004-pdf-entra-como-comando-importar-pdf.md)).
+  "84%–90%.²,³", "et al.¹⁹⁴", "in 1934²²¹", "paciente»⁵²", "¹¹⁸. No"), pela letra menor e mais
+  alta; o ano fica, e o expoente, a carga do íon e a unidade ao quadrado também. O número só
+  depois de letra solta ou de outro número ("6 h¹⁴⁸", "0,62¹¹¹"), que na linha tem a cara de um
+  expoente, sai na página que tem 3 chamadas ou mais
+  ([ADR-0004](docs/adr/0004-pdf-entra-como-comando-importar-pdf.md)).
+- No PDF, o texto que a página não pinta: o que um OCR leu dentro das figuras e gravou por cima
+  delas, invisível ("1", "l", "o o o", "~ ~"). Sai na página em que o texto pintado é a maior
+  parte; a página escaneada, cujo texto só existe nessa camada, fica
+  ([ADR-0004](docs/adr/0004-pdf-entra-como-comando-importar-pdf.md)).
 - No PDF, a tabela, o quadro e a figura: o rótulo em inglês ("TABLE 2.1", "• Figure 2.1",
   "FIGURE 1.1"), em português ou em espanhol ("Figura 1.2", "Quadro 1.1", "Tabela 8.1",
   "TABLA 2-1", "CUADRO 4-1"), as células, os rótulos do diagrama e a legenda, quando vêm em
@@ -78,7 +85,9 @@ A decisão está no [ADR-0001](docs/adr/0001-reescrever-com-claude-code-orquestr
   ([ADR-0008](docs/adr/0008-codigo-e-indice-saem-do-audio.md)).
 - O capítulo que você declarar: `preparar --sem-capitulo c006` tira o capítulo inteiro (a lista
   de autores, o sumário de papel, um anexo)
-  ([ADR-0008](docs/adr/0008-codigo-e-indice-saem-do-audio.md)).
+  ([ADR-0008](docs/adr/0008-codigo-e-indice-saem-do-audio.md)). No livro montado ele não
+  aparece: nem o arquivo, nem o item do sumário
+  ([ADR-0005](docs/adr/0005-montar-substitui-o-texto-no-epub-original.md)).
 - O sumário de papel: a linha com 5 pontos seguidos e número no fim ("1. Introdução ……… 23"),
   quando o capítulo tem 5 ou mais. O título "Sumário", os títulos das partes e a linha sem
   pontilhado ficam
@@ -108,8 +117,8 @@ uv run earbook preparar livro.epub --sem-capitulo c006 --sem-capitulo c110
 
 O ID é a posição do capítulo no livro (`c006` é o 6º arquivo do spine; `livro.json` lista todos,
 com o arquivo de cada um). Cada segmento do capítulo fica em `limpeza.json`, com o motivo
-"capítulo fora do áudio: pedido no preparar". O ID que o livro não tem é erro. No EPUB montado, o
-capítulo continua no sumário, vazio.
+"capítulo fora do áudio: pedido no preparar". O ID que o livro não tem é erro. O `montar` deixa
+o capítulo declarado fora do EPUB: sem o arquivo, sem o item no sumário.
 
 O comando `preparar` cria `livro.earbook/` (ou onde `--pasta` mandar) com:
 
@@ -139,6 +148,13 @@ pasta de trabalho, e o `montar` recusa o livro quando ele acha problema
 ([ADR-0005](docs/adr/0005-montar-substitui-o-texto-no-epub-original.md)). O `montar` grava
 `livro.pronto.epub` (ou onde `--epub` mandar): o EPUB original, com o texto limpo no lugar, sem
 as marcas de trabalho e com cada nota de rodapé no fim do capítulo.
+
+O capítulo que o `preparar --sem-capitulo` tirou do áudio fica fora do EPUB montado, em qualquer
+modo: o arquivo sai do pacote, do manifesto e do spine, e o item dele sai do sumário (o `nav` e
+o `toc.ncx`); o item de dentro que aponta para outro capítulo sobe um nível. O resumo diz quais
+ficaram de fora ("4 capítulos sem texto ficaram fora do EPUB: c006, c013, c110, c111"). O
+capítulo que outra regra da limpeza esvaziou (o do índice remissivo) continua no livro, vazio. O
+`montar` recusa o livro em que nenhum capítulo ficaria, e o sumário que ficaria sem item.
 
 Opções dos dois:
 
@@ -251,24 +267,37 @@ autor do metadado do PDF (ou os de `--titulo` e `--autor`). O que ele faz:
 - devolve o hífen gravado como caractere invisível (U+00AD): no meio da linha ele vira "-"
   ("pós-anestesia", "tabela 6-1"), e no livro que o usa assim o do fim da linha segue a regra da
   palavra partida. O número partido na quebra ("6-" | "1") volta inteiro;
+- tira o texto que a página não pinta (o modo de pintura 3 do PDF): a camada que um OCR põe
+  sobre as figuras de um livro digital, com o que leu dentro delas. Só na página em que o texto
+  pintado é a maior parte: o PDF escaneado com OCR embutido, cujo texto só existe nessa camada,
+  entra como entrava. O resumo conta as linhas, com o motivo "texto que a página não pinta:
+  camada do OCR sobre a imagem";
 - tira o texto escondido: a linha em letra de título desenhada por cima de uma linha de outro
   tamanho, na mesma altura;
 - lê uma vez só o negrito feito à mão: o mesmo texto desenhado de novo por cima, no mesmo
   tamanho, quase no mesmo lugar ("Conheça também"). A cópia de uma letra só fica. O resumo
   conta o texto escondido e o repetido junto com as linhas da borda, cada um com o seu motivo;
 - tira o número de referência sobrescrito ("wages.¹"): algarismo, vírgula e traço em letra menor
-  e acima da linha, colados a uma palavra, a uma pontuação ou a um ano ("in 1934²²¹"). O resumo
-  conta quantos saíram;
+  e acima da linha, colados a uma palavra, a uma pontuação ou a um ano ("in 1934²²¹"). O número
+  pode levar uma letra ("¹³⁸ᵃ"), e a faixa, o hífen invisível. Sai também a chamada depois de
+  "»", "!" e "?"; a que vem depois de espaço ou de travessão, antes de pontuação ou do fim da
+  linha; e a lista ou faixa depois de letra solta ou de número ("N2O¹⁹⁸,¹⁹⁹"). O número só, de 2
+  algarismos ou mais, depois de letra solta, de número ou do sinal de grau ("6 h¹⁴⁸",
+  "0,62¹¹¹"), e a chamada que abre a linha antes de pontuação ("¹¹⁸. No") saem apenas na página
+  que tem 3 chamadas certas ou mais, e nunca depois da base 10 ("10¹²"). O algarismo só ("m²", "T10²"), o isótopo
+  ("¹³³Xe") e o expoente no meio da fórmula ficam. O resumo conta quantos saíram;
 - não põe espaço no nome com letra espaçada ("NATALIE MORYL", e não "NATALI E MORY L"): o
   espaço que o pdfminer deduz do vão sai quando o vão é o mesmo que separa as letras, ou menos
   da metade do espaço de verdade da linha ("PART ONE", e não "PA R T O N E"; "CHAPTER 110", e
   não "CHAPTER 11 0");
 - tira o texto girado (a tabela deitada, o rótulo de lado), a página de lista (índice
   remissivo, sumário, com ou sem número de página, e colaboradores) e a tabela, o quadro e a
-  figura, pela letra e pelo rótulo em inglês, em português ou em espanhol. O resumo conta essas
-  linhas à parte, cada uma com o seu motivo;
+  figura, pela letra e pelo rótulo em inglês, em português ou em espanhol. A tabela acaba na
+  página seguinte, onde a letra muda, e a figura ou a outra tabela que vem depois sai pelo rótulo
+  dela. O resumo conta essas linhas à parte, cada uma com o seu motivo;
 - tira a bibliografia em letra menor que a do corpo, pelas citações de periódico, antes de montar
-  os parágrafos. O resumo conta essas linhas numa linha própria;
+  os parágrafos. A nota do autor na mesma letra, logo acima do título da lista e sem citação,
+  fica. O resumo conta essas linhas numa linha própria;
 - junta as linhas em parágrafos e devolve inteira a palavra partida no fim da linha;
 - acerta a caixa da palavra de rótulo que o versalete do PDF trocou nas menções ("No QuAdro
   13.1" vira "No Quadro 13.1"; "tAb. 4.2", "tab. 4.2"): só "figura", "fig.", "quadro", "tabela",

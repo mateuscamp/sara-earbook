@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import posixpath
 import zipfile
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Collection, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import unquote
@@ -23,6 +23,7 @@ DC = "http://purl.org/dc/elements/1.1/"
 TIPOS_XHTML = frozenset({"application/xhtml+xml", "text/html", "text/x-oeb1-document"})
 # Um EPUB de texto passa pouco de dezenas de MB; acima disso, é provável bomba de zip.
 LIMITE_DESCOMPACTADO = 2 * 1024**3
+TIPO_DO_NCX = "application/x-dtbncx+xml"
 
 
 class EpubInvalidoError(ValueError):
@@ -158,6 +159,88 @@ def opf_em_outro_idioma(pasta: Path, troca: TrocaDeIdioma) -> tuple[str, bytes]:
     return caminho, etree.tostring(opf.getroottree(), xml_declaration=True, encoding="utf-8")
 
 
+@dataclass(frozen=True)
+class ArquivosDoSumario:
+    """Onde o pacote guarda a ordem de leitura e o sumário, a partir da raiz do EPUB."""
+
+    opf: str
+    nav: str | None
+    """O sumário do EPUB 3: o item do manifesto com a propriedade `nav`."""
+    ncx: str | None
+    """O sumário do EPUB 2: o item do manifesto com o tipo do `toc.ncx`."""
+
+
+def arquivos_do_sumario(pasta: Path) -> ArquivosDoSumario:
+    """O OPF, o `nav` e o `toc.ncx` do EPUB extraído em `pasta` (ADR-0005, "Capítulo sem texto
+    fora do EPUB montado")."""
+    caminho = _caminho_do_opf(pasta)
+    base = posixpath.dirname(caminho)
+    nav = ncx = None
+    for item in _xml(pasta / caminho).iterfind(f"{{{OPF}}}manifest/{{{OPF}}}item"):
+        href = unquote(item.get("href", "").partition("#")[0])
+        if "nav" in item.get("properties", "").split():
+            nav = nav or _caminho_dentro_do_epub(base, href, "o manifesto")
+        elif item.get("media-type", "").partition(";")[0].strip().lower() == TIPO_DO_NCX:
+            ncx = ncx or _caminho_dentro_do_epub(base, href, "o manifesto")
+    return ArquivosDoSumario(caminho, nav, ncx)
+
+
+def caminho_do_alvo(de: str, href: str) -> str:
+    """O caminho, a partir da raiz do EPUB, do arquivo a que `href` leva quando escrito no arquivo
+    `de`: sem a âncora e sem o escape da URL. O link para fora do livro dá um caminho que nenhum
+    arquivo tem."""
+    alvo = unquote(href.partition("#")[0])
+    return posixpath.normpath(posixpath.join(posixpath.dirname(de), alvo))
+
+
+def opf_sem_arquivos(conteudo: bytes, caminho: str, fora: Collection[str]) -> bytes:
+    """O OPF sem os arquivos de `fora`: saem o `<item>` do manifesto, o `<itemref>` do spine e a
+    `<reference>` do `<guide>` de cada um; o `<guide>` que fica vazio sai junto."""
+    try:
+        opf = etree.fromstring(conteudo, PARSER_SEGURO)
+    except etree.XMLSyntaxError as erro:
+        mensagem = f"{caminho}: não foi possível ler ({erro})"
+        raise EpubInvalidoError(mensagem) from erro
+    ids = _tirar_os_que_apontam(opf, f"{{{OPF}}}manifest/{{{OPF}}}item", caminho, fora)
+    for itemref in list(opf.iterfind(f"{{{OPF}}}spine/{{{OPF}}}itemref")):
+        if itemref.get("idref") in ids:
+            tirar_elemento(itemref)
+    _ = _tirar_os_que_apontam(opf, f"{{{OPF}}}guide/{{{OPF}}}reference", caminho, fora)
+    guia = opf.find(f"{{{OPF}}}guide")
+    if guia is not None and len(guia) == 0:
+        tirar_elemento(guia)
+    if opf.find(f"{{{OPF}}}spine/{{{OPF}}}itemref") is None:
+        mensagem = f"{caminho}: o spine ficaria sem nenhum arquivo, e o EPUB, inválido"
+        raise EpubInvalidoError(mensagem)
+    return etree.tostring(opf.getroottree(), xml_declaration=True, encoding="utf-8")
+
+
+def _tirar_os_que_apontam(
+    opf: Elemento, onde: str, caminho: str, fora: Collection[str]
+) -> set[str | None]:
+    """Tira os elementos de `onde` cujo `href` leva a um arquivo de `fora`; devolve o `id` deles."""
+    ids: set[str | None] = set()
+    for elemento in list(opf.iterfind(onde)):
+        if caminho_do_alvo(caminho, elemento.get("href", "")) in fora:
+            ids.add(elemento.get("id"))
+            tirar_elemento(elemento)
+    return ids
+
+
+def tirar_elemento(elemento: Elemento) -> None:
+    """Tira o elemento e guarda o texto que vinha depois dele, que o lxml levaria junto."""
+    pai = elemento.getparent()
+    if pai is None:
+        return
+    resto = elemento.tail or ""
+    anterior = elemento.getprevious()
+    if anterior is not None:
+        anterior.tail = (anterior.tail or "") + resto
+    else:
+        pai.text = (pai.text or "") + resto
+    pai.remove(elemento)
+
+
 def gravar_pacote(destino: Path, escrever: Callable[[zipfile.ZipFile], None]) -> None:
     """Grava um EPUB em `destino`, que não pode existir ainda: o `mimetype` primeiro e sem
     compressão (é assim que o leitor reconhece o EPUB), depois o que `escrever` puser.
@@ -176,8 +259,11 @@ def gravar_pacote(destino: Path, escrever: Callable[[zipfile.ZipFile], None]) ->
         raise
 
 
-def empacotar_pasta(pasta: Path, destino: Path, substituicoes: Mapping[str, bytes]) -> None:
-    """Empacota o EPUB extraído em `pasta`, com `substituicoes` (caminho → conteúdo) no lugar."""
+def empacotar_pasta(
+    pasta: Path, destino: Path, substituicoes: Mapping[str, bytes], fora: Collection[str] = ()
+) -> None:
+    """Empacota o EPUB extraído em `pasta`, com `substituicoes` (caminho → conteúdo) no lugar e
+    sem os arquivos de `fora` (ADR-0005, "Capítulo sem texto fora do EPUB montado")."""
 
     def escrever(zip_: zipfile.ZipFile) -> None:
         for arquivo in sorted(pasta.rglob("*")):
@@ -187,7 +273,7 @@ def empacotar_pasta(pasta: Path, destino: Path, substituicoes: Mapping[str, byte
             if arquivo.is_symlink():
                 mensagem = f"{nome}: link simbólico na pasta do EPUB ({pasta}); não empacoto"
                 raise EpubInvalidoError(mensagem)
-            if arquivo.is_file() and nome != "mimetype":
+            if arquivo.is_file() and nome != "mimetype" and nome not in fora:
                 conteudo = substituicoes[nome] if nome in substituicoes else arquivo.read_bytes()
                 zip_.writestr(nome, conteudo)
         # A troca que não achou o arquivo deixaria o capítulo cru, sem aviso (A5 da auditoria).

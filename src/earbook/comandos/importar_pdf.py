@@ -13,6 +13,7 @@ from earbook.adaptadores.pdf import ler_metadados, ler_paginas, ler_sumario
 from earbook.dominio.bibliografia_do_pdf import MOTIVO_DA_BIBLIOGRAFIA_DO_PDF, tirar_bibliografia
 from earbook.dominio.blocos import Bloco, LivroMontado, montar_blocos
 from earbook.dominio.caixa_do_rotulo import acertar_rotulos
+from earbook.dominio.camada_do_ocr import tirar_camada_do_ocr
 from earbook.dominio.capitulos import dividir_em_capitulos, dividir_pelo_sumario
 from earbook.dominio.hifen_da_quebra import mostrar_hifen_invisivel
 from earbook.dominio.metadados import autor_do_livro, titulo_do_livro
@@ -138,9 +139,12 @@ def _limpar(paginas: Sequence[Pagina]) -> _PaginasParaOsBlocos:
     """O que sai da página antes dos blocos, na ordem, e o registro de cada remoção."""
     # Antes de tudo: o hífen gravado como U+00AD volta a ser hífen, e o dicionário do hífen e as
     # regras de texto já o veem (ADR-0004, "Hífen invisível").
+    # A camada do OCR sai primeiro: a letra de 82 pt que ninguém vê contaria como título, na
+    # paginação e no texto escondido (ADR-0004, "Camada do OCR sobre as figuras").
+    pintadas = tirar_camada_do_ocr(mostrar_hifen_invisivel(paginas))
     # O texto escondido sai antes da borda: em letra de título, ele contaria no corpo e na
     # paginação (ADR-0004, "O que ficou da Fase 1").
-    visiveis = tirar_texto_escondido(mostrar_hifen_invisivel(paginas))
+    visiveis = tirar_texto_escondido(pintadas.paginas)
     # O texto girado também: a letra solta da tabela deitada contaria na paginação (ADR-0004,
     # "Texto girado").
     de_pe = tirar_texto_girado(visiveis.paginas)
@@ -153,6 +157,7 @@ def _limpar(paginas: Sequence[Pagina]) -> _PaginasParaOsBlocos:
     # leitura não intercalar a lista com a prosa (ADR-0004, "Bibliografia pela letra").
     sem_bibliografia = tirar_bibliografia(sem_tabelas.paginas)
     remocoes = (
+        *pintadas.remocoes,
         *visiveis.remocoes,
         *de_pe.remocoes,
         *sem_borda.remocoes,

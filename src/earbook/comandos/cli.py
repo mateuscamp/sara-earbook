@@ -137,7 +137,17 @@ def _montar(opcoes: _Opcoes) -> tuple[str, int]:
         f"Montado em {feito.epub}: {feito.capitulos} capítulos, {feito.segmentos} segmentos "
         f"({feito.notas} notas levadas para o fim do capítulo)."
     )
-    return resumo + _resumo_da_amostra(feito), 0
+    return resumo + _resumo_dos_sem_texto(feito) + _resumo_da_amostra(feito), 0
+
+
+def _resumo_dos_sem_texto(feito: montagem.Montagem) -> str:
+    """Os capítulos que a limpeza esvaziou e que o `montar` deixou fora do EPUB (ADR-0005)."""
+    if not (ids := feito.sem_texto):
+        return ""
+    frase = (
+        "1 capítulo sem texto ficou" if len(ids) == 1 else f"{len(ids)} capítulos sem texto ficaram"
+    )
+    return f" {frase} fora do EPUB: {', '.join(ids)}."
 
 
 def _minuto(opcoes: _Opcoes) -> tuple[str, int]:

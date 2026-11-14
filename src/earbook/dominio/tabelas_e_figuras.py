@@ -94,15 +94,26 @@ def tirar_tabelas_e_figuras(paginas: Sequence[Pagina]) -> PaginasLimpas:
 def _da_corrida(
     paginas: Sequence[Pagina], corrida: list[Posicao], tamanho_do_corpo: float
 ) -> dict[Posicao, str]:
-    """O que sai da corrida: a tabela, do rótulo em diante; a figura, em volta da legenda."""
+    """O que sai da corrida: a tabela, do rótulo em diante; a figura, em volta da legenda.
+
+    A tabela acaba na página seguinte, onde a letra muda, e a corrida continua sendo examinada
+    dali: a figura e a outra tabela que vêm depois, na mesma corrida, saem também (ADR-0004,
+    "Camada do OCR sobre as figuras e chamada colada").
+    """
     saem: dict[Posicao, str] = {}
-    for i, (p, n) in enumerate(corrida):
+    i = 0
+    while i < len(corrida):
+        p, n = corrida[i]
         anterior = paginas[p].linhas[n - 1] if n > 0 else None
         motivo = _rotulo(paginas[p].linhas[n], tamanho_do_corpo, anterior)
         if motivo == MOTIVO_DA_TABELA:
-            return saem | dict.fromkeys(_tabela(paginas, corrida[i:]), motivo)
+            tabela = _tabela(paginas, corrida[i:])
+            saem |= dict.fromkeys(tabela, motivo)
+            i += len(tabela)
+            continue
         if motivo == MOTIVO_DA_FIGURA:
             saem |= dict.fromkeys(_figura(paginas, corrida, i), motivo)
+        i += 1
     return saem
 
 

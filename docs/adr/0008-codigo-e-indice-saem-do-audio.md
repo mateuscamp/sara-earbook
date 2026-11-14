@@ -824,6 +824,8 @@ O que o inventário por script ainda acusa (segmentos):
   troca o texto no EPUB original (ADR-0005) e não tira o arquivo do spine. No *Manica*, o
   sumário ainda lista "Autores", "Sumário", "Anexo 1" e "Anexo 2". E o texto fora de segmento
   de um capítulo declarado, num EPUB que o tenha, continua no livro. Fica para decisão.
+  **Decidido e feito no mesmo dia** (ADR-0005, "Capítulo sem texto fora do EPUB montado"): o
+  `montar` deixa o capítulo declarado fora do pacote, do manifesto, do spine e do sumário.
 - **A pausa de cena marcada como título** (`<h3>* * *</h3>`) sairia, registrada. Não há caso
   nos livros deste Mac.
 - **O que sairia:** uma seção de prosa aberta por um item "12.3 (RDC/2010) …" logo depois do

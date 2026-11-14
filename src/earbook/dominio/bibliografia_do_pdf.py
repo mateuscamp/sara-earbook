@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from collections import Counter
 from collections.abc import Sequence
+from itertools import pairwise
 
 from earbook.dominio.pagina import DIFERENCA_DE_TAMANHO, RAZAO_DO_TITULO, Linha, Pagina
 from earbook.dominio.paginacao import PaginasLimpas
@@ -63,11 +64,30 @@ def _trechos(
     das_citacoes = Counter(_letra(linha) for linha, cita in zip(linhas, citam, strict=True) if cita)
     letra = das_citacoes.most_common(1)[0][0]
     na_letra = [n for n, linha in enumerate(linhas) if _letra(linha) == letra]
-    return [
-        corrida[grupo[0] : grupo[-1] + 1]
+    grupos = [
+        _depois_do_titulo(linhas, citam, grupo, tamanho_do_corpo)
         for grupo in _com_ponte(na_letra)
         if sum(citam[n] for n in grupo) >= CITACOES_MINIMAS
     ]
+    return [corrida[grupo[0] : grupo[-1] + 1] for grupo in grupos]
+
+
+def _depois_do_titulo(
+    linhas: list[Linha], citam: list[bool], grupo: list[int], tamanho_do_corpo: float
+) -> list[int]:
+    """O grupo sem o que vem antes do título da lista, quando ali não há citação nenhuma: a nota
+    de rodapé do autor, na letra das referências, logo acima de "References" (Bonica: 7 notas,
+    746 palavras; ADR-0004, "Camada do OCR sobre as figuras e chamada colada"). O título é a
+    linha de outra letra, em negrito, versalete ou letra de título, antes da primeira citação; o
+    cabeçalho da página de bibliografia, no meio da lista, vem depois dela e não a parte."""
+    primeira_citacao = next(n for n in grupo if citam[n])
+    comeco = grupo[0]
+    for antes, depois in pairwise(grupo):
+        if depois > primeira_citacao:
+            break
+        if any(_de_titulo(linhas[n], tamanho_do_corpo) for n in range(antes + 1, depois)):
+            comeco = depois
+    return [n for n in grupo if n >= comeco]
 
 
 def _com_ponte(posicoes: list[int]) -> list[list[int]]:

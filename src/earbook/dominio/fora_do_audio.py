@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import re
 from collections import defaultdict
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 
 from earbook.dominio.referencias_vancouver import regioes_de_referencias
 from earbook.dominio.segmento import PALAVRA, Papel, Segmento, primeira_letra
@@ -78,6 +78,17 @@ _PALAVRA_OU_NUMERO = re.compile(rf"{PALAVRA.pattern}|\d+")
 
 class CapituloDesconhecidoError(ValueError):
     pass
+
+
+def capitulos_declarados(motivos: Mapping[str, str]) -> frozenset[str]:
+    """Os capítulos que o `preparar --sem-capitulo` tirou do áudio, pelo registro da limpeza (ID
+    do segmento → motivo): o `montar` os deixa fora do EPUB (ADR-0005, "Capítulo sem texto fora
+    do EPUB montado"). O capítulo que outra regra esvaziou (o do índice) não conta."""
+    return frozenset(
+        id_.partition("-")[0]
+        for id_, motivo in motivos.items()
+        if motivo == MOTIVO_DO_CAPITULO_FORA
+    )
 
 
 def capitulos_pedidos(

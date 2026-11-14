@@ -13,17 +13,26 @@ from collections.abc import Callable, Iterator
 from dataclasses import dataclass, replace
 from pathlib import Path
 from statistics import multimode
+from typing import BinaryIO, override
 
-from pdfminer.high_level import extract_pages
+from pdfminer.converter import PDFPageAggregator
 from pdfminer.layout import LAParams, LTChar, LTPage, LTTextBox, LTTextLine
+from pdfminer.pdfcolor import PDFColorSpace
+from pdfminer.pdfdevice import PDFTextSeq
 from pdfminer.pdfdocument import PDFDocument, PDFEncryptionError
+from pdfminer.pdfinterp import (
+    PDFGraphicState,
+    PDFPageInterpreter,
+    PDFResourceManager,
+    PDFTextState,
+)
 from pdfminer.pdfpage import PDFPage
 from pdfminer.pdfparser import PDFParser
 from pdfminer.pdftypes import PDFObjRef
 from pdfminer.utils import decode_text
 
 from earbook.adaptadores.sumario_do_pdf import itens_do_sumario
-from earbook.dominio.caracteres import Caractere, lido, texto_da_linha
+from earbook.dominio.caracteres import Caractere, lido, pagina_usa_chamadas, texto_da_linha
 from earbook.dominio.pagina import Linha, Pagina, em_versalete
 from earbook.dominio.segmento import normalizar_espacos
 from earbook.dominio.sumario_interno import ItemDoSumario
@@ -46,6 +55,9 @@ _FONTE_VERSALETE = re.compile(r"[-_]SC\d*$", re.IGNORECASE)
 # conta como letra do corpo (ADR-0004, "Tratado em português e em espanhol", "O que fica").
 _ESTILO_DA_FONTE = re.compile(r"[-,].*$")
 
+_MODO_SEM_TINTA = 3
+"""O modo de pintura do PDF em que a letra nem se preenche nem se contorna (`3 Tr`): a camada que
+o OCR põe sobre a imagem (ADR-0004, "Camada do OCR sobre as figuras")."""
 _BOM_UTF8 = b"\xef\xbb\xbf"
 _BOM_UTF16LE = b"\xff\xfe"
 _PASSOS_DA_REFERENCIA = 8
@@ -160,6 +172,39 @@ class _Leitor:
         return _decodificar(valor) if isinstance(valor, bytes) else ""
 
 
+class _Agregador(PDFPageAggregator):
+    """O agregador de página do pdfminer, que também lembra o que a página não pinta.
+
+    O pdfminer não entrega o modo de pintura na letra. Cada trecho escrito chega com uma cópia
+    só dele do estado gráfico, e toda letra do trecho aponta para ela: guardar a cópia dos
+    trechos escritos no modo 3 basta para reconhecer as letras (ADR-0004, "Camada do OCR sobre as
+    figuras"). Guarda a cópia, e não só o `id` dela: o `id` de um objeto solto volta a ser usado.
+    """
+
+    def __init__(self, gerente: PDFResourceManager) -> None:
+        super().__init__(gerente, laparams=LAParams())
+        self._sem_tinta: dict[int, PDFGraphicState] = {}
+
+    @override
+    def render_string(
+        self,
+        textstate: PDFTextState,
+        seq: PDFTextSeq,
+        ncs: PDFColorSpace,
+        graphicstate: PDFGraphicState,
+    ) -> None:
+        if textstate.render == _MODO_SEM_TINTA:
+            self._sem_tinta[id(graphicstate)] = graphicstate
+        super().render_string(textstate, seq, ncs, graphicstate)
+
+    def nao_pinta(self, letra: LTChar) -> bool:
+        return id(letra.graphicstate) in self._sem_tinta
+
+    def esquecer(self) -> None:
+        """Entre uma página e a seguinte: as letras da anterior já viraram `Linha`."""
+        self._sem_tinta.clear()
+
+
 def ler_paginas(pdf: Path) -> tuple[Pagina, ...]:
     """Uma `Pagina` por página do PDF, com as linhas de texto na ordem do pdfminer.
 
@@ -169,11 +214,26 @@ def ler_paginas(pdf: Path) -> tuple[Pagina, ...]:
     # O arquivo abre fora do `try`: arquivo inexistente é OSError da máquina, enquanto o
     # OSError de dentro da leitura vem do conteúdo (F2: xref com deslocamento negativo).
     with pdf.open("rb") as arquivo:
-        layouts = extract_pages(arquivo, laparams=LAParams())
+        agregador = _pelo_pdfminer(pdf, lambda: _Agregador(PDFResourceManager()))
+        layouts = extract_pages(arquivo, agregador)
         paginas: list[Pagina] = []
         while (layout := _proximo_layout(pdf, layouts)) is not None:
-            paginas.append(_pagina(pdf, len(paginas) + 1, layout))
+            paginas.append(_pagina(pdf, len(paginas) + 1, layout, agregador))
     return tuple(paginas)
+
+
+def extract_pages(arquivo: BinaryIO, agregador: _Agregador) -> Iterator[LTPage]:
+    """O laço do `extract_pages` do pdfminer, com o nosso agregador no lugar do dele: uma página
+    por vez, com as opções padrão. Nada roda antes do primeiro `next`, que já está no `try`.
+
+    Leva o nome da função do pdfminer que substitui: é o ponto em que o teste da falta de memória
+    troca a leitura (`tests/test_pdf.py`), e o nome dele não mudou.
+    """
+    interpretador = PDFPageInterpreter(agregador.rsrcmgr, agregador)
+    for pagina in PDFPage.get_pages(arquivo):
+        agregador.esquecer()
+        interpretador.process_page(pagina)
+        yield agregador.get_result()
 
 
 def _proximo_layout(pdf: Path, layouts: Iterator[LTPage]) -> LTPage | None:
@@ -201,21 +261,39 @@ def _pelo_pdfminer[T](pdf: Path, chamada: Callable[[], T]) -> T:
         raise PdfInvalidoError(mensagem) from erro
 
 
-def _pagina(pdf: Path, numero: int, layout: LTPage) -> Pagina:
+@dataclass(frozen=True)
+class _LinhaLida:
+    linha: Linha
+    duvidosas: int
+    """As chamadas duvidosas que ficaram no texto ("6 h¹⁴⁸"): saem se a página tem chamadas
+    certas (ADR-0004, "Camada do OCR sobre as figuras e chamada colada")."""
+
+
+def _pagina(pdf: Path, numero: int, layout: LTPage, agregador: _Agregador) -> Pagina:
     if layout.height <= 0:
         mensagem = f"{pdf}: a página {numero} tem altura {layout.height}"
         raise PdfInvalidoError(mensagem)
-    linhas = [
-        _linha(linha, layout.height)
-        for caixa in layout
-        # LTTextBox é tipado como contêiner de LTTextLine; o LTTextContainer genérico não.
-        if isinstance(caixa, LTTextBox)
-        for linha in caixa
-    ]
-    return Pagina(numero, tuple(linha for linha in linhas if linha is not None))
+    # LTTextBox é tipado como contêiner de LTTextLine; o LTTextContainer genérico não.
+    brutas = [linha for caixa in layout if isinstance(caixa, LTTextBox) for linha in caixa]
+    lidas = [_linha(bruta, layout.height, agregador.nao_pinta) for bruta in brutas]
+    # A página com chamadas certas prova as duvidosas: só as linhas que as têm são lidas de novo.
+    if pagina_usa_chamadas(sum(len(lida.linha.chamadas) for lida in lidas if lida is not None)):
+        lidas = [
+            _linha(bruta, layout.height, agregador.nao_pinta, com_duvidosas=True)
+            if lida is not None and lida.duvidosas
+            else lida
+            for bruta, lida in zip(brutas, lidas, strict=True)
+        ]
+    return Pagina(numero, tuple(lida.linha for lida in lidas if lida is not None))
 
 
-def _linha(linha: LTTextLine, altura: float) -> Linha | None:
+def _linha(
+    linha: LTTextLine,
+    altura: float,
+    nao_pinta: Callable[[LTChar], bool],
+    *,
+    com_duvidosas: bool = False,
+) -> _LinhaLida | None:
     caracteres = [c for c in linha if isinstance(c, LTChar)]
     if not caracteres or not normalizar_espacos(linha.get_text()):
         return None
@@ -225,29 +303,40 @@ def _linha(linha: LTTextLine, altura: float) -> Linha | None:
     tamanho = max(multimode(round(c.size, 1) for c in caracteres))
     # A chamada sobrescrita e o espaço inventado saem aqui, onde o caractere ainda tem tamanho e
     # posição (ADR-0004, "Número de referência e espaço falso").
-    lida = texto_da_linha(_caracteres(linha), tamanho)
+    lida = texto_da_linha(_caracteres(linha), tamanho, com_duvidosas=com_duvidosas)
     # Toda letra, não alguma: no Hard Parts, as 584 linhas de código são 100% monoespaçadas
     # e as 183 de prosa com um nome de código no meio ("ss.survey") ficam entre 0 e 90%.
     monoespacada = all(_fonte_casa(_FONTE_MONOESPACADA, c.fontname) for c in caracteres)
-    visiveis = [c for c in caracteres if c.get_text().strip()]
     texto = normalizar_espacos(lida.texto) if monoespacada else lido(lida, tamanho)
-    # Toda letra visível, como na monoespaçada: a ênfase no meio da prosa (619 linhas no
-    # Competente) não faz a linha negrito.
-    negrito = all(_fonte_casa(_FONTE_NEGRITO, c.fontname) for c in visiveis)
-    return Linha(
+    pronta = Linha(
         texto,
         x=linha.x0,
         topo=1 - linha.y1 / altura,
         tamanho=tamanho,
         monoespacada=monoespacada,
-        negrito=negrito,
-        versalete=_versalete(visiveis, tamanho),
         fim=linha.x1,
+        chamadas=lida.chamadas,
+    )
+    visiveis = [c for c in caracteres if c.get_text().strip()]
+    return _LinhaLida(_com_a_letra(pronta, visiveis, nao_pinta), lida.duvidosas)
+
+
+def _com_a_letra(
+    linha: Linha, visiveis: list[LTChar], nao_pinta: Callable[[LTChar], bool]
+) -> Linha:
+    """A linha com o que as letras visíveis dizem, quando todas dizem o mesmo."""
+    return replace(
+        linha,
+        # Toda letra visível, como na monoespaçada: a ênfase no meio da prosa (619 linhas no
+        # Competente) não faz a linha negrito.
+        negrito=all(_fonte_casa(_FONTE_NEGRITO, c.fontname) for c in visiveis),
+        versalete=_versalete(visiveis, linha.tamanho),
         fonte=_familia(visiveis),
         # Toda letra visível, como no negrito. O `upright` do pdfminer é a matriz sem giro: a
         # itálica, que só inclina, continua de pé (ADR-0004, "Texto girado").
         girada=bool(visiveis) and not any(c.upright for c in visiveis),
-        chamadas=lida.chamadas,
+        # Toda letra visível, como no negrito: a linha que mistura fica (ADR-0004, "Camada do OCR").
+        nao_pintada=bool(visiveis) and all(nao_pinta(c) for c in visiveis),
     )
 
 

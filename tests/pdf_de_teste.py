@@ -40,6 +40,9 @@ class LinhaDeTeste:
     girada: bool = False
     """O texto de lado, subindo a página (a matriz `0 1 -1 0`), como a tabela deitada do Practical
     p. 73, que o pdfminer lê letra por letra."""
+    sem_tinta: bool = False
+    """O texto no modo de pintura 3 (`3 Tr`): a página não o desenha, como a camada que o OCR põe
+    sobre a imagem (Manica)."""
 
 
 def _cadeia_pdf(texto: str) -> str:
@@ -114,8 +117,13 @@ def _posicao(linha: LinhaDeTeste) -> str:
 
 
 def _conteudo(linhas: list[LinhaDeTeste]) -> bytes:
-    comandos = [f"BT {_posicao(linha)} {_texto(linha)} ET" for linha in linhas]
+    # O modo de pintura continua valendo depois do `ET`: a linha sem tinta o devolve ao 0.
+    comandos = [f"BT {_posicao(linha)} {_com_o_modo_de_pintura(linha)} ET" for linha in linhas]
     return "\n".join(comandos).encode("latin-1")
+
+
+def _com_o_modo_de_pintura(linha: LinhaDeTeste) -> str:
+    return f"3 Tr {_texto(linha)} 0 Tr" if linha.sem_tinta else _texto(linha)
 
 
 def montar_pdf(

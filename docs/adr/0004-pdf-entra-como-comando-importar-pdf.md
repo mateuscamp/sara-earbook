@@ -1530,6 +1530,204 @@ desta sessão e vão à revisão.
   outro negrito, 3 "TABLA" e 2 legendas na letra do corpo). São limites das regras de
   2026-11-10 e 2026-11-13, medidos e não consertados nesta rodada.
 
+### Camada do OCR sobre as figuras e chamada colada (2026-11-13)
+
+Rodada curta nos dois tratados, depois das duas de cima (decisão do Mateus, 2026-11-13: entram
+o resto de figura do OCR do *Manica* e as chamadas coladas do *Miller*; a ordem das colunas do
+*Miller* fica para depois da escuta). Medido antes de desenhar, no HEAD `2296b8e`.
+
+**1. O texto que a página não pinta** (`dominio/camada_do_ocr.py`).
+- **O defeito:** o PDF do *Manica* é digital, mas passou por um OCR que leu o que havia dentro
+  das imagens (figura, gráfico, captura de tela) e gravou o resultado como texto. A voz lia
+  "1", "l", "o o o", "T", "~ ~" como título e parágrafo: no texto limpo sobravam 307 títulos de
+  uma letra ou algarismo e uns 400 parágrafos e notas sem palavra.
+- **Por que o texto não resolve:** "1", "A" e "* * *" são também título e separador de verdade
+  (ADR-0008, "Tratado em português e em espanhol"). O sinal tem de vir da página.
+- **O sinal:** o PDF diz, para cada trecho de texto, se a página o desenha (o modo de pintura, o
+  operador `Tr`). A camada do OCR vem no modo 3, "nem preenche nem contorna": o texto existe para
+  a busca e para a cópia, e ninguém o vê na página. Medido no *Manica*: 2.735 linhas, 4.341
+  "palavras", 0,13% dos caracteres, em 328 das 1.601 páginas, de 1 a 82 pt; só 10 dessas linhas
+  têm 3 palavras de 3 letras ou mais, todas leitura torta de captura de tela. As fontes são as
+  que o OCR põe (Helvetica, Times-Roman e HiddenHorzOCR, sem o prefixo do subconjunto), e nenhuma
+  linha mistura a camada com o texto do livro. No *Practical*, essas fontes só aparecem nas
+  páginas escaneadas do índice (p. 1.401 a 1.503), que a regra deixa e a página de lista tira.
+- **A regra:** na página em que o texto pintado é a maior parte (mais caracteres pintados que
+  não pintados), a linha cujas letras visíveis estão todas no modo 3 sai, registrada com a página
+  e o motivo "texto que a página não pinta: camada do OCR sobre a imagem". O resumo do
+  `importar-pdf` conta as linhas. Roda antes de tudo o mais, logo depois do hífen invisível: a
+  letra de 82 pt do OCR contaria na letra de título, na paginação e no texto escondido.
+- **O que a regra protege:** a página escaneada, cujo texto só existe na camada do OCR. Nela o
+  texto não pintado é a maior parte, e nada sai; o livro escaneado inteiro com OCR embutido
+  continua entrando como entrava. No *Manica*, nenhuma das 328 páginas tem só texto não pintado, e
+  uma só (a última, a contracapa) tem mais dele que do pintado: as 47 linhas dela ficam.
+- **Onde mora:** o modo de pintura só existe no adaptador. O pdfminer não o entrega na letra
+  (`LTChar`): `adaptadores/pdf.py` passa a ler as páginas com um agregador próprio, que é o
+  `PDFPageAggregator` do pdfminer com uma coisa a mais: guarda o estado gráfico de cada trecho
+  escrito no modo 3, e a letra aponta para o estado do trecho dela. O laço é o do `extract_pages`,
+  página a página, com as mesmas opções de layout; toda falha continua virando `PdfInvalidoError`.
+  A `Linha` ganha `nao_pintada`, e a regra é do domínio.
+
+| Alternativa | Ganha | Perde | Por que não |
+|---|---|---|---|
+| **A. O modo de pintura, por página** (escolhida) | é o que o PDF diz: o texto que não se vê; não depende de nome de fonte nem de tamanho; a página escaneada fica | o adaptador deixa de usar o `extract_pages` e passa a montar o laço dele | — |
+| B. A fonte sem o prefixo do subconjunto, no livro composto em subconjuntos | 5 linhas no adaptador; no *Manica* dá o mesmo resultado | é coincidência do gerador: o livro que usa uma fonte padrão sem embutir para texto de verdade perderia esse texto (o *Bonica* tem ArialMT sem prefixo em 2 páginas) | falso positivo provável noutro livro |
+| C. O nome da fonte ("HiddenHorzOCR") | uma expressão regular | só 396 dos 10.283 caracteres da camada vêm nessa fonte; o resto é Helvetica e Times-Roman | não pega o defeito |
+| D. O tamanho da letra (82, 79, 66 pt) | nada muda no adaptador | a camada vai de 1 a 82 pt, e a maior parte está entre 4 e 31 pt, onde moram a nota e o título | não separa |
+
+**2. A chamada de referência que a regra do sobrescrito não pegava** (`dominio/caracteres.py`).
+- **O defeito:** no *Miller* sobravam números de referência colados à palavra ("anestésico
+  24,105-107", "paciente» 52"). A rodada anterior estimou cerca de 360 pelo texto limpo.
+- **A medição, na página:** o *Miller* tem 26.409 trechos sobrescritos (letra menor que 0,85 da
+  linha, com o pé 0,15 acima), e a regra tirava 22.492. Dos 3.917 que ficavam, 2.861 não são
+  chamada e continuam ficando: a carga do íon ("Ca2+", "K+": 1.666), a letra e o símbolo de nota
+  ("†", "a", "tm": 483), a marca ("®": 231), a unidade ao quadrado ("cm2", "mm3": 93), o expoente
+  com sinal ("10–6", "min–1": 91) e outros. **1.056 são chamada,** e escapavam por seis motivos,
+  nenhum deles o tamanho ou a fonte:
+
+| Por que escapava | Quantas | Exemplo (o trecho sobrescrito entre colchetes) |
+|---|---|---|
+| vem depois de letra solta, e a regra pedia palavra de 2 letras | 304 | "6 h[148].", "N2O[198,199]." |
+| vem depois de algarismo, que a regra reservava ao expoente | 215 | "0,62[111].", "RyR1[48]." |
+| vem depois de "»" (a aspa do espanhol), de "!" ou de "?" | 202 | "paciente»[52]." |
+| a faixa usa o hífen invisível (U+00AD), ou o número leva letra | 176 | "[19", U+00AD, "21]"; "[138a]" |
+| abre a linha: a palavra ficou na linha de cima | 93 | "[118]. No" |
+| vem depois de espaço, de travessão ou do sinal de grau | 66 | "el dolor [280].", "–[53,54].", "90°[91];" |
+
+- **A regra.** A chamada continua sendo o trecho sobrescrito só de algarismos, vírgula e traço;
+  o traço passa a incluir o U+00AD, e cada número pode levar uma letra minúscula ("138a").
+  - **Certa** (sai sempre): depois de palavra de 2 letras ou mais que não é unidade, de ano e de
+    pontuação que fecha, como antes, e agora também depois de "»", "!" e "?"; depois de
+    travessão, quando o que segue é espaço, pontuação ou o fim da linha; depois de espaço,
+    quando o que segue é pontuação ou o fim da linha (o número solto entre espaços, "dose 5 mg",
+    e o isótopo, "[133]Xe", ficam); e a **lista ou faixa** ("198,199", "29-34") depois de letra
+    solta, de algarismo ou do sinal de grau, porque expoente não vem em lista.
+  - **Duvidosa:** o número só, de 2 algarismos ou mais, depois de letra solta ("6 h[148]"), de
+    algarismo ("0,62[111]") ou do sinal de grau, seguido de espaço, pontuação ou fim da linha:
+    pela linha não se distingue de um expoente ("r12", "2 elevado a 32"). E a chamada que abre a
+    linha antes de pontuação ("[118]. No"), que pela linha não se distingue do número de uma
+    nota composta como "1. Ver o capítulo". **Só saem na página que tem 3 chamadas certas ou
+    mais:** é a página que prova que o livro numera referências assim. Depois da base 10 ("10",
+    "× 10") nunca sai.
+  - **Nunca:** um algarismo só depois de letra solta ou de algarismo ("m2", "10[6]", "T10[2]");
+    depois de unidade; o que tem sinal, letra maiúscula ou símbolo.
+- **Falso positivo procurado por amostra,** nas 1.056 (24 por classe, e as 51 de base inteira
+  curta com chamada de 2 algarismos, onde moraria um expoente): **1 achado,** a configuração
+  eletrônica "4d[10]5p6", que a condição "seguido de espaço, pontuação ou fim" deixa no texto.
+  Nenhum decimal, ano, dose ou unidade sai: a dose e o decimal estão na linha de base, e a regra
+  só olha o trecho menor e mais alto.
+- **Por que a página, e não o livro:** a decisão cabe no adaptador, que lê uma página por vez, sem
+  campo novo na `Linha` nem segunda passada no livro. No *Miller*, 402 das 420 duvidosas depois
+  de letra solta ou de número estão em página com 3 chamadas certas ou mais (a mediana é 7 por
+  página); no resultado, saem 1.029 das 1.056.
+
+**3. A corrida continua depois do fim da tabela** (`dominio/tabelas_e_figuras.py`).
+- **O defeito, achado ao medir a regra 1:** a letra grande da camada do OCR (1,2 vez o corpo ou
+  mais) fechava a corrida de linhas fora da letra do corpo, como um título. Sem a camada, as
+  corridas ficam mais longas, o que é bom: no *Manica*, 2.700 linhas pintadas de figura (4.982
+  palavras, em 168 páginas: rótulos de diagrama, valores de eixo, o texto do fluxograma) passam a
+  sair com a legenda delas. Mas a regra "Tabela e figura pela letra" parava de examinar a
+  corrida no primeiro rótulo de tabela: a tabela acaba na página seguinte, onde a letra muda, e
+  o resto da corrida (a figura dessa página, com a legenda) ficava sem exame. Medido: 171 linhas
+  de legenda e de quadro (938 palavras, em 11 páginas) que saíam no commit `2296b8e` voltariam a
+  ser lidas.
+- **A regra:** depois do fim da tabela, a corrida continua sendo examinada dali. A figura e a
+  outra tabela que vêm depois saem pelo rótulo delas, como sairiam numa corrida própria; a caixa
+  sem rótulo fica, como sempre.
+- **Medido nas páginas guardadas:** no *Manica*, nenhuma linha que saía passa a ficar, e saem a
+  mais 723 linhas (2.685 palavras, em 24 páginas: legenda, conteúdo de quadro, nota de tabela);
+  no *Miller*, que não tem a camada, 508 linhas a mais (2.255 palavras, em 9 páginas: células,
+  "Tomado de…", legenda). Tudo em letra fora do corpo, por construção da corrida.
+
+**4. A nota antes do título da lista fica** (`dominio/bibliografia_do_pdf.py`).
+- **O defeito, achado na regressão de importação** que a rodada anterior não pôde fazer (os PDFs
+  do *Practical* e do *Bonica* estão em `~/Downloads/` neste Mac): no *Bonica*, a nota do autor
+  fecha o capítulo na letra das referências (Times New Roman de 11,2 pt, com o corpo de 15),
+  logo acima do título "References", em negrito. A regra "Bibliografia pela letra" junta as
+  linhas da letra das citações com até 3 linhas de outra letra no meio, e o título era essa
+  ponte: a nota saía com a lista. Medido: **7 notas, 746 palavras de prosa,** em 6 capítulos.
+- **A regra:** o trecho começa depois do título da lista. O título é a linha de outra letra, em
+  negrito, versalete ou letra de título, que vem antes da primeira linha de citação; o que está
+  antes dele, sem citação nenhuma, não é da lista. O cabeçalho da página de bibliografia online
+  do *Miller*, em negrito no meio da lista, vem depois da primeira citação e não a parte; as
+  referências com citação antes de um subtítulo continuam na lista.
+
+**Medição (2026-11-13, com o código do commit).** Os dois tratados foram reimportados e
+preparados; o estado de antes está em `livros/trabalho/*.earbook.antes3`.
+
+| | Manica | Miller |
+|---|---|---|
+| Camada do OCR tirada | 2.688 linhas, em 327 páginas | 0 (o PDF não tem) |
+| Destino dessas linhas no commit `2296b8e` (simulado nas páginas guardadas, 2.658 das 2.688) | 1.551 ficavam no texto; 338 saíam como texto escondido, 327 como texto girado, 442 com a tabela ou a figura | — |
+| Tabela e figura | 33.986 → 36.879 linhas | 46.487 → 46.995 linhas |
+| Chamadas tiradas | 9.753 → 9.795 | 22.492 → 23.521 |
+| Capítulos | 112 → 111 (o "Anexo 2", só de ilustrações, ficou sem bloco nenhum) | 118 → 118 |
+| Palavras em `limpos/` | 936.907 → 928.232 | 2.416.814 → 2.414.561 |
+| Título de até 3 caracteres | 236 → 121 (92 são o número do capítulo, "1.") | 1 → 1 |
+| Título de uma letra ou algarismo | 75 → 9 | 0 |
+| Título, parágrafo e nota sem palavra | 307, 270 e 133 → 126, 85 e 23 | 3, 138 e 87 → 3, 138 e 86 |
+| "Título sem letra nem algarismo" no `limpar` | 359 → 7 | 0 |
+| Segmento que abre em rótulo | 21 → 7 | 11 → 2 |
+| Pontilhado | 38 → 10 | 0 |
+| Chamada colada (régua do inventário, que conta decimal e fórmula) | 3.055 → 2.903 | 3.518 → 3.175 |
+
+- **Prosa perdida, procurada:** todo segmento de antes com 8 palavras ou mais cujo texto mudou,
+  e a fração das sequências de 5 palavras dele que ainda existe no livro de depois. No *Manica*,
+  135 segmentos (4.189 palavras) têm mais da metade fora: os 45 amostrados são rótulo de
+  diagrama, texto de fluxograma, legenda, conteúdo de quadro e leitura torta do OCR. No *Miller*,
+  38 (2.067 palavras): célula e nota de tabela, "Tomado de…", legenda. Nenhuma prosa do corpo.
+- **Efeito colateral medido no *Miller*:** 3 parágrafos passam a se partir onde a linha abre com
+  um algarismo seguido da chamada e de ponto ("…tipo" | "4²⁰⁹,²¹⁰. Tomados…" vira "4. Tomados…",
+  que os blocos leem como item numerado). Antes o número colado escondia a forma.
+- **O que sobra no *Manica*:** a letra do painel e o valor do eixo da figura vetorial (14
+  títulos de letra, 6 de algarismo, 85 parágrafos e 23 notas sem palavra) e a contracapa (p.
+  1.601), em que a camada é a maior parte: 7 dos 10 pontilhados e o lixo do último capítulo,
+  "Materiais de apoio" (22 segmentos, 265 palavras).
+
+**Regressão de importação no *Practical* e no *Bonica*** (os PDFs de `~/Downloads/`, importados
+com o código do commit em `livros/trabalho/regressao3-*`, contra o estado de referência do commit
+`fee3cb5`, em `regressao-*` e `regressao2-*`). Cobre também o commit `2296b8e`, que não pôde
+medir os dois.
+
+| | Practical | Bonica |
+|---|---|---|
+| Capítulos | 87 → 87 | 116 → 116 |
+| Segmentos de origem | 26.994 → 14.715 (a bibliografia sai na página: 39.665 linhas) | 15.946 → 14.875 (41.747 linhas) |
+| Segmentos e palavras em `limpos/` | 14.002 → 14.321; 820.757 → 828.324 | 14.870 → 14.865; 1.235.018 → 1.234.407 |
+| Tabela e figura | 10.399 → 10.451 linhas | 29.535 → 29.781 linhas |
+| Chamadas tiradas | 12.392 → 12.416 | 17.147 → 17.184 |
+| Camada do OCR | 0: as fontes do OCR estão nas páginas escaneadas do índice (p. 1.401 a 1.503), em que a camada é a maior parte, e a página de lista as tira | 0 |
+| Prosa perdida | nenhuma: os 24 segmentos que somem (809 palavras) são resto de figura e referência | nenhuma, depois da regra 4: os 5 que somem (629 palavras) são célula de tabela; antes dela, mais as 7 notas de autor |
+
+- **O que saiu a mais, por amostra:** a chamada (19 segmentos no *Practical*, 31 no *Bonica*:
+  só número), a legenda e o resto de figura depois de tabela, a célula de tabela. Certo.
+- **Falso positivo do commit `2296b8e`, achado e corrigido:** as 7 notas de autor do *Bonica*
+  (regra 4).
+- **O que deixou de sair no *Practical*, e fica para decisão:** as "Suggested Readings" de 48
+  capítulos (338 segmentos, 8.798 palavras). A lista impressa vem em AGaramondPro de 9 pt (o
+  corpo é de 10), com 5 a 12 entradas, antes da lista numerada "References". No `fee3cb5` as duas
+  formavam uma região só no `limpar`, e saíam juntas; desde o `2296b8e` a numerada sai na página,
+  e a lista curta, sozinha, fica abaixo das 10 citações que o `limpar` pede ("a lista curta
+  fica", ADR-0008). Não é texto perdido: é referência que voltou a ser lida. A correção seria uma
+  regra nova (a lista de referências em letra menor logo antes da bibliografia provada sai com
+  ela), fora desta rodada.
+
+**O que fica (declarado).**
+- **A chamada de um algarismo só** depois de letra solta ou de número ("12 h[8]", "T10[2]"), a
+  duvidosa em página com menos de 3 certas (18 no *Miller*), a que abre a linha antes de espaço
+  ("[249] y de", 12) e a letra ou o símbolo de nota ("†", "a": 483).
+- **O livro de fórmula que também numera referências:** na página com 3 chamadas certas, o
+  expoente de 2 algarismos depois de letra solta ou de número, seguido de espaço ("r12 "), sai
+  como chamada; e o número da nota composta como "1. Texto", em sobrescrito, também. Nenhum livro
+  medido tem; os de fórmula (ADR-0012) não estão neste Mac.
+- **A camada do OCR dentro de um formulário do PDF** (Form XObject) com o modo 3 dado fora dele:
+  o pdfminer zera o estado de texto ao entrar no formulário, e a letra chega como pintada.
+  Nenhum caso nos livros medidos (achado da code-review).
+- **O rótulo de figura vetorial,** que a página pinta: a letra do painel ("A", "B", "C" em
+  MyriadPro de 6,6 pt), o valor do eixo do gráfico ("200", "150", "100") e a variável da fórmula
+  numa linha só ("T", "V"). Não há sinal seguro: é a letra das legendas e do corpo.
+- **A linha que mistura** texto pintado e não pintado fica inteira. Nenhuma no *Manica*.
+- **A página em que a camada é a maior parte** (a contracapa do *Manica*, 47 linhas).
+
 ## Consequências
 
 **Ganha:** um comando a mais na mesma esteira, sem repositório novo. Os defeitos de conversão são atacados onde nascem.
@@ -1556,6 +1754,7 @@ desta sessão e vão à revisão.
 | Sumário sem número, colaboradores vizinhos, espaço de verdade e rótulo no sumário | testes (`tests/test_paginas_de_lista.py`): o sumário sem número e o do número sem vírgula saem, do primeiro rótulo ao último; a abertura sem frase, a página com frase depois do sumário, a prosa com chamada colada, a dedicatória e a página da parte ficam; os colaboradores da vizinha e o fim da lista saem, e a dedicatória, o prefácio e o título maior depois da lista ficam. (`tests/test_caracteres.py`, `tests/test_caracteres_no_pdf.py`): "PA R T O N E" e "CHAPTER 11 0" saem inteiros, também do PDF montado em código; o espaço do tamanho do de verdade fica; a linha irregular continua lida pela regra da letra espaçada. (`tests/test_epub_simples.py`): o rótulo e o título no sumário do EPUB; o rótulo depois do texto, o citado e o do sumário com dois-pontos não dão nome | portão | o sumário ou a lista voltam a ser lidos, sai uma página com frase, a letra espaçada volta partida, ou o sumário do EPUB volta ao nome da parte |
 | Tratado em português e em espanhol | testes (`tests/test_sumario_interno.py`): a parte no nível de cima e o capítulo com rótulo abrem capítulo, com o nome do item; a seção abaixo do nível do capítulo não abre; o sumário sem rótulo, o plano, o de dois rótulos e o de três rótulos na mesma página não servem. (`tests/test_capitulos_pelo_sumario.py`): o capítulo abre no primeiro título da página, e o que vem antes fica no anterior; a página sem título abre no primeiro bloco; a parte fica com o primeiro capítulo, com o nome dele; o rótulo dentro do anexo e o resto de figura não abrem capítulo; a abertura em página que saiu inteira abre no bloco seguinte; o nível conta do tamanho que mais abre capítulo. (`tests/test_sumario_do_pdf.py`, com o adaptador lendo um PDF com marcadores montado em código): nível, título e página, pelo destino direto, pela ação e pelo nome; o nome que não existe, a referência a si mesma e a referência a objeto que não existe ficam de fora; o PDF sem sumário devolve vazio sem aviso, e o arquivo que não é PDF, vazio com aviso; o sumário em círculo acaba onde o círculo fecha, o plano de 1.200 itens é lido inteiro, e o sumário e a árvore de nomes que apontam para si mesmos não travam; o `importar-pdf` corta pelo sumário e dá os nomes ao sumário do EPUB, e com sumário que não serve corta como antes. (`tests/test_cabecalho_na_altura_do_numero.py`): o cabeçalho maior que o corpo na altura do número sai sem se repetir; com o número no pé, de outro tamanho, em duas páginas ou sem letra, fica; a linha do corpo na altura do número do pé fica; o carimbo de data e hora sai, e a data sem hora fica. (`tests/test_rotulo_em_portugues_e_espanhol.py`): a legenda, o quadro, a tabela, a "TABLA" e o "CUADRO" em negrito na letra do corpo saem; o rótulo em letra de título, a menção na letra do corpo, a que continua a frase, o número simples e o rótulo em inglês em negrito na letra do corpo ficam. (`tests/test_hifen_invisivel.py`): o U+00AD no meio da linha vira hífen, o do fim só no livro que o usa no meio em 3 linhas ou mais; o número partido na quebra volta inteiro, e a letra antes do hífen segue com espaço. (`tests/test_colaboradores_em_maiusculas.py`): a lista com o nome em maiúsculas sai; três autores com afiliação e o nome sem título acadêmico ficam | portão | o *Manica* volta a sair com capítulo falso, o cabeçalho, o rótulo, o hífen invisível ou a lista voltam a ser lidos, sai texto do corpo, ou muda o quadro do *Dalgalarrondo* |
 | Bibliografia pela letra e rótulo com a caixa trocada | testes (`tests/test_bibliografia_do_pdf.py`): 10 linhas de citação em letra menor e o título em negrito saem, registrados com a página; 9 ficam; a citação "ano;volume:página" conta; a linha sem citação no meio sai; o título em letra de título logo acima sai, e o que fica abaixo da lista na página não; a linha do corpo antes fica; a caixa em outra letra antes fica; o cabeçalho da página online entre as referências sai, e 4 linhas de outra letra partem o trecho; dois trechos de 9 ficam; a lista continua na página seguinte; as citações na letra do corpo, em outra família do tamanho do corpo e no PDF sem família ficam; do PDF de ponta a ponta, o resumo conta as linhas. (`tests/test_caixa_do_rotulo.py`): "FigurA 12.3", "QuAdro 13.1", "tAb. 4.2", "tAblA 6-1" voltam à caixa normal no parágrafo e na nota; a caixa normal, as maiúsculas, a palavra sem número, outra palavra e o título não mudam; do PDF de ponta a ponta, o resumo conta as palavras | portão | o *Miller* volta a sair com a prosa intercalada com as referências, sai linha do corpo, ou muda palavra que não é rótulo |
+| Camada do OCR e chamada colada | testes (`tests/test_camada_do_ocr.py`): a linha não pintada sai registrada com a página, cada página decide por si, e o resumo a conta; a página escaneada, a página em que a camada é a maior parte, o empate e o PDF escaneado inteiro ficam; o adaptador diz qual linha a página não pinta, o modo volta ao normal depois, e a linha que mistura não conta. (`tests/test_chamada_colada.py`): a chamada sai depois de "»", "!" e "?", depois de espaço antes de pontuação ou do fim da linha, depois de travessão, com a faixa no hífen invisível e com letra, e a lista depois de letra solta e de número; o número só depois de letra solta, de número ou do grau, e a chamada que abre a linha antes de pontuação, são duvidosos e só saem na página com 3 chamadas certas; o isótopo, a base 10, o algarismo só e o expoente no meio da fórmula ficam. (`tests/test_corrida_depois_da_tabela.py`): a figura e a outra tabela depois do fim da tabela, na mesma corrida, saem; a caixa sem rótulo fica. (`tests/test_nota_antes_da_bibliografia.py`): a nota antes do título da lista fica e a lista sai; a primeira referência em duas linhas, o cabeçalho em negrito no meio da lista e as referências antes de um subtítulo saem com ela. Cada guarda foi vista falhar com o seu mutante | portão | o resto de figura ou a chamada ficam, ou sai página escaneada, expoente ou caixa sem rótulo |
 | A escuta ★ | rodar `importar-pdf` + `preparar` num PDF real em `livros/` e contar o que o `limpar` ainda precisa tirar | a cada mudança no conversor | a contagem sobe |
 
 Regra derivada no `AGENTS.md`: a biblioteca de PDF só entra em `adaptadores/`.
@@ -1563,3 +1762,6 @@ Regra derivada no `AGENTS.md`: a biblioteca de PDF só entra em `adaptadores/`.
 ## Notas
 
 Autor: Mateus, com o Claude Code · Criado em: 2026-11-01 · Aprovado em: 2026-11-01
+A seção "Camada do OCR sobre as figuras e chamada colada" (2026-11-13) executa a decisão do
+Mateus do mesmo dia (entram o resto de figura do OCR e as chamadas coladas), levada pela sessão
+principal. Os sinais, os limiares e a correção da corrida depois da tabela vão à revisão dele.

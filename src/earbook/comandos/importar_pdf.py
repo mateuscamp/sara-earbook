@@ -10,7 +10,11 @@ from pathlib import Path
 
 from earbook.adaptadores.epub_simples import gravar_epub
 from earbook.adaptadores.pdf import ler_metadados, ler_paginas, ler_sumario
-from earbook.dominio.bibliografia_do_pdf import MOTIVO_DA_BIBLIOGRAFIA_DO_PDF, tirar_bibliografia
+from earbook.dominio.bibliografia_do_pdf import (
+    MOTIVO_DA_BIBLIOGRAFIA_DO_PDF,
+    MOTIVO_DA_LISTA_DE_LEITURA,
+    tirar_bibliografia,
+)
 from earbook.dominio.blocos import Bloco, LivroMontado, montar_blocos
 from earbook.dominio.caixa_do_rotulo import acertar_rotulos
 from earbook.dominio.camada_do_ocr import tirar_camada_do_ocr
@@ -213,10 +217,15 @@ def resumo_da_importacao(importacao: Importacao) -> str:
 
 def _linhas_do_que_saiu(remocoes: Sequence[LinhaRemovida]) -> list[str]:
     """A borda, o conteúdo (tabela, figura e página de lista) e a bibliografia, cada um na sua
-    conta; a da bibliografia só aparece no livro que a tem."""
-    bibliografia = [r for r in remocoes if r.motivo == MOTIVO_DA_BIBLIOGRAFIA_DO_PDF]
+    conta; a da bibliografia e a da lista de leitura logo antes dela só aparecem no livro que as
+    tem (ADR-0004)."""
+    bibliografia = sum(1 for r in remocoes if r.motivo == MOTIVO_DA_BIBLIOGRAFIA_DO_PDF)
+    leitura = sum(1 for r in remocoes if r.motivo == MOTIVO_DA_LISTA_DE_LEITURA)
     do_conteudo = [r for r in remocoes if r.motivo in MOTIVOS_DO_CONTEUDO]
-    fora_da_borda = MOTIVOS_DO_CONTEUDO | {MOTIVO_DA_BIBLIOGRAFIA_DO_PDF}
+    fora_da_borda = MOTIVOS_DO_CONTEUDO | {
+        MOTIVO_DA_BIBLIOGRAFIA_DO_PDF,
+        MOTIVO_DA_LISTA_DE_LEITURA,
+    }
     da_borda = [r for r in remocoes if r.motivo not in fora_da_borda]
     linhas = [
         f"{len(da_borda)} linhas tiradas da página: a borda, o texto escondido e o texto repetido."
@@ -227,7 +236,10 @@ def _linhas_do_que_saiu(remocoes: Sequence[LinhaRemovida]) -> list[str]:
     linhas += _por_motivo(do_conteudo)
     if bibliografia:
         motivo = "letra menor que a do corpo, com citações de periódico"
-        linhas.append(f"{len(bibliografia)} linhas de bibliografia tiradas: {motivo}.")
+        linhas.append(f"{bibliografia} linhas de bibliografia tiradas: {motivo}.")
+    if leitura:
+        motivo = "logo antes das referências, na letra delas"
+        linhas.append(f"{leitura} linhas de lista de leitura tiradas: {motivo}.")
     return linhas
 
 

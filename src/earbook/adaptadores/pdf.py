@@ -215,19 +215,18 @@ def ler_paginas(pdf: Path) -> tuple[Pagina, ...]:
     # OSError de dentro da leitura vem do conteúdo (F2: xref com deslocamento negativo).
     with pdf.open("rb") as arquivo:
         agregador = _pelo_pdfminer(pdf, lambda: _Agregador(PDFResourceManager()))
-        layouts = extract_pages(arquivo, agregador)
+        layouts = layouts_das_paginas(arquivo, agregador)
         paginas: list[Pagina] = []
         while (layout := _proximo_layout(pdf, layouts)) is not None:
             paginas.append(_pagina(pdf, len(paginas) + 1, layout, agregador))
     return tuple(paginas)
 
 
-def extract_pages(arquivo: BinaryIO, agregador: _Agregador) -> Iterator[LTPage]:
+def layouts_das_paginas(arquivo: BinaryIO, agregador: _Agregador) -> Iterator[LTPage]:
     """O laço do `extract_pages` do pdfminer, com o nosso agregador no lugar do dele: uma página
     por vez, com as opções padrão. Nada roda antes do primeiro `next`, que já está no `try`.
 
-    Leva o nome da função do pdfminer que substitui: é o ponto em que o teste da falta de memória
-    troca a leitura (`tests/test_pdf.py`), e o nome dele não mudou.
+    É o ponto em que o teste da falta de memória troca a leitura (`tests/test_pdf.py`).
     """
     interpretador = PDFPageInterpreter(agregador.rsrcmgr, agregador)
     for pagina in PDFPage.get_pages(arquivo):

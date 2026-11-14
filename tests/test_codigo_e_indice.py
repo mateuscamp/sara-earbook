@@ -147,7 +147,9 @@ def test_livro_montado_nao_tem_codigo_nem_indice(tmp_path: Path) -> None:
     _ = preparar(epub, pasta)
     montagem = montar(pasta, tmp_path / "livro.pronto.epub")
     volta = preparar(montagem.epub, tmp_path / "volta.earbook")
-    assert _textos_limpos(volta) == [["Veja o código:", "Depois do código."], []]
+    # O capítulo do índice, que a limpeza esvaziou, fica fora do livro montado (ADR-0005, "Todo
+    # capítulo sem texto fora do EPUB montado"; asserção trocada com a autorização do Mateus).
+    assert _textos_limpos(volta) == [["Veja o código:", "Depois do código."]]
     assert volta.livro.texto_fora_de_segmento == ()
 
 

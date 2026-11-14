@@ -37,7 +37,7 @@ from earbook.dominio.conferencia_da_adaptacao import (
     conferir_sumario,
 )
 from earbook.dominio.conferencia_da_traducao import conferir_termos, conferir_traducao
-from earbook.dominio.fora_do_audio import capitulos_declarados
+from earbook.dominio.fora_do_audio import capitulos_com_remocao
 from earbook.dominio.livro_limpo import CapituloLimpo
 from earbook.dominio.segmento import Segmento, notas_para_o_fim
 from earbook.dominio.trabalho import CapituloPreparado
@@ -81,8 +81,8 @@ class Montagem:
     adaptado: bool = False
     """O livro em português adaptado (ADR-0009): o que fica de fora está sem adaptação."""
     sem_texto: tuple[str, ...] = ()
-    """Os capítulos que o `preparar --sem-capitulo` tirou do áudio: fora do EPUB (ADR-0005,
-    "Capítulo sem texto fora do EPUB montado")."""
+    """Os capítulos que a limpeza esvaziou, por pedido no `preparar --sem-capitulo` ou por regra:
+    fora do EPUB (ADR-0005, "Todo capítulo sem texto fora do EPUB montado")."""
 
 
 @dataclass(frozen=True)
@@ -162,7 +162,7 @@ def montar(pasta: Path, destino: Path, modo: Modo | None = None) -> Montagem:
     limpeza = trabalho.ler_limpeza(pasta)
     if problemas := _conferir(pasta, livro, limpeza):
         raise MontagemRecusadaError(_recusa(pasta, problemas))
-    vazios = _sem_texto(pasta, livro, capitulos_declarados(limpeza.motivos))
+    vazios = _sem_texto(pasta, livro, capitulos_com_remocao(limpeza.motivos))
     fora = frozenset(c.arquivo for c in vazios)
     empacotar_pasta(trabalho.pasta_do_epub(pasta), destino, _trocas(pasta, livro, fora), fora)
     no_original = sum(len(_no_sumario_sem_traducao(pasta, c, livro)) for c in livro.capitulos)
@@ -170,18 +170,20 @@ def montar(pasta: Path, destino: Path, modo: Modo | None = None) -> Montagem:
 
 
 def _sem_texto(
-    pasta: Path, livro: _Livro, declarados: frozenset[str]
+    pasta: Path, livro: _Livro, com_remocao: frozenset[str]
 ) -> tuple[CapituloPreparado, ...]:
-    """Os capítulos que o `preparar --sem-capitulo` tirou do áudio: saem do EPUB (ADR-0005,
-    "Capítulo sem texto fora do EPUB montado").
+    """Os capítulos que a limpeza esvaziou, por pedido no `preparar --sem-capitulo` ou por regra
+    (o do índice): saem do EPUB (ADR-0005, "Todo capítulo sem texto fora do EPUB montado").
 
-    Vale em todo modo: o capítulo declarado não tem texto limpo, nem para traduzir. O arquivo que
-    é o sumário do EPUB 3 nunca sai. Recusa o livro em que nenhum capítulo ficaria.
+    O capítulo esvaziado teve segmento tirado e não ficou com nenhum; o que nunca teve segmento
+    (a capa) fica. Vale em todo modo: sem texto limpo não há o que traduzir. O arquivo que é o
+    sumário do EPUB 3 nunca sai. Recusa o livro em que nenhum capítulo ficaria.
     """
-    vazios = [c for c in livro.capitulos if c.id in declarados and not livro.limpos[c.id]]
+    vazios = [c for c in livro.capitulos if c.id in com_remocao and not livro.limpos[c.id]]
     if not vazios:
         return ()
-    if len(vazios) == len(livro.capitulos):
+    # O capítulo que nunca teve segmento (a capa) fica no livro, mas não é texto para ouvir.
+    if not any(livro.limpos[c.id] for c in livro.capitulos):
         mensagem = f"{pasta}: nenhum capítulo com texto; o livro montado ficaria vazio"
         raise MontagemRecusadaError(mensagem)
     sumario = arquivos_do_sumario(trabalho.pasta_do_epub(pasta)).nav

@@ -186,14 +186,15 @@ def _linhas_do_titulo(linha: Linha, corpo: tuple[str, float], restam: int) -> in
     do Miller ("CUADRO 4-1 …", StoneSerif negrito de 9,5 pt, de 1 a 5 linhas). O limite é para o
     parágrafo de destaque em negrito que começa por uma menção não sair inteiro.
     """
-    if not linha.negrito or not _do_corpo(linha, corpo):
+    if not linha.negrito or not na_letra_do_corpo(linha, corpo):
         return 0
     if _rotulo_local(linha, corpo[1]) is not None:
         return LINHAS_DO_TITULO_DO_ROTULO
     return max(restam - 1, 0)
 
 
-def _do_corpo(linha: Linha, corpo: tuple[str, float]) -> bool:
+def na_letra_do_corpo(linha: Linha, corpo: tuple[str, float]) -> bool:
+    """A família do corpo, no tamanho dele, com a folga de meio ponto."""
     familia, tamanho = corpo
     return linha.fonte == familia and abs(linha.tamanho - tamanho) <= DIFERENCA_DE_TAMANHO
 
@@ -202,7 +203,7 @@ def _fecha(linha: Linha, corpo: tuple[str, float]) -> bool:
     """A letra do corpo, ou a de título que não é rótulo, fecha a corrida."""
     tamanho = corpo[1]
     titulo = linha.tamanho >= tamanho * RAZAO_DO_TITULO and _rotulo(linha, tamanho) is None
-    return _do_corpo(linha, corpo) or titulo
+    return na_letra_do_corpo(linha, corpo) or titulo
 
 
 def _rotulo(linha: Linha, tamanho_do_corpo: float, anterior: Linha | None = None) -> str | None:

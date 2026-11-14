@@ -60,7 +60,8 @@ class LimpezaRegistrada:
     juntados: tuple[tuple[str, str], ...]
     """Pares (ID, destino), com as repetições do registro: o `conferir` as conta (A7)."""
     motivos: Mapping[str, str] = field(default_factory=dict[str, str])
-    """O motivo de cada ID removido: o `montar` acha por ele o capítulo declarado (ADR-0005)."""
+    """O motivo de cada ID removido: o `montar` acha por ele o capítulo que a limpeza esvaziou
+    (ADR-0005)."""
 
 
 def criar_pasta_de_trabalho(pasta: Path) -> None:

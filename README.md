@@ -49,7 +49,8 @@ A decisão está no [ADR-0001](docs/adr/0001-reescrever-com-claude-code-orquestr
   referências com 10 linhas de citação de periódico ou mais ("Lancet 269:259, 1955", "J Bone
   Joint Surg Br. 1980;62:358"), com o título logo antes e o cabeçalho das páginas de
   bibliografia entre elas. Sai antes da ordem de leitura, para a lista ao lado da prosa não se
-  intercalar com ela
+  intercalar com ela. Sai com ele a lista de leitura sugerida que vem logo antes, na mesma letra
+  e sob um título em letra de título, quando tem ao menos uma citação de periódico
   ([ADR-0004](docs/adr/0004-pdf-entra-como-comando-importar-pdf.md)).
 - O trecho que seria lido duas vezes (`<p>` dentro de `<blockquote>`).
 - A página de direitos autorais.
@@ -118,7 +119,8 @@ uv run earbook preparar livro.epub --sem-capitulo c006 --sem-capitulo c110
 O ID é a posição do capítulo no livro (`c006` é o 6º arquivo do spine; `livro.json` lista todos,
 com o arquivo de cada um). Cada segmento do capítulo fica em `limpeza.json`, com o motivo
 "capítulo fora do áudio: pedido no preparar". O ID que o livro não tem é erro. O `montar` deixa
-o capítulo declarado fora do EPUB: sem o arquivo, sem o item no sumário.
+fora do EPUB todo capítulo que ficou sem texto, o declarado e o que uma regra esvaziou: sem o
+arquivo, sem o item no sumário.
 
 O comando `preparar` cria `livro.earbook/` (ou onde `--pasta` mandar) com:
 
@@ -149,12 +151,14 @@ pasta de trabalho, e o `montar` recusa o livro quando ele acha problema
 `livro.pronto.epub` (ou onde `--epub` mandar): o EPUB original, com o texto limpo no lugar, sem
 as marcas de trabalho e com cada nota de rodapé no fim do capítulo.
 
-O capítulo que o `preparar --sem-capitulo` tirou do áudio fica fora do EPUB montado, em qualquer
-modo: o arquivo sai do pacote, do manifesto e do spine, e o item dele sai do sumário (o `nav` e
-o `toc.ncx`); o item de dentro que aponta para outro capítulo sobe um nível. O resumo diz quais
-ficaram de fora ("4 capítulos sem texto ficaram fora do EPUB: c006, c013, c110, c111"). O
-capítulo que outra regra da limpeza esvaziou (o do índice remissivo) continua no livro, vazio. O
-`montar` recusa o livro em que nenhum capítulo ficaria, e o sumário que ficaria sem item.
+O capítulo que a limpeza deixou sem texto fica fora do EPUB montado, em qualquer modo: o que o
+`preparar --sem-capitulo` tirou do áudio e o que uma regra esvaziou (o do índice remissivo, o que
+era só bibliografia). O arquivo sai do pacote, do manifesto e do spine, e o item dele sai do
+sumário (o `nav` e o `toc.ncx`); o item de dentro que aponta para outro capítulo sobe um nível. O
+resumo diz quais ficaram de fora ("4 capítulos sem texto ficaram fora do EPUB: c006, c013, c110,
+c111"), e o motivo de cada segmento deles está em `limpeza.json`. O capítulo que nunca teve texto
+(a capa, a página só de imagem) continua no livro. O `montar` recusa o livro em que nenhum
+capítulo ficaria com texto, e o sumário que ficaria sem item.
 
 Opções dos dois:
 
@@ -297,7 +301,9 @@ autor do metadado do PDF (ou os de `--titulo` e `--autor`). O que ele faz:
   dela. O resumo conta essas linhas à parte, cada uma com o seu motivo;
 - tira a bibliografia em letra menor que a do corpo, pelas citações de periódico, antes de montar
   os parágrafos. A nota do autor na mesma letra, logo acima do título da lista e sem citação,
-  fica. O resumo conta essas linhas numa linha própria;
+  fica. A lista de leitura sugerida logo antes das referências, na letra delas, sai junto, com o
+  título dela; a caixa em letra do corpo que o PDF grava no meio dela fica. O resumo conta as
+  linhas de bibliografia e as de lista de leitura, cada uma na sua linha;
 - junta as linhas em parágrafos e devolve inteira a palavra partida no fim da linha;
 - acerta a caixa da palavra de rótulo que o versalete do PDF trocou nas menções ("No QuAdro
   13.1" vira "No Quadro 13.1"; "tAb. 4.2", "tab. 4.2"): só "figura", "fig.", "quadro", "tabela",

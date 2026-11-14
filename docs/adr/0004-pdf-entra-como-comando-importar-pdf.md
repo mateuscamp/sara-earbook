@@ -1710,6 +1710,7 @@ medir os dois.
   fica", ADR-0008). Não é texto perdido: é referência que voltou a ser lida. A correção seria uma
   regra nova (a lista de referências em letra menor logo antes da bibliografia provada sai com
   ela), fora desta rodada.
+  **Decidido e feito em 2026-11-14** (abaixo, "Lista de leitura logo antes da bibliografia").
 
 **O que fica (declarado).**
 - **A chamada de um algarismo só** depois de letra solta ou de número ("12 h[8]", "T10[2]"), a
@@ -1727,6 +1728,143 @@ medir os dois.
   numa linha só ("T", "V"). Não há sinal seguro: é a letra das legendas e do corpo.
 - **A linha que mistura** texto pintado e não pintado fica inteira. Nenhuma no *Manica*.
 - **A página em que a camada é a maior parte** (a contracapa do *Manica*, 47 linhas).
+
+### Lista de leitura logo antes da bibliografia (2026-11-14)
+
+**Contexto.** A regressão de importação da rodada anterior achou que, desde o `2296b8e`, as
+"Suggested Readings" do *Practical* voltam a ser lidas numa reimportação (o livro em
+`livros/prontos/` não foi reimportado e não mudou). Decisão do Mateus (2026-11-13, levada pela
+sessão principal): consertar numa filha.
+
+**Medido** (HEAD `419fe96`, páginas do *Practical* depois da tabela e antes da bibliografia):
+- 86 capítulos têm o título "Suggested Readings", em MyriadPro negrito de 13 pt (o corpo é
+  AGaramondPro de 10). A lista vem em **AGaramondPro de 9 pt, a mesma letra da lista numerada
+  "References"**, que é a letra das citações do livro (39.544 das 39.665 linhas que a regra da
+  bibliografia tira).
+- A lista numerada vem logo depois, na ordem do PDF, sob o título "References", também em
+  MyriadPro negrito de 13 pt. O título em letra de título **fecha a corrida** de linhas fora do
+  corpo: a lista de leitura fica numa corrida só dela, e a regra conta as citações por corrida.
+- Em 36 capítulos a lista de leitura já sai: tem 10 linhas de citação ou mais numa corrida só.
+  Nos outros 50 ela fica: em 49, a lista inteira (de 5 a 45 linhas e de 0 a 16 linhas de
+  citação; cada referência ocupa de 2 a 4 linhas, e só uma delas traz "ano;volume:página"; as 4
+  que somam 10 ou mais vêm partidas ao meio pela caixa "Key Points") e, em 1, só o título, acima
+  de um subtítulo.
+- No `limpar`, ela saía por estar logo antes da região provada ("a corrida curta com citação se
+  junta à região seguinte", ADR-0008). A região agora sai na página, a prova some antes do
+  `limpar`, e a lista curta sozinha fica abaixo das 10 citações. As duas regras estão certas
+  cada uma; o defeito é a ordem: a página tira a prova de que o `limpar` dependia.
+- O que há entre o título da lista e o trecho provado, nos 49: as linhas da lista; em 7, de 5 a
+  32 linhas na letra do corpo no meio (a caixa "Key Points" da coluna ao lado, que o PDF grava
+  entre as duas metades da lista); em 46, de uma a três linhas em MyriadPro negrito de 9 pt (a
+  frase da bibliografia online, depois da última referência, e, em 2 capítulos, subtítulos como
+  "Section I"); e o título "References". Em 4, há mais: um anexo, outra seção com título
+  ("Patient Resources", "Permissions and Courtesies") ou o resto do capítulo.
+- A mesma letra de 9 pt tem outros usos no livro, que ficam: as notas de rodapé (2 e 4 linhas,
+  sem citação, depois de linha do corpo) e uma caixa "Key Points" (um capítulo, com 2 citações).
+
+| Alternativa | Ganha | Perde | Por que não |
+|---|---|---|---|
+| **A. Na página: a lista na letra das citações, sob um título em letra de título, logo antes do trecho provado, sai com ele** (escolhida) | conserta onde o defeito nasce, e onde a prova ainda existe (a letra e a vizinhança); não lê o texto do título; não muda o `limpar` | mais uma regra de vizinhança na página; a lista longe do trecho fica | — |
+| B. No `limpar`: baixar o limiar da região Vancouver de 10 para 5 citações | uma linha | já medido e recusado (ADR-0008, alternativa D): tira 2 tabelas do *Bonica*; e 11 das 49 listas têm menos de 5 linhas de citação | falso positivo medido |
+| C. No `limpar`: a lista sob o título "Suggested Readings" | pega todas as 50 | decide pelo texto do título, que o ADR-0008 proíbe como critério; cada livro e cada idioma pede uma palavra nova em `src/` | o título não é prova |
+| D. Na página: contar as citações de corridas vizinhas juntas, atravessando o título | uma conta só | a corrida vizinha com citações é o próprio trecho provado: somar com ele é a alternativa A sem dizer onde a lista começa nem o que fica (a caixa do corpo, a frase) | não diz o que sai |
+
+**Decisão (A)** (`dominio/bibliografia_do_pdf.py`). Depois de achar cada trecho provado (10
+linhas de citação ou mais) e o título dele, a regra anda para trás, na ordem do PDF, a partir da
+linha antes deles:
+- **Linha na letra das citações do trecho:** é da lista de leitura.
+- **Linha de outra letra, fora da do corpo e da de título:** até 3 sem uma linha da lista entre
+  elas (o subtítulo, a frase da bibliografia online); com 4 ou mais é outra coisa (a caixa, o
+  anexo), e nada sai. A linha do corpo no meio delas não zera a conta.
+- **Linha na letra do corpo:** fica, e a regra passa por ela **só no meio da lista**, até 40 no
+  total (medido: 5, 5, 8 e 16 nas 4 listas que saem assim, a caixa "Key Points" gravada entre
+  as duas metades). Com mais de 40 é o texto do capítulo, e nada sai. Antes de chegar à lista,
+  a linha do corpo para a regra: a lista de leitura termina encostada na bibliografia, e a prosa
+  entre as duas diz que o bloco lá atrás é de outra seção (R2 da revisão).
+- **Linha em letra de título** (1,2 vez o corpo ou mais): é o título da lista, e a regra para.
+  Sem título, nada sai. Sai só essa linha: a de cima dela, mesmo na mesma letra, pode ser o
+  título de outra seção, que o PDF em colunas grava logo antes (A1 da auditoria).
+- **Sai** o título e, da linha depois dele até a última linha na letra das citações, tudo o que
+  não está na letra do corpo, quando: a linha logo depois do título não é do corpo (o título
+  encabeça a lista, e não um trecho de prosa) e a lista tem **ao menos uma linha de citação de
+  periódico**. A frase da bibliografia online, depois da última referência, fica onde está: a
+  regra da marca d'água do `limpar` a tira, como antes (68 de 87 arquivos).
+- **Para na linha que já sai** (o trecho provado anterior): cada linha é visitada uma vez. Se
+  chegou a ele sem achar título, o que ficou no caminho é a **metade da lista longa** que a
+  caixa do corpo partiu: a primeira metade já é trecho provado, e a segunda fica entre ele e a
+  bibliografia. Sai então, com a mesma exigência de uma citação, só o que vai da primeira à
+  última linha na letra das citações; as frases em outra letra das duas pontas ficam (1 lista
+  no *Practical*, 39 linhas, achada na auditoria).
+- O motivo registrado é próprio, "bibliografia: lista de leitura logo antes das referências, na
+  letra delas", e o resumo do `importar-pdf` a conta numa linha própria ("1239 linhas de lista de
+  leitura tiradas: logo antes das referências, na letra delas."); a conta da bibliografia
+  continua sendo só a do motivo antigo, e se compara com os logs de antes.
+- A regra não lê o título: "Suggested Readings", "Leituras sugeridas" e "Lecturas recomendadas"
+  valem o mesmo, e nenhum nome de livro ou de seção entra em `src/`.
+- **O título acima do subtítulo:** a lista numerada dividida em partes vem como "References" |
+  "Section I" | referências. O título do trecho só aceitava uma segunda linha na letra da
+  primeira (R2 da revisão de 2026-11-13), e "References" ficava, sozinho, com a lista de leitura
+  atrás dele. Agora a segunda linha também é do título quando vem **na família da primeira**, em
+  letra de título, e a primeira não (os dois em MyriadPro): 4 títulos no *Practical* (3
+  "References" e 1 "Suggested Readings"). Dois títulos em letra de título, de letras diferentes,
+  continuam sendo de seções diferentes, e o título grande de outra família acima do título
+  pequeno da lista (o do capítulo) fica (R1 da revisão).
+
+Decidido pelo Mateus (consertar a regressão); o sinal e os limiares são desta sessão e vão à
+revisão.
+
+**Medição (2026-11-14, depois do código).** Um PDF por vez; `importar-pdf` e `preparar` para
+pastas novas (`regressao4-*`), contra o `419fe96`: `regressao3-*` no *Practical* e no *Bonica*, e
+as pastas dos livros prontos no *Manica* (com os 4 capítulos declarados) e no *Miller*.
+
+| | *Practical* | *Bonica* | *Manica* | *Miller* |
+|---|---|---|---|---|
+| Linhas de lista de leitura tiradas | 1.239: 44 listas inteiras e a metade de outra, em 45 capítulos | 0 | 0 | 0 |
+| Linhas de bibliografia tiradas | 39.665 → 39.669 (os 4 títulos acima de subtítulo) | 41.747 → 41.747 | 32.272 → 32.272 | 94.747 → 94.747 |
+| Capítulos | 87 → 87 | 116 → 116 | 111 → 111 | 118 → 118 |
+| Segmentos de origem | 14.715 → 14.305 | 14.875 → 14.875 | iguais | iguais |
+| `limpos/`: segmentos e palavras | 14.321 → 13.942; 828.324 → **819.650** (−8.674) | idênticos | idênticos | idênticos |
+| Marca d'água (a frase da bibliografia online) | 68 → 76 de 87 arquivos | — | — | — |
+| Regra Vancouver do `limpar` | 38 → 0 remoções (3 listas de leitura, que saem agora na página) | igual | — | — |
+
+- **O que sai no *Practical*:** 383 segmentos de `limpos/` de antes não estão iguais no depois.
+  Pelo lugar no capítulo de antes: 334 estão sob o título "Suggested Readings" (8.858 palavras),
+  43 são esse título, 3 são o título "References" que ficava sozinho, e 3 são marcadores da
+  caixa "Key Points" que continuam no livro, juntados ao parágrafo seguinte (abaixo). **Nenhum
+  segmento de prosa sai.** No livro inteiro, das 86 listas de leitura, 37 já saíam como trecho
+  provado (uma só pela metade: a outra sai agora, entre dois trechos), 44 saem pela regra nova e
+  5 ficam (abaixo).
+- **Falsos positivos procurados, por amostra e por inteiro:** (1) nas páginas, as 1.239 linhas
+  classificadas pela forma: 44 títulos, 368 entradas que abrem com autor ("Sobrenome AB,"), 800
+  continuações recuadas, 2 subtítulos e 25 entradas que abrem sem autor, lidas uma a uma: todas
+  são referência com instituição no lugar do autor, ou continuação com recuo diferente. Nenhuma
+  linha abre com marcador de lista. (2) No livro preparado, todo segmento que some está depois de
+  um título de leitura sugerida, no capítulo de antes. (3) A caixa "Key Points" em letra de 9 pt
+  (um capítulo, 2 citações) fica: vem antes do título da lista. (4) As notas de rodapé de 9 pt
+  ficam. (5) *Bonica*, *Manica* e *Miller*: a regra não tira nenhuma linha, e `segmentos/`,
+  `limpos/` e `limpeza.json` saem idênticos aos de referência. **Falsos positivos achados: 0.**
+- **Efeito colateral, 3 parágrafos:** em 3 capítulos (`c012`, `c013`, `c052`), o último marcador
+  da caixa "Key Points" termina no pé da coluna sem pontuação, e a página já era lida fora de
+  ordem (a continuação dele vem 3 parágrafos depois). Antes, o título da lista ficava entre ele
+  e o parágrafo seguinte; agora o `limpar` junta os dois ("…and central" + "minorities have
+  access…"). Nenhuma palavra some; a ordem já estava trocada. A causa é a regra "Duas colunas".
+
+**O que fica (declarado).**
+- **5 listas de leitura do *Practical*** (58 segmentos, 1.110 palavras): a que tem um anexo
+  entre ela e as referências (`c004`), a que tem o resto do capítulo (`c019`), a metade que tem
+  32 linhas da caixa do corpo entre o fim dela e as referências sem título (`c040`), a que não
+  cita periódico e tem "Patient Resources" depois (`c043`), e a que tem a seção "Permissions and
+  Courtesies" depois (`c047`). Em todas falta a vizinhança que prova a lista.
+- **O título da lista em duas linhas** sairia pela metade (a de baixo). Nenhum livro medido tem.
+- **O bloco em letra das citações logo abaixo de um título, encostado na bibliografia e com uma
+  citação de periódico** sai como lista de leitura, seja o que for: é a definição da regra. A
+  nota de rodapé depois de prosa fica.
+- **O livro em que o título da lista de leitura não vem em letra de título** (negrito no tamanho
+  do corpo, como o "References" do *Bonica*): a regra não dispara, e a lista curta fica.
+- **Livros que não estão neste Mac** (*Dalgalarrondo*, *Hard Parts*, *Competente*, *Maudlin*):
+  sem regressão, como na regra da bibliografia pela letra. A regra nova só age ao lado de um
+  trecho provado por aquela (10 linhas de citação de periódico em letra menor que a do corpo).
+
 
 ## Consequências
 
@@ -1755,6 +1893,7 @@ medir os dois.
 | Tratado em português e em espanhol | testes (`tests/test_sumario_interno.py`): a parte no nível de cima e o capítulo com rótulo abrem capítulo, com o nome do item; a seção abaixo do nível do capítulo não abre; o sumário sem rótulo, o plano, o de dois rótulos e o de três rótulos na mesma página não servem. (`tests/test_capitulos_pelo_sumario.py`): o capítulo abre no primeiro título da página, e o que vem antes fica no anterior; a página sem título abre no primeiro bloco; a parte fica com o primeiro capítulo, com o nome dele; o rótulo dentro do anexo e o resto de figura não abrem capítulo; a abertura em página que saiu inteira abre no bloco seguinte; o nível conta do tamanho que mais abre capítulo. (`tests/test_sumario_do_pdf.py`, com o adaptador lendo um PDF com marcadores montado em código): nível, título e página, pelo destino direto, pela ação e pelo nome; o nome que não existe, a referência a si mesma e a referência a objeto que não existe ficam de fora; o PDF sem sumário devolve vazio sem aviso, e o arquivo que não é PDF, vazio com aviso; o sumário em círculo acaba onde o círculo fecha, o plano de 1.200 itens é lido inteiro, e o sumário e a árvore de nomes que apontam para si mesmos não travam; o `importar-pdf` corta pelo sumário e dá os nomes ao sumário do EPUB, e com sumário que não serve corta como antes. (`tests/test_cabecalho_na_altura_do_numero.py`): o cabeçalho maior que o corpo na altura do número sai sem se repetir; com o número no pé, de outro tamanho, em duas páginas ou sem letra, fica; a linha do corpo na altura do número do pé fica; o carimbo de data e hora sai, e a data sem hora fica. (`tests/test_rotulo_em_portugues_e_espanhol.py`): a legenda, o quadro, a tabela, a "TABLA" e o "CUADRO" em negrito na letra do corpo saem; o rótulo em letra de título, a menção na letra do corpo, a que continua a frase, o número simples e o rótulo em inglês em negrito na letra do corpo ficam. (`tests/test_hifen_invisivel.py`): o U+00AD no meio da linha vira hífen, o do fim só no livro que o usa no meio em 3 linhas ou mais; o número partido na quebra volta inteiro, e a letra antes do hífen segue com espaço. (`tests/test_colaboradores_em_maiusculas.py`): a lista com o nome em maiúsculas sai; três autores com afiliação e o nome sem título acadêmico ficam | portão | o *Manica* volta a sair com capítulo falso, o cabeçalho, o rótulo, o hífen invisível ou a lista voltam a ser lidos, sai texto do corpo, ou muda o quadro do *Dalgalarrondo* |
 | Bibliografia pela letra e rótulo com a caixa trocada | testes (`tests/test_bibliografia_do_pdf.py`): 10 linhas de citação em letra menor e o título em negrito saem, registrados com a página; 9 ficam; a citação "ano;volume:página" conta; a linha sem citação no meio sai; o título em letra de título logo acima sai, e o que fica abaixo da lista na página não; a linha do corpo antes fica; a caixa em outra letra antes fica; o cabeçalho da página online entre as referências sai, e 4 linhas de outra letra partem o trecho; dois trechos de 9 ficam; a lista continua na página seguinte; as citações na letra do corpo, em outra família do tamanho do corpo e no PDF sem família ficam; do PDF de ponta a ponta, o resumo conta as linhas. (`tests/test_caixa_do_rotulo.py`): "FigurA 12.3", "QuAdro 13.1", "tAb. 4.2", "tAblA 6-1" voltam à caixa normal no parágrafo e na nota; a caixa normal, as maiúsculas, a palavra sem número, outra palavra e o título não mudam; do PDF de ponta a ponta, o resumo conta as palavras | portão | o *Miller* volta a sair com a prosa intercalada com as referências, sai linha do corpo, ou muda palavra que não é rótulo |
 | Camada do OCR e chamada colada | testes (`tests/test_camada_do_ocr.py`): a linha não pintada sai registrada com a página, cada página decide por si, e o resumo a conta; a página escaneada, a página em que a camada é a maior parte, o empate e o PDF escaneado inteiro ficam; o adaptador diz qual linha a página não pinta, o modo volta ao normal depois, e a linha que mistura não conta. (`tests/test_chamada_colada.py`): a chamada sai depois de "»", "!" e "?", depois de espaço antes de pontuação ou do fim da linha, depois de travessão, com a faixa no hífen invisível e com letra, e a lista depois de letra solta e de número; o número só depois de letra solta, de número ou do grau, e a chamada que abre a linha antes de pontuação, são duvidosos e só saem na página com 3 chamadas certas; o isótopo, a base 10, o algarismo só e o expoente no meio da fórmula ficam. (`tests/test_corrida_depois_da_tabela.py`): a figura e a outra tabela depois do fim da tabela, na mesma corrida, saem; a caixa sem rótulo fica. (`tests/test_nota_antes_da_bibliografia.py`): a nota antes do título da lista fica e a lista sai; a primeira referência em duas linhas, o cabeçalho em negrito no meio da lista e as referências antes de um subtítulo saem com ela. Cada guarda foi vista falhar com o seu mutante | portão | o resto de figura ou a chamada ficam, ou sai página escaneada, expoente ou caixa sem rótulo |
+| Lista de leitura logo antes da bibliografia | testes (`tests/test_lista_de_leitura_antes_da_bibliografia.py`): a lista na letra das citações, sob um título em letra de título, sai com o título, registrada com a página e o motivo dela, também na página anterior à da bibliografia; o subtítulo no meio sai; a caixa do corpo no meio (até 40 linhas) e a frase depois da última referência ficam; a lista sem citação, a nota depois da prosa, o título que encabeça prosa, a prosa entre o fim da lista e a bibliografia, mais de 40 linhas do corpo no meio, 4 linhas de outra letra (com ou sem linha do corpo entre elas), outra seção no caminho e a lista sem título nenhum antes não tiram nada; o título logo acima do da lista, de outra letra ou da mesma, fica; a lista longa que já saía não sai duas vezes; o título em letra de título da mesma família acima do subtítulo da bibliografia sai, e o de outra seção e o de outra família ficam; o resumo conta as duas linhas. a metade da lista entre dois trechos provados sai, sem a caixa do corpo, sem as frases das pontas e só se cita. Cada condição tem o mutante que um teste reprova (15 mutantes) | portão | a lista de leitura volta a ser lida numa reimportação, ou sai prosa na letra das citações |
 | A escuta ★ | rodar `importar-pdf` + `preparar` num PDF real em `livros/` e contar o que o `limpar` ainda precisa tirar | a cada mudança no conversor | a contagem sobe |
 
 Regra derivada no `AGENTS.md`: a biblioteca de PDF só entra em `adaptadores/`.
@@ -1765,3 +1904,6 @@ Autor: Mateus, com o Claude Code · Criado em: 2026-11-01 · Aprovado em: 2026-1
 A seção "Camada do OCR sobre as figuras e chamada colada" (2026-11-13) executa a decisão do
 Mateus do mesmo dia (entram o resto de figura do OCR e as chamadas coladas), levada pela sessão
 principal. Os sinais, os limiares e a correção da corrida depois da tabela vão à revisão dele.
+A seção "Lista de leitura logo antes da bibliografia" (2026-11-14) executa a decisão do Mateus de
+2026-11-13 (consertar a regressão das "Suggested Readings" numa filha), levada pela sessão
+principal. O sinal e os limiares vão à revisão dele.

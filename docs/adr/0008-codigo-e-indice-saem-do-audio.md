@@ -615,6 +615,9 @@ Palavras de `limpos/` contadas por espaço; a pasta `.earbook` antiga foi apagad
 
 - **A lista curta**, com menos de 10 citações de periódico na região: a "Suggested Readings" que
   a caixa "Key Points" parte ao meio, a lista de uma referência só.
+  **No livro que vem de PDF** (2026-11-14): a lista de leitura logo antes da bibliografia, na
+  letra dela, sai na página, com ela (ADR-0004, "Lista de leitura logo antes da bibliografia").
+  A regra daqui continua valendo para o EPUB que não veio do `importar-pdf`.
 - **A referência sem citação de periódico** no começo de uma região (o pedaço de título que abre
   um segmento do Bonica, sem número nem ano;volume) fica, se não estiver entre dois pedaços.
 - **A referência APA** ("Evans, E. (2003).") e a ABNT não são Vancouver; a ABNT sai pela regra

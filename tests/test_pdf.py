@@ -293,7 +293,7 @@ def test_falta_de_memoria_nao_vira_pdf_invalido(
     def paginas_sem_memoria(*_args: object, **_opcoes: object) -> Iterator[object]:
         return map(estoura, [None])
 
-    monkeypatch.setattr("earbook.adaptadores.pdf.extract_pages", paginas_sem_memoria)
+    monkeypatch.setattr("earbook.adaptadores.pdf.layouts_das_paginas", paginas_sem_memoria)
     pdf = montar_pdf(tmp_path / "grande.pdf", [[LinhaDeTeste("Texto.", 72, 700)]])
     with pytest.raises(MemoryError):
         _ = ler_paginas(pdf)

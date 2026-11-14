@@ -145,6 +145,7 @@ capítulo vazio fica fora do EPUB montado.
 - **O capítulo esvaziado por outra regra da limpeza** fica no EPUB, com o corpo vazio e o item
   no sumário. Estender a regra a ele é tirar a condição do motivo em `_sem_texto` e trocar uma
   asserção de `tests/test_codigo_e_indice.py` (`[[…], []]` por `[[…]]`): decisão do Mateus.
+  **Decidido no mesmo dia:** sai também (abaixo, "Todo capítulo sem texto fora do EPUB montado").
 - O link para o capítulo que saiu, fora do sumário (num `<a href>` do corpo de outro capítulo que
   o `montar` não troca, num trecho fora de segmento): o destino some e o epubcheck acusa o link
   quebrado. O `montar` já tira a marcação interna de todo segmento, link inclusive, e nenhum livro
@@ -154,6 +155,69 @@ capítulo vazio fica fora do EPUB montado.
   mantido e sai do livro com o `<li>`: continua contado em "segmentos" no resumo do `montar` e,
   na amostra, em "itens do sumário no original" (achado da code-review). Nenhum livro medido
   tem o `nav` no spine e capítulo declarado.
+
+### Todo capítulo sem texto fora do EPUB montado (2026-11-13)
+
+**Contexto.** A seção acima deixou no livro o capítulo que outra regra da limpeza esvaziou: o do
+índice remissivo que o EPUB marca, o que só tinha a página de direitos, o que era só bibliografia.
+Ele continuava no EPUB montado com o corpo vazio e o item no sumário, que é o mesmo defeito do
+capítulo declarado: o leitor lista "Index", que leva a uma página em branco. A regra geral tinha
+recuado só porque um teste existente cobrava o capítulo vazio. Decisão do Mateus (2026-11-13,
+levada pela sessão principal): estender a regra a todo capítulo sem texto, o que autoriza trocar
+aquela asserção, e só ela.
+
+| Opção | Ganha | Perde | Por que não |
+|---|---|---|---|
+| A. Ficar só com o declarado | nenhuma mudança | o capítulo do índice vazio continua no sumário | é o defeito que a seção acima consertou pela metade |
+| **B. Sai todo capítulo que tinha segmento e ficou sem nenhum em `limpos/`** | uma regra só, sem olhar o motivo; o livro montado só tem o que se ouve | o capítulo que uma regra esvaziou por engano some do livro montado em vez de aparecer vazio; o resumo do `montar` e o `limpeza.json` são onde se vê | — |
+| C. Uma lista de motivos que tiram o capítulo (índice, direitos, bibliografia, declarado) | o motivo novo não tira capítulo sem alguém decidir | a lista cresce a cada regra, e o capítulo vazio volta a cada regra esquecida | repete o defeito a cada regra nova |
+
+**Decisão (B).**
+- **Qual capítulo sai:** o que a limpeza esvaziou, qualquer que seja a regra. O `montar` o
+  reconhece pelo registro e pelo texto limpo: o capítulo tem ao menos um segmento em
+  `limpeza.json` (`dominio/fora_do_audio.capitulos_com_remocao`) e nenhum em `limpos/`. O motivo
+  não é mais olhado: o declarado no `preparar --sem-capitulo` é um caso da mesma regra.
+- **Vale nos três modos** (o livro pronto, o `--original` e o `--amostra`) e no livro adaptado:
+  o capítulo sem texto limpo não tem o que traduzir nem o que adaptar.
+- **O que não sai,** como antes: o capítulo que nunca teve segmento (a capa, a página só de
+  imagem), porque não foi a limpeza que o esvaziou; o arquivo que é o sumário do EPUB 3 (o item
+  `nav`); o capítulo que perdeu só parte do texto; na amostra, o capítulo que ainda não tem
+  tradução ou adaptação.
+- **O que o `montar` reescreve** não muda: o OPF, o `nav` e o `toc.ncx` sem o arquivo, como na
+  seção acima.
+- **O que o `montar` recusa:** o livro em que nenhum capítulo ficaria com texto, e o sumário que
+  ficaria sem item. A conta passou a ser a do texto: antes ela comparava os capítulos que saem
+  com todos os do livro, e o livro só com a capa (que nunca teve segmento, e fica) e capítulos
+  esvaziados era gravado sem nada para ouvir (R3 da revisão).
+- **Nada some calado:** o resumo do `montar` continua dizendo quantos capítulos ficaram de fora e
+  quais ("2 capítulos sem texto ficaram fora do EPUB: c006, c112"), e cada segmento deles está em
+  `limpeza.json`, com o motivo.
+- **O teste que muda** (autorizado pelo Mateus): em `tests/test_codigo_e_indice.py`,
+  `test_livro_montado_nao_tem_codigo_nem_indice` cobrava
+  `_textos_limpos(volta) == [["Veja o código:", "Depois do código."], []]` (o capítulo do índice
+  no livro montado, vazio) e passa a cobrar `== [["Veja o código:", "Depois do código."]]` (o
+  capítulo do índice fora do livro). Nenhum outro teste existente muda.
+
+**Medição (2026-11-14).** Nas pastas dos cinco livros prontos deste Mac (*Manica*, *Miller*,
+*Bonica*, *Practical*, PCDT), nenhum capítulo foi esvaziado por regra: só os 4 declarados do
+*Manica* estão sem texto. O *Manica* e o *Miller* montados de novo, das mesmas pastas, com este
+código, saem com os mesmos arquivos e o mesmo conteúdo dos que estão em `livros/prontos/` (111 e
+122 arquivos, 0 diferente). A regra muda o livro que tem índice remissivo marcado no EPUB, ou um
+arquivo só de direitos ou só de bibliografia.
+
+**O que fica (declarado).**
+- `capitulos_declarados` (`dominio/fora_do_audio.py`) deixa de ser usado pelo `montar` e fica,
+  coberto por dois testes existentes, que o processo não deixa apagar: diz quais capítulos saíram
+  por pedido, e não por regra.
+- O capítulo que a limpeza esvaziou **por engano** (uma regra com falso positivo que leve o
+  capítulo inteiro) sai do livro montado. Antes ele aparecia vazio no sumário; agora só o resumo
+  do `montar` ("capítulos sem texto") e o `limpeza.json` o mostram. O resumo é para ser lido.
+- **O texto fora de segmento** de um capítulo esvaziado (o texto solto, fora de bloco, que o
+  `preparar` avisa em "trechos fora de segmento") sai com o arquivo, sem registro: a pasta de
+  trabalho não guarda esse texto, e o `montar` não tem como saber dele. Já valia para o capítulo
+  declarado (ADR-0008). Nos quatro tratados e nos livros medidos, 0 trecho fora de segmento.
+- Os limites da seção acima continuam: o link do corpo de outro capítulo para o que saiu, o
+  `<meta refines>` órfão e a contagem do item do sumário quando o `nav` está no spine.
 
 ## Consequências
 
@@ -177,7 +241,8 @@ fica onde está, porque o fim do "capítulo" dela já é ela mesma.
 |---|---|---|---|
 | Nada some entre a origem e o livro montado | `conferir` antes de todo `montar` | `montar` (recusa) e testes | ID faltando, sobrando ou repetido |
 | O livro montado é lido pela esteira | teste de contrato: EPUB montado → `preparar` → textos e papéis esperados | portão | papel ou texto diferente |
-| O capítulo declarado fica fora do EPUB | testes (`tests/test_capitulo_sem_texto_fora_do_epub.py`): o arquivo sai do pacote, do manifesto, do spine, do `nav` e do `toc.ncx`, com os filhos de outro arquivo subindo um nível, a lista vazia e o `landmarks` vazio saindo, a referência do `<guide>` também, e o `playOrder` sem salto; vale no original e na amostra; o resumo e a `Montagem` dizem quais saíram; o livro montado volta pelo `preparar` só com os capítulos que se ouvem; o capítulo que nunca teve segmento, o `nav` no spine, o capítulo esvaziado por outro motivo e o capítulo sem tradução na amostra ficam; sem capítulo declarado o OPF e o sumário vão byte a byte; o livro em que nada ficaria e o sumário que ficaria vazio são recusados. O epubcheck, rodado à mão no livro montado | portão; epubcheck a cada livro | o capítulo vazio fica no livro, ou sai o que não foi declarado |
+| O capítulo declarado fica fora do EPUB | testes (`tests/test_capitulo_sem_texto_fora_do_epub.py`): o arquivo sai do pacote, do manifesto, do spine, do `nav` e do `toc.ncx`, com os filhos de outro arquivo subindo um nível, a lista vazia e o `landmarks` vazio saindo, a referência do `<guide>` também, e o `playOrder` sem salto; vale no original e na amostra; o resumo e a `Montagem` dizem quais saíram; o livro montado volta pelo `preparar` só com os capítulos que se ouvem; o capítulo que nunca teve segmento, o `nav` no spine e o capítulo sem tradução na amostra ficam; sem capítulo declarado o OPF e o sumário vão byte a byte; o livro em que nada ficaria e o sumário que ficaria vazio são recusados. O epubcheck, rodado à mão no livro montado | portão; epubcheck a cada livro | o capítulo vazio fica no livro, ou sai o que não foi declarado |
+| O capítulo que uma regra esvaziou fica fora do EPUB | testes (`tests/test_capitulo_esvaziado_fora_do_epub.py`): o capítulo do índice marcado sai do pacote, do manifesto, do spine e do sumário, no livro pronto, na tradução, no `--original` e no `--amostra`; sai junto com o declarado; a `Montagem` e o resumo dizem qual; o capítulo que perdeu só parte do texto fica; o livro que a limpeza esvaziou inteiro é recusado, também quando sobra a capa. `tests/test_codigo_e_indice.py`: o livro montado volta pelo `preparar` sem o capítulo do índice | portão | o capítulo vazio fica no livro, ou sai o que ainda tem texto |
 | Escuta ★ (manual) | ouvir o livro de `livros/prontos/` no ElevenReader | a cada mudança no `montar`; responsável: Mateus | tropeço audível |
 
 ## Notas
@@ -186,3 +251,5 @@ Autor: Mateus, com o Claude Code · Criado em: 2026-11-01 · Aprovado em: 2026-1
 A seção "Capítulo sem texto fora do EPUB montado" (2026-11-13) executa a decisão do Mateus do
 mesmo dia (o capítulo vazio fica fora do EPUB montado), levada pela sessão principal. O alcance
 (só o capítulo declarado no `--sem-capitulo`) e o mecanismo vão à revisão dele.
+A seção "Todo capítulo sem texto fora do EPUB montado" (2026-11-13) executa a decisão seguinte do
+Mateus, do mesmo dia: a regra vale para todo capítulo que a limpeza esvaziou.

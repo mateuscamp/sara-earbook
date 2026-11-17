@@ -52,6 +52,12 @@ A decisão está no [ADR-0001](docs/adr/0001-reescrever-com-claude-code-orquestr
   intercalar com ela. Sai com ele a lista de leitura sugerida que vem logo antes, na mesma letra
   e sob um título em letra de título, quando tem ao menos uma citação de periódico
   ([ADR-0004](docs/adr/0004-pdf-entra-como-comando-importar-pdf.md)).
+- No PDF, a seção de notas finais do fim do capítulo, em letra menor que a do corpo: cada nota
+  abre na margem com a frase do texto que comenta e dois-pontos ("global workspace theory:
+  Baars (1988); …"). Sai com o título quando tem 10 notas assim ou mais e 10 citações autor-ano
+  ou mais; a seção curta sai quando o título dela é o de 2 seções provadas. A nota de rodapé com
+  símbolo ("* This paper…") que vem depois fica e vai para o fim do capítulo
+  ([ADR-0004](docs/adr/0004-pdf-entra-como-comando-importar-pdf.md)).
 - O trecho que seria lido duas vezes (`<p>` dentro de `<blockquote>`).
 - A página de direitos autorais.
 - O bloco de código e o índice remissivo que o EPUB marca como tais. Sai também o parágrafo
@@ -304,6 +310,9 @@ autor do metadado do PDF (ou os de `--titulo` e `--autor`). O que ele faz:
   fica. A lista de leitura sugerida logo antes das referências, na letra delas, sai junto, com o
   título dela; a caixa em letra do corpo que o PDF grava no meio dela fica. O resumo conta as
   linhas de bibliografia e as de lista de leitura, cada uma na sua linha;
+- tira a seção de notas finais do capítulo, pela letra, pela margem e pela nota que abre com a
+  frase do texto e dois-pontos, com citação autor-ano; a nota de rodapé com símbolo que vem
+  depois fica. O resumo conta as linhas numa linha própria;
 - junta as linhas em parágrafos e devolve inteira a palavra partida no fim da linha;
 - acerta a caixa da palavra de rótulo que o versalete do PDF trocou nas menções ("No QuAdro
   13.1" vira "No Quadro 13.1"; "tAb. 4.2", "tab. 4.2"): só "figura", "fig.", "quadro", "tabela",

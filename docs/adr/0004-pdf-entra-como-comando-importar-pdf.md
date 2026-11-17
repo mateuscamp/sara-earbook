@@ -1866,6 +1866,110 @@ as pastas dos livros prontos no *Manica* (com os 4 capítulos declarados) e no *
   trecho provado por aquela (10 linhas de citação de periódico em letra menor que a do corpo).
 
 
+### Notas finais do capítulo (2026-11-17)
+
+**Contexto.** Decisão do Mateus (2026-11-17, levada pela sessão principal): a seção "Notes" do
+fim de cada capítulo do *Being You* (Anil Seth; PDF que o Calibre gerou de um EPUB) sai do áudio.
+São notas finais sem marcador no corpo, cada uma aberta pela frase do texto que comenta
+("global workspace theory: Baars (1988); Dehaene & Changeux (2011)…"): citação autor-ano e URL,
+lidas em voz alta no fim de cada capítulo. A nota de rodapé com símbolo, que o corpo chama ("to be
+a bat.*"), não está decidida: fica no fim do capítulo, como a regra das notas manda.
+
+**Medido** (HEAD `9663144`, páginas do *Being You* antes dos blocos):
+- Corpo em ArialMT de 15 pt; a seção inteira vem em 12,5 pt (abaixo de 0,85 do corpo: é nota
+  para `tipo_da_linha`). 15 títulos "Notes", um por capítulo com notas, todos numa linha só, na
+  margem do corpo (x = 84,5), em 12,5 pt.
+- Cada nota final abre na margem com a chave e dois-pontos, e continua com recuo pendente
+  (x = 100,7). Depois das notas finais vêm as notas de rodapé com símbolo ("*", "†", "‡", "§",
+  "¶", "||"), o símbolo em x = 106,3 a 108,4 e o texto em x = 125,7.
+- No `importar-pdf` de hoje, tudo isso vira bloco de nota, **um por página**: o título gruda na
+  primeira nota ("Notes global workspace theory: …"), e a última página de notas finais e a
+  primeira de rodapé viram um bloco só ("…they must be related. * This paper is one of…"). São
+  105 blocos de nota, com 15.702 palavras no `limpos/`.
+- Na mesma letra e com o mesmo recuo pendente: a bibliografia (p. 290–310), que abre a entrada
+  pelo autor ("Albright, T. D. (2012)."), e o índice (já tirado como página de remissões). Uma
+  fórmula em MathJax de 10,4 pt, com a explicação dela no recuo do rodapé, está no meio de uma
+  nota final ("The rule itself: Here's how Bayes' rule is normally written:", p. 124).
+
+| Alternativa | Ganha | Perde | Por que não |
+|---|---|---|---|
+| **A. Na página, antes dos blocos: a seção pela letra, pela margem e pela chave** (escolhida) | a nota final e a de rodapé ainda estão separadas (linha própria, recuo próprio, símbolo no começo); a regra não lê o título; segue o padrão da bibliografia pela letra | a remoção fica no registro do `importar-pdf` (página e motivo, contada no resumo), e não em `limpeza.json`; o EPUB do `importar-pdf` já sai sem as notas finais | — |
+| B. No `limpar`, pelo conteúdo do segmento de nota | registro em `limpeza.json`, com o ID | o segmento junta as duas notas por página: separá-las é trocar texto, um registro que o `limpar` não tem (o mesmo motivo da alternativa B de "Bibliografia pela letra"); o título "Notes" gruda na primeira nota | não separa o que deve ficar |
+| C. Na página, marcar a seção no EPUB (`<aside>` próprio) para o `limpar` tirar com registro | a separação de A e o registro de B | um papel novo de segmento, um contrato novo entre `importar-pdf` e `preparar`, e a decisão do que fazer com a marca padrão de nota final (`epub:type="endnotes"`) no EPUB de editora, que o Mateus não tomou (e o *Huxley*, cujas notas vão para o fim do capítulo, não está neste Mac para medir) | custo de fronteira nova para um livro; fica como saída se o registro em `limpeza.json` for exigido |
+| D. Pelo título "Notes" | pega todas, também as curtas | decide pelo texto do título, que o ADR-0008 proíbe; cada idioma pede uma palavra nova em `src/` | o título não é prova |
+
+**Decisão (A)** (`dominio/notas_finais.py`, depois da bibliografia em `_limpar`). Nas corridas de
+linhas fora da letra do corpo e da de título (as da bibliografia pela letra):
+- **Abre a seção** a linha que não é chave seguida de uma chave na mesma margem (meio ponto) e na
+  mesma letra: o título. **Chave** é o começo da linha com até 80 caracteres sem ".", "!", "?"
+  nem ":", e depois dois-pontos e espaço ("A computer that plays Go: Silver…"); "https://" não
+  tem o espaço, e "Fulano, A. (1988)." tem o ponto antes.
+- **Acaba a seção** na primeira linha que abre com símbolo de nota de rodapé ("*", "†", "‡", "§",
+  "¶", "#", "|"), na linha do tamanho do corpo (a de outra família, Arial contra ArialMT, não
+  fecha a corrida) ou no fim da corrida. O que vem no meio, também a fórmula em outra letra e a
+  explicação dela mais recuada, sai com a nota.
+- **Sai a seção provada:** 10 chaves ou mais, 10 citações autor-ano ou mais ("(1988)",
+  "(Searle, 1980)", "(Chalmers, 1995a)") e ao menos 3 de cada 4 linhas da margem abrindo com
+  chave. Medido: de 13 a 41 chaves, de 19 a 73 citações, de 31 em 31 a 36 em 37 linhas da
+  margem; na bibliografia, 49 em 444, e ela fica.
+- **Sai a seção curta** que abre com o título de 2 seções provadas ou mais, com 3 de cada 4
+  linhas da margem abrindo com chave: o livro prova o próprio título, sem que a regra o conheça
+  (3 no *Being You*, com 1, 2 e 3 notas, sob o "Notes" que 12 seções provadas repetem).
+- O motivo é "notas finais do capítulo: chave em frase e citação autor-ano", e o resumo conta as
+  linhas à parte ("N linhas de notas finais do capítulo tiradas: …").
+- **Fica** a nota de rodapé com símbolo, que continua indo para o fim do capítulo; a legenda
+  antes do título, em outra margem ("Fig. 7: …", p. 103); o glossário em letra menor ("termo:
+  definição", sem citação); a bibliografia.
+
+Decidido pelo Mateus (a seção sai); a camada, o sinal e os limiares são desta sessão e vão à
+revisão.
+
+**Medição (2026-11-17, depois do código).** Um PDF por vez; `importar-pdf` e `preparar` para
+pastas novas (`notas-<livro>-antes` no `9663144`, `notas-<livro>-depois` com a regra), o *Being
+You* com os 5 capítulos declarados pela sessão principal (`c001`, `c003`, `c020`, `c021`,
+`c023`).
+
+| | *Being You* | *Practical* | *Bonica* |
+|---|---|---|---|
+| Linhas de notas finais tiradas | 1.324, em 15 seções (as 15 "Notes") | 0 | 0 |
+| Blocos de nota no `importar-pdf` | 105 → 71 | 212 → 212 | 217 → 217 |
+| Blocos de título e de parágrafo | iguais (31 e 1.183) | iguais | iguais |
+| Hífen de fim de linha (tirados, mantidos) | 23, 72 → 21, 47 (os das linhas que saíram) | iguais | iguais |
+| Capítulos | 23 → 23 | 87 → 87 | 116 → 116 |
+| Segmentos de origem | 1.319 → 1.285 | 14.305 → 14.305 | 14.875 → 14.875 |
+| `limpos/`: segmentos e palavras | 932 → 898; 91.250 → **78.090** (−13.160) | idênticos | idênticos |
+| `limpeza.json` | idêntico | idêntico | idêntico |
+
+- **O que sai no *Being You*:** só segmentos de nota mudam. Saem 45 segmentos de nota de antes
+  e entram 11: as notas de rodapé com símbolo que vinham coladas no fim das notas finais da mesma
+  página ("…they must be related. * This paper…"), agora num segmento só delas. Nenhum parágrafo,
+  título ou capítulo muda. O que fica em nota são 45 segmentos, 2.542 palavras: as notas de rodapé
+  com símbolo, as 23 legendas "Fig. N:" e 4 epígrafes; restam nelas 5 citações autor-ano e 5 URLs,
+  todas do comentário do autor.
+- **Falsos positivos procurados:** as 15 seções abrem no título "Notes" e acabam na primeira
+  nota de rodapé com símbolo ou no título do capítulo seguinte (lidas uma a uma nas páginas); a
+  seção do `c016` não tem nota "*", e as "†", "‡", "§" e "¶" ficam. A bibliografia (p. 290–310),
+  com a mesma letra e o mesmo recuo, abre duas candidatas e as duas ficam (2 de 11 e 49 de 444
+  linhas da margem com chave). *Practical* e *Bonica*: a regra não tira nenhuma linha.
+  **Falsos positivos achados: 0.**
+
+**O que fica (declarado).**
+- **A seção sem título na letra das notas** (o título em letra de título fecha a corrida antes da
+  primeira chave): não abre, e é lida. Nenhum livro medido tem.
+- **A margem espelhada** (outro x nas páginas pares e ímpares): só contam as chaves na margem do
+  título, e a seção longa pode não se provar. O *Being You* tem a mesma margem em todas as
+  páginas.
+- **A linha de continuação que abre com símbolo** ("§ 230 of the Act…", "# of trials"): a seção
+  acaba ali, e as notas finais depois dela são lidas. Nenhuma no *Being You*.
+- **A linha solta na margem, logo antes de uma chave e antes do título** (o crédito de figura na
+  letra das notas): a seção abre nela, e ela sai junto. No *Being You*, as 15 seções abrem no
+  título.
+- **O registro** é o resumo do `importar-pdf`, e não `limpeza.json` (alternativa C, acima).
+- **A legenda "Fig. N:"** (23 no *Being You*) continua virando nota no fim do capítulo: a regra da
+  figura pela letra não reconhece "Fig.". O símbolo de nota no corpo ("to be a bat.*",
+  "neurons.†)", 48) continua lido. O hífen com espaço do *Being You* ("Jean- Dominique", "semi-
+  Englishman", "Co- Director") também. Os três ficam fora desta seção.
+
 ## Consequências
 
 **Ganha:** um comando a mais na mesma esteira, sem repositório novo. Os defeitos de conversão são atacados onde nascem.
@@ -1894,6 +1998,7 @@ as pastas dos livros prontos no *Manica* (com os 4 capítulos declarados) e no *
 | Bibliografia pela letra e rótulo com a caixa trocada | testes (`tests/test_bibliografia_do_pdf.py`): 10 linhas de citação em letra menor e o título em negrito saem, registrados com a página; 9 ficam; a citação "ano;volume:página" conta; a linha sem citação no meio sai; o título em letra de título logo acima sai, e o que fica abaixo da lista na página não; a linha do corpo antes fica; a caixa em outra letra antes fica; o cabeçalho da página online entre as referências sai, e 4 linhas de outra letra partem o trecho; dois trechos de 9 ficam; a lista continua na página seguinte; as citações na letra do corpo, em outra família do tamanho do corpo e no PDF sem família ficam; do PDF de ponta a ponta, o resumo conta as linhas. (`tests/test_caixa_do_rotulo.py`): "FigurA 12.3", "QuAdro 13.1", "tAb. 4.2", "tAblA 6-1" voltam à caixa normal no parágrafo e na nota; a caixa normal, as maiúsculas, a palavra sem número, outra palavra e o título não mudam; do PDF de ponta a ponta, o resumo conta as palavras | portão | o *Miller* volta a sair com a prosa intercalada com as referências, sai linha do corpo, ou muda palavra que não é rótulo |
 | Camada do OCR e chamada colada | testes (`tests/test_camada_do_ocr.py`): a linha não pintada sai registrada com a página, cada página decide por si, e o resumo a conta; a página escaneada, a página em que a camada é a maior parte, o empate e o PDF escaneado inteiro ficam; o adaptador diz qual linha a página não pinta, o modo volta ao normal depois, e a linha que mistura não conta. (`tests/test_chamada_colada.py`): a chamada sai depois de "»", "!" e "?", depois de espaço antes de pontuação ou do fim da linha, depois de travessão, com a faixa no hífen invisível e com letra, e a lista depois de letra solta e de número; o número só depois de letra solta, de número ou do grau, e a chamada que abre a linha antes de pontuação, são duvidosos e só saem na página com 3 chamadas certas; o isótopo, a base 10, o algarismo só e o expoente no meio da fórmula ficam. (`tests/test_corrida_depois_da_tabela.py`): a figura e a outra tabela depois do fim da tabela, na mesma corrida, saem; a caixa sem rótulo fica. (`tests/test_nota_antes_da_bibliografia.py`): a nota antes do título da lista fica e a lista sai; a primeira referência em duas linhas, o cabeçalho em negrito no meio da lista e as referências antes de um subtítulo saem com ela. Cada guarda foi vista falhar com o seu mutante | portão | o resto de figura ou a chamada ficam, ou sai página escaneada, expoente ou caixa sem rótulo |
 | Lista de leitura logo antes da bibliografia | testes (`tests/test_lista_de_leitura_antes_da_bibliografia.py`): a lista na letra das citações, sob um título em letra de título, sai com o título, registrada com a página e o motivo dela, também na página anterior à da bibliografia; o subtítulo no meio sai; a caixa do corpo no meio (até 40 linhas) e a frase depois da última referência ficam; a lista sem citação, a nota depois da prosa, o título que encabeça prosa, a prosa entre o fim da lista e a bibliografia, mais de 40 linhas do corpo no meio, 4 linhas de outra letra (com ou sem linha do corpo entre elas), outra seção no caminho e a lista sem título nenhum antes não tiram nada; o título logo acima do da lista, de outra letra ou da mesma, fica; a lista longa que já saía não sai duas vezes; o título em letra de título da mesma família acima do subtítulo da bibliografia sai, e o de outra seção e o de outra família ficam; o resumo conta as duas linhas. a metade da lista entre dois trechos provados sai, sem a caixa do corpo, sem as frases das pontas e só se cita. Cada condição tem o mutante que um teste reprova (15 mutantes) | portão | a lista de leitura volta a ser lida numa reimportação, ou sai prosa na letra das citações |
+| Notas finais do capítulo | testes (`tests/test_notas_finais.py`): a seção provada sai com o título, registrada com a página e o motivo, também a que atravessa a página e a que tem fórmula em outra letra e a explicação dela mais recuada no meio; as notas de rodapé com símbolo depois dela, o corpo e a legenda antes do título ficam; a seção para na linha do tamanho do corpo; 9 chaves, chaves sem citação autor-ano, a bibliografia com poucas chaves na margem e o livro sem família de letra não tiram nada; a seção curta sai com o título de 2 seções provadas, e fica com o de uma só, com outro título ou com poucas chaves na margem; a linha em outra margem ou em outra letra antes das chaves não é título, e a legenda seguida de nota solta não engole a seção depois dela; as notas de uma linha sem título ficam; o resumo do `importar-pdf` conta as linhas. Cada condição tem o mutante que um teste reprova (13 mutantes) | portão | as notas finais voltam a ser lidas, ou sai nota de rodapé com símbolo, legenda ou bibliografia |
 | A escuta ★ | rodar `importar-pdf` + `preparar` num PDF real em `livros/` e contar o que o `limpar` ainda precisa tirar | a cada mudança no conversor | a contagem sobe |
 
 Regra derivada no `AGENTS.md`: a biblioteca de PDF só entra em `adaptadores/`.
@@ -1907,3 +2012,6 @@ principal. Os sinais, os limiares e a correção da corrida depois da tabela vã
 A seção "Lista de leitura logo antes da bibliografia" (2026-11-14) executa a decisão do Mateus de
 2026-11-13 (consertar a regressão das "Suggested Readings" numa filha), levada pela sessão
 principal. O sinal e os limiares vão à revisão dele.
+A seção "Notas finais do capítulo" (2026-11-17) executa a decisão do Mateus do mesmo dia (a seção
+"Notes" do *Being You* sai do áudio), levada pela sessão principal. A camada, o sinal e os limiares
+vão à revisão dele.

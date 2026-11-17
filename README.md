@@ -326,6 +326,9 @@ autor do metadado do PDF (ou os de `--titulo` e `--autor`). O que ele faz:
 - deixa no lugar o quadro do livro didático. Ele abre no rótulo "Quadro 5.1" ou "Tabela 5.1" em
   letra de título (1,2 vez a do texto ou mais), e o conteúdo dele, em letra menor, é lido como parágrafo, e não como nota no fim do
   capítulo. Ele entra depois da frase que interrompe, e a frase volta a ser uma só;
+- lê a linha toda em negrito, do tamanho do texto, como subtítulo; no livro em que essa linha
+  tem a medida da linha comum (a prosa em negrito de um romance, como a voz do Corvo no *Kafka à
+  beira-mar*), o negrito é ênfase de trechos inteiros e fica no parágrafo;
 - lê o subtítulo em versalete como título, e não como nota no fim do capítulo: o feito à mão
   (maiúsculas de dois tamanhos) e o de fonte própria (o nome da fonte termina em "SC", como
   "Archer-Medium-SC700");

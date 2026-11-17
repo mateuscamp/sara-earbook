@@ -181,7 +181,7 @@ class _Montador:
     def _tipo(self, linha: Linha) -> tuple[TipoDeBloco, bool]:
         """O tipo da linha, com o versalete que continua e o quadro, e se ela fecha o quadro."""
         medidas = self._medidas
-        tipo = tipo_da_linha(linha, medidas.corpo, negrito_destaca=medidas.negrito_destaca)
+        tipo = tipo_da_linha(linha, medidas)
         return self._no_quadro_ou_fora(linha, self._continua_o_versalete(linha, tipo))
 
     def _continua_o_versalete(self, linha: Linha, tipo: TipoDeBloco) -> TipoDeBloco:

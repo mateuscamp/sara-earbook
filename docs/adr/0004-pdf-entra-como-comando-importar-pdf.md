@@ -196,7 +196,7 @@ Correção da pós-auditoria (2026-11-01): **N1**, as duas regras (item de lista
 
 Ficam como limite (o verbete do glossário, que ficava abaixo do piso e colado na definição, foi resolvido em "Verbete em negrito abaixo do corpo"):
 - o negrito que não vem no nome da fonte (o falso negrito desenhado com contorno, `Tr 2`, ou a família TeX `CMBX`) não é reconhecido, e o subtítulo continua colado;
-- uma linha inteira de ênfase em negrito no meio do parágrafo o partiria em três; não apareceu nos livros medidos. A guarda óbvia (a linha de antes fechou a frase) quebraria os 36 subtítulos do apêndice do Competente, que vêm depois de linha terminada em URL (revisão nº 3);
+- uma linha inteira de ênfase em negrito no meio do parágrafo o partiria em três; não apareceu nos livros medidos. Apareceu no *Kafka à beira-mar*, com o livro inteiro de prosa em negrito, resolvido em "Prosa em negrito do tamanho do corpo" (2026-11-17); a linha de ênfase solta num livro de subtítulos curtos continua partindo o parágrafo. A guarda óbvia (a linha de antes fechou a frase) quebraria os 36 subtítulos do apêndice do Competente, que vêm depois de linha terminada em URL (revisão nº 3);
 - um PDF sem título grande em 3 páginas ou mais, como um artigo com o título só na primeira, passa a cortar capítulo em cada subtítulo em negrito do corpo, onde antes saía um capítulo só (revisão nº 4);
 - o subtítulo com um glifo de fonte de reserva (aspa curva, seta, travessão de outra fonte) não é todo negrito e continua colado (revisão nº 7); e a regex só conhece o estilo por extenso depois de `-` ou `,`: abreviação (`-Bd`, `-Blk`, `-Sb`) e nome com espaço (`Arial Bold`, de `#20`) ficam de fora (revisão nº 8);
 - o nível sai da ordem dos tamanhos no livro todo, até o `h6`: no Competente, a seção de 12 pt e o subtítulo de 10,5 caem os dois no `h6`. O ouvido não percebe; a tela perderia a hierarquia.
@@ -1970,6 +1970,101 @@ You* com os 5 capítulos declarados pela sessão principal (`c001`, `c003`, `c02
   "neurons.†)", 48) continua lido. O hífen com espaço do *Being You* ("Jean- Dominique", "semi-
   Englishman", "Co- Director") também. Os três ficam fora desta seção.
 
+### Prosa em negrito do tamanho do corpo (2026-11-17)
+
+**Contexto.** O primeiro romance da esteira, *Kafka à beira-mar* (Murakami, PDF em pt-BR da
+Objetiva, 448 páginas), saiu do `importar-pdf` com 64 títulos no meio dos capítulos, muitos com
+centenas de caracteres: a voz do menino chamado Corvo, as perguntas do interrogador nos
+relatórios militares (`c005`, `c007`, `c011`) e as passagens na segunda pessoa (`c028`, `c032`,
+`c036`, `c042`, `c044`). Às vezes a frase se partia entre o título e o parágrafo seguinte
+(`c018-s0006` "…Esta é a sua imagem" | `c018-s0007` "real? — diz atônito…"), e o `limpar` via
+"capitular perdida?" no começo em minúscula (`c007-s0003`, `c018-s0007`).
+
+**Medido.** O corpo do Kafka é Times de 6 pt (`TimesNewRomanPSMT`), e esses trechos vêm em
+`TimesNewRomanPS-BoldMT` de 6 pt: negrito, e não itálico, no tamanho do corpo, em linhas
+cheias como as do texto. É a regra do subtítulo do Competente ("Subtítulo em negrito do tamanho
+do corpo"), que já listava o limite: "uma linha inteira de ênfase em negrito no meio do
+parágrafo o partiria em três; não apareceu nos livros medidos". Apareceu. A linha toda em
+negrito da faixa do subtítulo (do corpo menos 0,5 pt a 1,2 vez o corpo), contra a linha comum
+do tamanho do corpo, em letras por linha:
+
+| Livro | Linhas em negrito da faixa | Letras (mediana) | Linha comum (mediana) | Razão |
+|---|---|---|---|---|
+| *Kafka à beira-mar* | 330 | 73 | 69 | **1,06** |
+| *Bonica* | 4.462 | 23 | 69 | 0,33 |
+| *Hard Parts* | 170 | 12 | 80 | 0,15 |
+| *Manica* | 7.379 | 8 | 59 | 0,14 |
+| *Dalgalarrondo* | 0 | — | 38 | — |
+
+O *Miller* e o *Practical* não foram medidos à parte (a leitura do Miller caiu no meio da troca
+de assinatura do `tipo_da_linha`, e a do Practical ficou de fora pelo tempo); o `importar-pdf`
+deles sai igual, o que mostra que a regra não disparou.
+
+O negrito de subtítulo é curto (o nome da seção, o cabeçalho de tabela); o de prosa tem a
+medida da linha comum. A pergunta é do livro, e não da linha, como a do corpo em negrito
+(`corpo_em_negrito`, revisão nº 1): uma linha de ênfase no meio do parágrafo se parece com um
+subtítulo de duas linhas, mas um livro inteiro de ênfase não se parece com um livro de
+subtítulos.
+
+**Decisão.** No livro em que a mediana de letras da linha toda em negrito da faixa do subtítulo
+é 0,8 da mediana da linha comum do corpo ou mais (`negrito_em_prosa`, em
+`dominio/tipo_da_linha.py`), o negrito não destaca subtítulo: a linha em negrito é parágrafo,
+quebra como ele (recuo, vão, item de lista) e não é verbete. O limiar fica entre o 1,06 do Kafka
+e o maior dos livros técnicos (0,15), longe dos dois. A exceção é a linha em negrito toda em
+maiúsculas, com ao menos uma letra e sem fechar a frase, que continua título: a manchete do jornal ("CHUVA DE
+PEIXES DESABA DO FIRMAMENTO", centrada, colava no subtítulo da notícia logo abaixo), o
+"RELATÓRIO DO SERVIÇO DE INTELIGÊNCIA MILITAR (MIS) DO EXÉRCITO AMERICANO" e o "DADOS DE
+COPYRIGHT". No livro de corpo em negrito, nem ela é título. A frase que passa do negrito para a
+letra comum segue num parágrafo só, porque nenhuma das duas linhas abre bloco.
+
+**Regressão** (`importar-pdf` e `preparar`, um livro por vez; o "antes" é a `regressao4` do
+HEAD `0a2f5d5`, igual ao `9663144` no `importar-pdf`, ou, no Hard Parts e no Dalgalarrondo, o
+mesmo código com a regra desligada; no Kafka, o EPUB que a sessão principal importou no `9663144`,
+guardado em `livros/trabalho/kafka-a-beira-mar.antes.epub`):
+
+| Livro | Títulos | Blocos | Palavras do EPUB | `preparar` |
+|---|---|---|---|---|
+| *Kafka à beira-mar* | **66 → 6** | 5.266 → 5.268 | 194.681 = | suspeitos 2 → 0 (as "capitulares perdidas" eram a frase partida); junções 58 = 58; o resto, só os 4 destaques do ADR-0008 |
+| *Hard Parts* | 375 = | 3.213 = | 106.951 = | EPUB idêntico |
+| *Dalgalarrondo* | 259 = | 4.678 = | 166.131 = | EPUB idêntico |
+| *Manica* | 4.286 = | 20.959 = | 984.820 = | EPUB e `limpos/` idênticos |
+| *Miller* | 5.739 = | 26.992 = | 2.415.232 = | EPUB, `limpos/` e `limpeza.json` idênticos |
+| *Bonica* | 3.644 = | 14.875 = | 1.235.132 = | EPUB, `limpos/` e `limpeza.json` idênticos |
+| *Practical* | 3.057 = | 14.305 = | 820.693 = | EPUB, `limpos/` e `limpeza.json` idênticos |
+
+No Kafka, os 6 títulos que ficam são os de verdade: "DADOS DE COPYRIGHT" (`c001`, a página
+do Le Livros), os três "RELATÓRIO DO SERVIÇO DE INTELIGÊNCIA MILITAR…" e as duas manchetes.
+Os 64 trechos que eram título voltam a parágrafo, e a frase do Corvo sai inteira: "…Esta é a
+sua imagem real? — diz atônito o menino chamado Corvo…".
+
+**O que fica:**
+- **o corte do capítulo 2 do Kafka anda 4 parágrafos:** a página 21, que o sumário interno abre
+  como capítulo, começa por "Este documento, de classificação ultra-secreta…" e só depois tem o
+  "RELATÓRIO…", agora o primeiro título dela. Pela regra do corte ("o que vem antes do primeiro
+  título da página é o fim do capítulo anterior", "Capítulos pelo sumário interno do PDF", com
+  teste), os 4 parágrafos (194 palavras, de `c004-s0031` em diante) fecham o `c004` em vez de
+  abrir o `c005`. A ordem da leitura não muda; muda o ponto em que o sumário do EPUB leva. Antes,
+  a página começava por um título (a prosa em negrito), e o corte acertava por acaso. Mudar a
+  regra do corte é decisão à parte: ela tem teste e 4 casos medidos no *Manica*;
+- **a largura da coluna entra na razão:** a conta é em letras, e num livro de colunas estreitas
+  (o Dalgalarrondo tem 38 letras por linha) um subtítulo em negrito de 30 letras daria perto de
+  0,8. Não há caso nos livros medidos; uma régua pela geometria (a linha que vai até a margem da
+  coluna) seria a saída;
+- **as outras regras que leem o negrito como título** (o título do rótulo do quadro, em
+  `tabelas_e_figuras`, e o da bibliografia, em `bibliografia_do_pdf`) continuam perguntando só
+  pelo corpo em negrito. No Kafka não há rótulo nem bibliografia;
+- **a linha de ênfase em negrito solta num livro de subtítulos** continua partindo o parágrafo,
+  como no limite de 2026-11-01;
+- **a linha em maiúsculas que fecha frase** ("— NÃO!", "EUA.") e a **sem letra** ("* * *") são
+  parágrafo no livro de prosa em negrito (code-review e code-audit); a manchete com ponto final
+  sairia como parágrafo.
+
+Testes (`tests/test_blocos_subtitulo.py`): a prosa em negrito do tamanho do corpo é parágrafo; a
+frase que passa do negrito para a letra comum segue num parágrafo só; a manchete em maiúsculas
+continua título; no livro de corpo em negrito, nem a linha em maiúsculas é título; a fala em
+maiúsculas que fecha frase e a linha sem letra seguem parágrafo; um trecho longo em negrito
+num livro de subtítulos não apaga os subtítulos, e a decisão é pela mediana, não pela média.
+
 ## Consequências
 
 **Ganha:** um comando a mais na mesma esteira, sem repositório novo. Os defeitos de conversão são atacados onde nascem.
@@ -1999,6 +2094,7 @@ You* com os 5 capítulos declarados pela sessão principal (`c001`, `c003`, `c02
 | Camada do OCR e chamada colada | testes (`tests/test_camada_do_ocr.py`): a linha não pintada sai registrada com a página, cada página decide por si, e o resumo a conta; a página escaneada, a página em que a camada é a maior parte, o empate e o PDF escaneado inteiro ficam; o adaptador diz qual linha a página não pinta, o modo volta ao normal depois, e a linha que mistura não conta. (`tests/test_chamada_colada.py`): a chamada sai depois de "»", "!" e "?", depois de espaço antes de pontuação ou do fim da linha, depois de travessão, com a faixa no hífen invisível e com letra, e a lista depois de letra solta e de número; o número só depois de letra solta, de número ou do grau, e a chamada que abre a linha antes de pontuação, são duvidosos e só saem na página com 3 chamadas certas; o isótopo, a base 10, o algarismo só e o expoente no meio da fórmula ficam. (`tests/test_corrida_depois_da_tabela.py`): a figura e a outra tabela depois do fim da tabela, na mesma corrida, saem; a caixa sem rótulo fica. (`tests/test_nota_antes_da_bibliografia.py`): a nota antes do título da lista fica e a lista sai; a primeira referência em duas linhas, o cabeçalho em negrito no meio da lista e as referências antes de um subtítulo saem com ela. Cada guarda foi vista falhar com o seu mutante | portão | o resto de figura ou a chamada ficam, ou sai página escaneada, expoente ou caixa sem rótulo |
 | Lista de leitura logo antes da bibliografia | testes (`tests/test_lista_de_leitura_antes_da_bibliografia.py`): a lista na letra das citações, sob um título em letra de título, sai com o título, registrada com a página e o motivo dela, também na página anterior à da bibliografia; o subtítulo no meio sai; a caixa do corpo no meio (até 40 linhas) e a frase depois da última referência ficam; a lista sem citação, a nota depois da prosa, o título que encabeça prosa, a prosa entre o fim da lista e a bibliografia, mais de 40 linhas do corpo no meio, 4 linhas de outra letra (com ou sem linha do corpo entre elas), outra seção no caminho e a lista sem título nenhum antes não tiram nada; o título logo acima do da lista, de outra letra ou da mesma, fica; a lista longa que já saía não sai duas vezes; o título em letra de título da mesma família acima do subtítulo da bibliografia sai, e o de outra seção e o de outra família ficam; o resumo conta as duas linhas. a metade da lista entre dois trechos provados sai, sem a caixa do corpo, sem as frases das pontas e só se cita. Cada condição tem o mutante que um teste reprova (15 mutantes) | portão | a lista de leitura volta a ser lida numa reimportação, ou sai prosa na letra das citações |
 | Notas finais do capítulo | testes (`tests/test_notas_finais.py`): a seção provada sai com o título, registrada com a página e o motivo, também a que atravessa a página e a que tem fórmula em outra letra e a explicação dela mais recuada no meio; as notas de rodapé com símbolo depois dela, o corpo e a legenda antes do título ficam; a seção para na linha do tamanho do corpo; 9 chaves, chaves sem citação autor-ano, a bibliografia com poucas chaves na margem e o livro sem família de letra não tiram nada; a seção curta sai com o título de 2 seções provadas, e fica com o de uma só, com outro título ou com poucas chaves na margem; a linha em outra margem ou em outra letra antes das chaves não é título, e a legenda seguida de nota solta não engole a seção depois dela; as notas de uma linha sem título ficam; o resumo do `importar-pdf` conta as linhas. Cada condição tem o mutante que um teste reprova (13 mutantes) | portão | as notas finais voltam a ser lidas, ou sai nota de rodapé com símbolo, legenda ou bibliografia |
+| Prosa em negrito do tamanho do corpo | testes (`tests/test_blocos_subtitulo.py`): a prosa em negrito da medida da linha comum é parágrafo, e a frase que passa para a letra comum segue num parágrafo só; a manchete em maiúsculas continua título, a fala em maiúsculas que fecha frase e a linha sem letra não; no corpo em negrito, nada é título; o trecho longo em negrito não apaga os subtítulos, pela mediana | portão | o Kafka volta a ter prosa como título, ou um livro técnico perde subtítulo |
 | A escuta ★ | rodar `importar-pdf` + `preparar` num PDF real em `livros/` e contar o que o `limpar` ainda precisa tirar | a cada mudança no conversor | a contagem sobe |
 
 Regra derivada no `AGENTS.md`: a biblioteca de PDF só entra em `adaptadores/`.

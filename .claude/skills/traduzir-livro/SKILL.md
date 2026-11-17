@@ -1,19 +1,38 @@
 ---
 name: traduzir-livro
-description: Roteiro da sessão que traduz um livro inteiro do earbook do inglês para o pt-BR - glossário, decisões do livro, amostra só quando a escuta decide, estimativa de custo, divisão em tradutores paralelos, rodada de correção, montagem em livros/prontos, epubcheck e roteiro de escuta (ADR-0006 e ADR-0007). Use quando o Mateus pedir para traduzir um livro, continuar uma tradução, distribuir os lotes, estimar o custo de uma tradução ou montar o roteiro de escuta.
+description: Roteiro da sessão que traduz um livro inteiro do earbook do inglês ou do espanhol para o pt-BR - glossário, decisões do livro, amostra só quando a escuta decide, estimativa de custo, divisão em tradutores paralelos, rodada de correção, montagem em livros/prontos, epubcheck e roteiro de escuta (ADR-0006, ADR-0007 e ADR-0013). Use quando o Mateus pedir para traduzir um livro, continuar uma tradução, distribuir os lotes, estimar o custo de uma tradução ou montar o roteiro de escuta.
 ---
 
 # Traduzir um livro
 
-O passo a passo da sessão que leva um livro em inglês de `livros/trabalho/<nome>.earbook` até
-`livros/prontos/<nome>.pronto.epub`. Quem traduz é o subagente `tradutor`
-(`.claude/agents/tradutor.md`). O Python exporta, confere e monta, e nunca chama o LLM
+O passo a passo da sessão que leva um livro em inglês ou em espanhol de
+`livros/trabalho/<nome>.earbook` até `livros/prontos/<nome>.pronto.epub`. Quem traduz é o
+subagente `tradutor` (`.claude/agents/tradutor.md`), no livro em inglês, ou o `tradutor-es`
+(`.claude/agents/tradutor-es.md`), no livro em espanhol. O Python exporta, confere e monta, e nunca chama o LLM
 (ADR-0001).
 
 Antes de começar: o livro já passou pelo `preparar`. Se veio de PDF, passou pelo `importar-pdf`
 e o Mateus ouviu o `montar --original` (passo 3 do "Livro novo" no `AGENTS.md`). A capitular
 deslocada já foi corrigida no `preparar` (ADR-0007). Se o resumo listar suspeita de capitular,
 ela é a que o livro não provou: decida com o Mateus antes de traduzir.
+
+## Livro em espanhol (ADR-0013)
+
+O caminho é o mesmo, com quatro diferenças:
+
+- **O agente** é o `tradutor-es`: no brief do passo 5, `tradutor-es.md` no lugar de
+  `tradutor.md`. Ele é novo, então a amostra volta (uma escuta), num trecho que cubra sigla,
+  fármaco, título com a caixa trocada e falso amigo.
+- **O glossário** do tratado médico é de sigla, fármaco e termo clínico, não de nome próprio.
+  Parta de `siglas.json` (a sigla, as vezes, o primeiro ID e o extenso que o livro dá) e dos
+  fármacos mais frequentes. A régua é o *Manica* (`livros/trabalho/manica-anestesiologia.earbook`,
+  pt-BR): cada termo entra na forma que o Manica usa, contada nos `limpos/` dele ("fentanil" 290
+  vezes, "fentanila" nenhuma). O que o Manica não tem vai para `decisoes.md`, com o antes e o
+  depois. No glossário entra só forma fixa; o termo que flexiona mora em `decisoes.md`.
+- **O `conferir`** acusa o texto que ficou em espanhol ("parece espanhol", "igual ao original,
+  em espanhol"). A língua sem lista de palavras funcionais (francês, alemão) é recusada pelo
+  `traduzir`.
+- **O custo** é o do livro técnico (passo 4).
 
 ## 1. Exportar
 
@@ -22,12 +41,13 @@ uv run earbook traduzir livros/trabalho/<nome>.earbook
 ```
 
 A saída dá, por capítulo, os segmentos, os lotes pendentes e as **palavras pendentes**. Ela dá
-também os caminhos do glossário, dos candidatos a nome (`nomes.json`) e de `decisoes.md`, que o
-comando cria com as seções em branco. Rodar de novo não refaz nada.
+também os caminhos do glossário, dos candidatos a nome (`nomes.json`), das siglas candidatas
+(`siglas.json`) e de `decisoes.md`, que o comando cria com as seções em branco. Rodar de novo não refaz nada.
 
 ## 2. Glossário
 
-- Monte `glossario.json` a partir de `nomes.json`, antes de qualquer tradução.
+- Monte `glossario.json` a partir de `nomes.json` e de `siglas.json`, antes de qualquer
+  tradução. No livro em espanhol, pela régua do Manica (acima).
 - Use a política de nomes do livro. No Tides, a localização oficial pt-BR da Blizzard, pesquisada
   no Wowhead em português, com a fonte no campo `nota`.
 - A fonte bloqueia depois de umas 40 consultas: priorize os nomes mais frequentes.
@@ -52,7 +72,8 @@ O brief não copia nada disso: o tradutor lê `decisoes.md`.
 Desde 2026-11-02 (pedido do Mateus, ADR-0006), a escuta é do livro pronto, pelo roteiro do
 passo 9, e a amostra não é o caminho padrão. Ela volta quando:
 
-- o `.claude/agents/tradutor.md` mudou (a régua é a amostra do Huxley, pelo `AGENTS.md`);
+- o `.claude/agents/tradutor.md` mudou (a régua é a amostra do Huxley, pelo `AGENTS.md`), ou o
+  `tradutor-es.md` é novo ou mudou (ADR-0013);
 - o livro traz uma escolha que só o ouvido julga e nenhum livro anterior decidiu: dialeto,
   registro falado, um jeito novo de a voz ler código, sigla ou número.
 
@@ -96,7 +117,7 @@ espere o sim.
 
 ## 5. Distribuir
 
-- Um `tradutor` por capítulo, todos em paralelo, numa mensagem só.
+- Um `tradutor` (ou `tradutor-es`) por capítulo, todos em paralelo, numa mensagem só.
 - O capítulo menor que um lote (~2 mil palavras) vai junto com outro no mesmo tradutor.
 - O "capítulo" é um arquivo do spine, e um arquivo pode juntar vários capítulos do livro: o maior
   define o tempo.

@@ -1,7 +1,8 @@
 # earbook
 
 Prepara livros para **ouvir** no ElevenReader. Tira do EPUB o que o leitor de voz leria e não é
-do livro e, quando o livro é em inglês, traduz para pt-BR. O livro didático em português pode ser
+do livro e, quando o livro é em inglês ou em espanhol, traduz para pt-BR
+([ADR-0013](docs/adr/0013-traduzir-do-espanhol.md)). O livro didático em português pode ser
 adaptado para o ouvido: a lista vira frase, o Quadro vira parágrafo e a citação sai
 ([ADR-0009](docs/adr/0009-adaptar-reescreve-por-grupo-e-o-conferir-cobra-a-fidelidade.md)). PDF com camada de texto entra pelo
 comando `importar-pdf` ([ADR-0004](docs/adr/0004-pdf-entra-como-comando-importar-pdf.md)).
@@ -179,16 +180,23 @@ uv run earbook traduzir livro.earbook
 
 O `traduzir` divide cada capítulo do texto limpo em lotes de até ~2 mil palavras (`--palavras`)
 e grava o pedido de cada lote em `pedidos/`. Ele lista em `nomes.json` os candidatos a nome
-próprio que ainda não estão no glossário e cria `decisoes.md`, para as decisões do livro. Rodar
-de novo não refaz nada: é assim que se retoma
+próprio e em `siglas.json` as siglas, os dois só com o que ainda não está no glossário, e cria
+`decisoes.md`, para as decisões do livro. Rodar de novo não refaz nada: é assim que se retoma
 ([ADR-0006](docs/adr/0006-traduzir-por-lote-com-pedido-e-glossario.md)).
+
+O livro em inglês e o em espanhol se traduzem. O de outra língua (francês, alemão) é recusado,
+com o idioma na mensagem: o `conferir` só sabe achar o texto que ficou sem tradução pelas
+palavras funcionais da língua do original, e elas estão medidas só para o inglês e o espanhol
+([ADR-0013](docs/adr/0013-traduzir-do-espanhol.md)).
 
 Quem traduz é o Claude Code. O roteiro está na skill
 [`traduzir-livro`](.claude/skills/traduzir-livro/SKILL.md), em quatro passos:
 
 1. o glossário (`glossario.json`);
 2. as decisões do livro;
-3. um subagente [`tradutor`](.claude/agents/tradutor.md) por capítulo, em paralelo;
+3. um subagente por capítulo, em paralelo: o [`tradutor`](.claude/agents/tradutor.md) no livro
+   em inglês e o [`tradutor-es`](.claude/agents/tradutor-es.md) no livro em espanhol, que tem o
+   glossário de siglas e fármacos na forma do tratado brasileiro;
 4. a rodada de correção.
 
 Cada tradutor grava a resposta do lote em `traduzidos/`. O termo que ele decidiu fora do
@@ -196,7 +204,7 @@ glossário vai para `termos/`.
 
 No livro em tradução, o `conferir` cobra mais quatro coisas:
 - cada segmento traduzido uma vez;
-- nenhum texto que ficou em inglês;
+- nenhum texto que ficou na língua do original ("parece inglês", "parece espanhol");
 - cada nome e termo do glossário traduzido sempre do mesmo jeito;
 - nenhuma tradução velha, isto é, de um texto de origem que mudou depois do pedido.
 

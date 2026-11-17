@@ -17,6 +17,7 @@ from earbook.comandos.traduzir import (
     TraducaoDesnecessariaError,
     traduzir,
 )
+from earbook.dominio.lingua_do_original import LinguaSemListaError
 from tests.livro_de_teste import montar_epub
 
 CAPITULO_UM = (
@@ -89,6 +90,7 @@ def test_cli_traduzir_diz_o_que_falta_e_onde_gravar(
     assert "0 de 5 segmentos traduzidos" in saida
     assert "c001: 0 de 3; pendentes: c001-l001, c001-l002" in saida
     assert str(pasta / "traduzidos") in saida
+    assert f"siglas fora do glossário em {trabalho.caminho_das_siglas(pasta)}" in saida
 
 
 def test_livro_de_idioma_indefinido_pede_o_idioma(tmp_path: Path) -> None:
@@ -124,3 +126,37 @@ def test_pedido_apagado_volta_com_numero_novo_e_nao_casa_com_a_resposta_velha(
     _responder(pasta, "c002-l001", {"c002-s0001": "Dois", "c002-s0002": "O fim."})
     trabalho.caminho_do_pedido(pasta, "c002-l001").unlink()
     assert traduzir(pasta).capitulos[1].pendentes == ("c002-l002",)
+
+
+def test_lingua_sem_lista_de_palavras_funcionais_e_recusada_com_o_idioma(tmp_path: Path) -> None:
+    # ADR-0013: sem a lista, o `conferir` não acharia o texto que ficou em francês.
+    epub = montar_epub(tmp_path / "livro.epub", {"a.xhtml": "<p>Le texte.</p>"}, idioma="fr")
+    pasta = tmp_path / "livro.earbook"
+    _ = preparar(epub, pasta)
+    with pytest.raises(LinguaSemListaError, match=r"'fr'"):
+        _ = traduzir(pasta)
+    assert not (pasta / "pedidos").exists()
+
+
+def test_siglas_candidatas_vao_para_siglas_json(tmp_path: Path) -> None:
+    capitulo = (
+        "<p>El síndrome del distrés respiratorio agudo (SDRA) es grave.</p>"
+        "<p>En el SDRA, la ventilación protectora reduce la mortalidad.</p>"
+    )
+    epub = montar_epub(tmp_path / "livro.epub", {"a.xhtml": capitulo}, idioma="es")
+    pasta = tmp_path / "livro.earbook"
+    _ = preparar(epub, pasta)
+    exportacao = traduzir(pasta)
+    assert trabalho.caminho_das_siglas(pasta).exists()
+    assert (exportacao.siglas, exportacao.caminho_das_siglas) == (
+        1,
+        trabalho.caminho_das_siglas(pasta),
+    )
+    assert json.loads(exportacao.caminho_das_siglas.read_text(encoding="utf-8")) == [
+        {
+            "sigla": "SDRA",
+            "vezes": 2,
+            "exemplo": "c001-s0001",
+            "extenso": "síndrome del distrés respiratorio agudo",
+        }
+    ]

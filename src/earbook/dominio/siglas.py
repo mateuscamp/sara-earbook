@@ -22,7 +22,11 @@ _SIGLA = re.compile(r"(?<![\w-])[A-ZÀ-Ú][A-ZÀ-Ú0-9]+(?:-[A-Z0-9]+)*s?(?![\w-
 _ROMANO = re.compile(r"[IVXLCDM]+")
 # A linha toda em maiúsculas é subtítulo, não sigla ("SINTOMAS AFETIVOS").
 PROPORCAO_DE_MAIUSCULAS = 0.6
-_LIGACOES = frozenset({"de", "da", "do", "das", "dos", "e", "a", "o", "em", "para", "por"})
+# As do espanhol desde o ADR-0013: "síndrome del distrés respiratorio agudo (SDRA)".
+_LIGACOES = frozenset({
+    "de", "da", "do", "das", "dos", "e", "a", "o", "em", "para", "por",
+    "del", "la", "los", "y",
+})  # fmt: skip
 
 
 @dataclass(frozen=True)
@@ -50,7 +54,7 @@ def siglas_candidatas(
     vezes: Counter[str] = Counter()
     exemplos: dict[str, str] = {}
     extensos: dict[str, str] = {}
-    for segmento in (s for s in lista if not _caixa_alta(s.texto)):
+    for segmento in (s for s in lista if not caixa_alta(s.texto)):
         for achado in _SIGLA.finditer(segmento.texto):
             sigla = achado.group()
             if _nao_e_sigla(sigla, minusculas) or sigla in ja_no_glossario:
@@ -63,7 +67,9 @@ def siglas_candidatas(
     return tuple(CandidatoASigla(s, vezes[s], exemplos[s], extensos[s]) for s in ordem)
 
 
-def _caixa_alta(texto: str) -> bool:
+def caixa_alta(texto: str) -> bool:
+    """A linha toda em maiúsculas: subtítulo, não sigla, e no conferir do espanhol, o
+    título em que "LOS" conta (ADR-0013)."""
     letras = [letra for letra in texto if letra.isalpha()]
     maiusculas = sum(letra.isupper() for letra in letras)
     return bool(letras) and maiusculas > PROPORCAO_DE_MAIUSCULAS * len(letras)
@@ -77,7 +83,8 @@ def _nao_e_sigla(sigla: str, minusculas: set[str]) -> bool:
 
 def _extenso(texto: str, inicio: int, sigla: str) -> str:
     """ "…ativador ascendente (SRAA)": as palavras antes do parêntese, uma por letra da sigla,
-    sem contar "de", "da", "e"…, e a primeira com a inicial da sigla. Sem isso, vazio."""
+    sem contar "de", "da", "e", "del", "y"…, e a primeira com a inicial da sigla. Sem isso,
+    vazio."""
     antes = texto[:inicio]
     if not antes.endswith("("):
         return ""

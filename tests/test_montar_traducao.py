@@ -223,10 +223,11 @@ def test_item_do_sumario_sem_traducao_fica_no_original_na_amostra(tmp_path: Path
     assert (montagem.fora, montagem.no_original) == (0, 1)
 
 
-def test_livro_em_frances_tambem_declara_pt_br(tmp_path: Path) -> None:
-    # A troca vem do idioma do livro, não de um "en" fixo.
-    corpo = '<p xml:lang="fr">Le texte du livre, en français.</p>'
-    epub = montar_epub(tmp_path / "livro.epub", {"a.xhtml": corpo}, idioma="fr")
+def test_livro_em_espanhol_tambem_declara_pt_br(tmp_path: Path) -> None:
+    # A troca vem do idioma do livro, não de um "en" fixo. Era o francês até o ADR-0013, que
+    # recusa no `traduzir` a língua sem lista de palavras funcionais.
+    corpo = '<p xml:lang="es">El texto del libro, en español.</p>'
+    epub = montar_epub(tmp_path / "livro.epub", {"a.xhtml": corpo}, idioma="es")
     pasta = tmp_path / "livro.earbook"
     _ = preparar(epub, pasta)
     _ = traduzir(pasta)

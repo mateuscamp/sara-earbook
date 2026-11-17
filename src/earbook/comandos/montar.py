@@ -36,8 +36,13 @@ from earbook.dominio.conferencia_da_adaptacao import (
     conferir_adaptacao,
     conferir_sumario,
 )
-from earbook.dominio.conferencia_da_traducao import conferir_termos, conferir_traducao
+from earbook.dominio.conferencia_da_traducao import (
+    ReguaDaTraducao,
+    conferir_termos,
+    conferir_traducao,
+)
 from earbook.dominio.fora_do_audio import capitulos_com_remocao
+from earbook.dominio.lingua_do_original import exigir_lingua_do_original
 from earbook.dominio.livro_limpo import CapituloLimpo
 from earbook.dominio.segmento import Segmento, notas_para_o_fim
 from earbook.dominio.trabalho import CapituloPreparado
@@ -285,7 +290,7 @@ def _conferir_traducao(pasta: Path, livro: _Livro) -> tuple[Problema, ...]:
         [CapituloLimpo(capitulo, lista) for capitulo, lista in livro.limpos.items()],
         trabalho.ler_pedidos(pasta),
         livro.respostas,
-        glossario,
+        ReguaDaTraducao(glossario, exigir_lingua_do_original(livro.idioma, str(pasta))),
         amostra=amostra,
     )
     return (*traducao, *conferir_termos(trabalho.ler_termos(pasta), glossario, amostra=amostra))

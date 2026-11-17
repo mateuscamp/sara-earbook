@@ -271,7 +271,8 @@ def _resumo_da_traducao(exportacao: Exportacao, pasta: Path) -> str:
         ),
         (
             f"Glossário: {exportacao.glossario} ({exportacao.candidatos} candidatos a nome"
-            f" em {exportacao.nomes})."
+            f" em {exportacao.nomes}; {exportacao.siglas} siglas fora do glossário em"
+            f" {exportacao.caminho_das_siglas})."
         ),
         f"Decisões do livro, que todo tradutor lê: {exportacao.decisoes}",
         f"Depois: earbook conferir {pasta}",

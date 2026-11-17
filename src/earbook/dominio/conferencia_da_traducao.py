@@ -1,12 +1,13 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""O `conferir` no modo tradução: todo segmento traduzido, nada a mais e nada em inglês
-(ADR-0006). Junta-se ao `conferir` do ADR-0005, que continua valendo."""
+"""O `conferir` no modo tradução: todo segmento traduzido, nada a mais e nada na língua do
+original (ADR-0006, ADR-0013). Junta-se ao `conferir` do ADR-0005, que continua valendo."""
 
 from __future__ import annotations
 
 import re
 from collections import Counter
 from collections.abc import Iterator, Sequence
+from dataclasses import dataclass
 
 from earbook.dominio.conferencia import Problema
 from earbook.dominio.glossario import (
@@ -16,23 +17,13 @@ from earbook.dominio.glossario import (
     EntradaDoGlossario,
     TermosDoLote,
 )
+from earbook.dominio.lingua_do_original import LinguaDoOriginal, contar, funcionais, palavras
 from earbook.dominio.livro_limpo import CapituloLimpo
-from earbook.dominio.segmento import PALAVRA, Papel, Segmento
+from earbook.dominio.segmento import Papel, Segmento
 from earbook.dominio.traducao import Pedido, Resposta, Traduzido
 
-# Medido em 2026-11-01 (ADR-0006): o texto em inglês do Huxley e do Tides tem mediana de 37%
-# destas palavras, e o Competente, em português, 0%. Sem "a", "me", "for" e "do", que também
-# são palavras do português.
-PALAVRAS_FUNCIONAIS_INGLESAS = frozenset({
-    "the", "and", "of", "to", "is", "was", "which", "that", "with", "it", "he", "she", "they",
-    "this", "not", "but", "be", "have", "had", "his", "her", "its", "were", "are", "been",
-    "would", "could", "from", "by", "at", "an", "or", "my", "we", "you", "there", "their",
-    "what", "when", "who", "will", "one", "all", "so", "than", "them", "these", "those",
-    "into", "upon",
-})  # fmt: skip
-PALAVRAS_PARA_JULGAR_O_INGLES = 8
-PROPORCAO_DE_INGLES = 0.2
-_URL = re.compile(r"\S*(?:https?://|www\.)\S*")
+# As palavras funcionais e a proporção de cada língua estão em `lingua_do_original.py`.
+PALAVRAS_PARA_JULGAR_A_LINGUA = 8
 _FIM_DE_FRASE = re.compile('[.!?\u2026]["\u201d\u2019)]*\\s+')
 # T\u00edtulo de obra em Title Case: palavras com mai\u00fascula, com "of", "the"\u2026 entre elas.
 _PALAVRA_DE_TITULO = r"[A-Z][\w'\u2019-]*"
@@ -44,21 +35,31 @@ _COMECO_DE_PALAVRA = re.compile(r"(?<!\S)[A-Z]")
 _PALAVRAS_NO_INICIO = 5
 
 
+@dataclass(frozen=True)
+class ReguaDaTraducao:
+    """Contra o que a tradução se confere: o glossário e a língua do original, que não pode
+    ficar nela (ADR-0006, ADR-0013)."""
+
+    glossario: Sequence[EntradaDoGlossario]
+    lingua: LinguaDoOriginal
+
+
 def conferir_traducao(
     capitulos: Sequence[CapituloLimpo],
     pedidos: Sequence[Pedido],
     respostas: Sequence[Resposta],
-    glossario: Sequence[EntradaDoGlossario],
+    regua: ReguaDaTraducao,
     *,
     amostra: bool,
 ) -> tuple[Problema, ...]:
     """Os problemas que impedem o `montar` do livro traduzido, em ordem de ID. Na `amostra`,
     o segmento sem tradução não é problema: o `montar --amostra` o tira."""
     limpos = {s.id: s for capitulo in capitulos for s in capitulo.segmentos}
-    nomes = ConferenciaDeNomes(glossario)
+    nomes = ConferenciaDeNomes(regua.glossario)
     problemas, respondidos = _respostas(pedidos, respostas)
     for lote, traduzido, pedido in respondidos:
-        problemas += _traduzido(lote, traduzido, pedido, limpos.get(traduzido.id), nomes)
+        limpo = limpos.get(traduzido.id)
+        problemas += _traduzido(lote, traduzido, pedido, limpo, (nomes, regua.lingua))
     if not amostra:
         problemas += _sem_traducao(capitulos, respostas)
     problemas += _glossario_repetido(nomes)
@@ -145,7 +146,7 @@ def _traduzido(
     traduzido: Traduzido,
     pedido: Segmento,
     limpo: Segmento | None,
-    nomes: ConferenciaDeNomes,
+    regua: tuple[ConferenciaDeNomes, LinguaDoOriginal],
 ) -> list[Problema]:
     id_ = traduzido.id
     if limpo is None:
@@ -156,29 +157,35 @@ def _traduzido(
             " e rode o traduzir"
         )
         return [Problema(id_, motivo)]
-    return [Problema(id_, motivo) for motivo in _escuta(limpo, traduzido.texto, nomes)]
+    return [Problema(id_, motivo) for motivo in _escuta(limpo, traduzido.texto, regua)]
 
 
-def _escuta(limpo: Segmento, traducao: str, nomes: ConferenciaDeNomes) -> list[str]:
-    """O que soaria errado no ElevenReader: silêncio, inglês e nome trocado."""
+def _escuta(
+    limpo: Segmento, traducao: str, regua: tuple[ConferenciaDeNomes, LinguaDoOriginal]
+) -> list[str]:
+    """O que soaria errado no ElevenReader: silêncio, a língua do original e nome trocado."""
+    nomes, lingua = regua
     original = limpo.texto
     if not traducao.strip():
         return ["tradução vazia"]
     motivos: list[str] = []
-    if traducao.strip() == original.strip() and _inglesas(_palavras(traducao)):
-        motivos.append("igual ao original, em inglês")
-    elif motivo := _parece_ingles_no_papel(limpo.papel, original, traducao):
+    if traducao.strip() == original.strip() and funcionais(lingua, traducao):
+        motivos.append(f"igual ao original, em {lingua.nome}")
+    elif motivo := _parece_o_original_no_papel(lingua, limpo.papel, original, traducao):
         motivos.append(motivo)
     return motivos + nomes.motivos(original, traducao)
 
 
-def _parece_ingles_no_papel(papel: Papel, original: str, traducao: str) -> str | None:
+def _parece_o_original_no_papel(
+    lingua: LinguaDoOriginal, papel: Papel, original: str, traducao: str
+) -> str | None:
     """Na nota, o título da obra fica no original e as frases curtas não se juntam: a
     referência bibliográfica é feita delas (F1 da pós-auditoria; A3 da curta). No corpo, a
     isenção deixava escapar a fala esquecida em inglês (A2 da curta)."""
     if papel is Papel.NOTA:
-        return _parece_ingles(_sem_titulos_do_original(traducao, original), juntar=False)
-    return _parece_ingles(traducao, juntar=True)
+        sem_titulos = _sem_titulos_do_original(traducao, original)
+        return _parece_o_original(lingua, sem_titulos, juntar=False)
+    return _parece_o_original(lingua, traducao, juntar=True)
 
 
 def _sem_titulos_do_original(traducao: str, original: str) -> str:
@@ -196,13 +203,13 @@ def _sem_titulos_do_original(traducao: str, original: str) -> str:
     return _TITULO_DE_OBRA.sub(tirar, traducao)
 
 
-def _parece_ingles(traducao: str, *, juntar: bool) -> str | None:
+def _parece_o_original(lingua: LinguaDoOriginal, traducao: str, *, juntar: bool) -> str | None:
     """O segmento inteiro e depois cada frase: medida só no segmento, a frase inglesa
     deixada num parágrafo traduzido se diluía no português (A1 da auditoria)."""
-    if motivo := _proporcao(traducao):
+    if motivo := _proporcao(lingua, traducao):
         return motivo
     for trecho in _trechos(traducao, juntar=juntar):
-        if motivo := _proporcao(trecho):
+        if motivo := _proporcao(lingua, trecho):
             inicio = " ".join(trecho.split()[:_PALAVRAS_NO_INICIO])
             return f"{motivo}, na frase \u201c{inicio}\u2026\u201d"
     return None
@@ -214,12 +221,12 @@ def _trechos(texto: str, *, juntar: bool) -> Iterator[str]:
     se junta à longa: o português dela diluía a frase inglesa (A1 da curta)."""
     curtas: list[str] = []
     for frase in _frases(texto):
-        if len(_palavras(frase)) >= PALAVRAS_PARA_JULGAR_O_INGLES:
+        if len(palavras(frase)) >= PALAVRAS_PARA_JULGAR_A_LINGUA:
             curtas = []
             yield frase
         elif juntar:
             curtas.append(frase)
-            if len(_palavras(" ".join(curtas))) >= PALAVRAS_PARA_JULGAR_O_INGLES:
+            if len(palavras(" ".join(curtas))) >= PALAVRAS_PARA_JULGAR_A_LINGUA:
                 yield " ".join(curtas)
                 curtas = []
 
@@ -244,24 +251,11 @@ def _abreviacao(antes: str) -> bool:
     return (len(texto) == 1 and texto.isupper()) or texto in TITULOS_ABREVIADOS
 
 
-def _proporcao(trecho: str) -> str | None:
-    palavras = _palavras(trecho)
-    inglesas = _inglesas(palavras)
-    if (
-        len(palavras) < PALAVRAS_PARA_JULGAR_O_INGLES
-        or inglesas / len(palavras) < PROPORCAO_DE_INGLES
-    ):
+def _proporcao(lingua: LinguaDoOriginal, trecho: str) -> str | None:
+    do_original, total = contar(lingua, trecho)
+    if total < PALAVRAS_PARA_JULGAR_A_LINGUA or do_original / total < lingua.proporcao:
         return None
-    return f"parece inglês: {inglesas} de {len(palavras)} palavras são como 'the', 'of', 'and'"
-
-
-def _inglesas(palavras: list[str]) -> int:
-    return sum(palavra in PALAVRAS_FUNCIONAIS_INGLESAS for palavra in palavras)
-
-
-def _palavras(texto: str) -> list[str]:
-    """As palavras em minúsculas, sem URL: o link tem "the" e "of" e não é lido como frase."""
-    return [achado.group().casefold() for achado in PALAVRA.finditer(_URL.sub(" ", texto))]
+    return f"parece {lingua.nome}: {do_original} de {total} palavras são como {lingua.exemplos}"
 
 
 def _sem_traducao(

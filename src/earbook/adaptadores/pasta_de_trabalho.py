@@ -12,6 +12,7 @@ pedidos/cNNN-lNNN.json     o Python grava o que traduzir no lote: [{id, papel, t
 traduzidos/cNNN-lNNN.json  o agente grava a resposta do lote de mesmo nome: [{id, texto}]
 glossario.json             o agente grava os nomes próprios: [{original, traducao}]
 nomes.json                 o Python grava os candidatos a nome fora do glossário
+siglas.json                o Python grava as siglas fora do glossário (ADR-0009, ADR-0013)
 termos/cNNN-lNNN.json      o agente grava o que decidiu fora do glossário: [{original, traducao}]
 decisoes.md                as decisões do livro: o Python cria o modelo, a sessão escreve (ADR-0007)
 """

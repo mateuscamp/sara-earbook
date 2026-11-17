@@ -2018,7 +2018,8 @@ comandos); no *Dalgalarrondo* e no *Hard Parts*, o HEAD, das mesmas páginas lid
 
 **O que fica (declarado).** As pioras, por página, que a conta e a leitura dos trechos acharam:
 1 no *Miller*, 1 no *Dalgalarrondo* e 3 no *Practical*, contra mais de 100 páginas melhores no
-*Miller*, 12 no *Dalgalarrondo* e cerca de 20 no *Practical*.
+*Miller*, 12 no *Dalgalarrondo* e cerca de 20 no *Practical*. As 5 pioras (Practical p. 302, 862
+e 1357; Dalgalarrondo p. 325; Miller p. 569) foram aceitas pelo Mateus em 2026-11-17.
 - **Practical p. 302 (c020):** as duas tabelas de 8,5 pt no alto e a prosa embaixo. A entrelinha
   da coluna mede a distância entre as linhas das tabelas (0,02, contra 0,0137 da prosa), o vão até
   a prosa deixa de fechar as colunas, tabela e prosa ficam numa faixa só, e a página é lida por

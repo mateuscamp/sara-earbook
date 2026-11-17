@@ -6,8 +6,9 @@ from __future__ import annotations
 import pytest
 
 from earbook.dominio.conferencia import Problema
-from earbook.dominio.conferencia_da_traducao import conferir_traducao
+from earbook.dominio.conferencia_da_traducao import ReguaDaTraducao, conferir_traducao
 from earbook.dominio.glossario import EntradaDoGlossario
+from earbook.dominio.lingua_do_original import INGLES as LINGUA_INGLESA
 from earbook.dominio.livro_limpo import CapituloLimpo
 from earbook.dominio.segmento import Papel, Segmento
 from earbook.dominio.traducao import Pedido, Resposta, Traduzido
@@ -41,7 +42,9 @@ def _conferir(
     *,
     amostra: bool = False,
 ) -> tuple[Problema, ...]:
-    return conferir_traducao(CAPITULOS, PEDIDOS, respostas, glossario, amostra=amostra)
+    return conferir_traducao(
+        CAPITULOS, PEDIDOS, respostas, ReguaDaTraducao(glossario, LINGUA_INGLESA), amostra=amostra
+    )
 
 
 def _com(id_: str, texto: str) -> list[Resposta]:
@@ -86,7 +89,9 @@ def test_texto_que_mudou_em_limpos_depois_do_pedido_e_problema() -> None:
     # O agente corrigiu a capitular depois de exportar: a tradução é do texto velho.
     corrigido = Segmento(PARAGRAFO.id, Papel.PARAGRAFO, "It was in 1887 that the German...")
     capitulos = (CapituloLimpo("c001", (TITULO, corrigido, NOTA)),)
-    assert conferir_traducao(capitulos, PEDIDOS, _respostas(), (), amostra=False) == (
+    assert conferir_traducao(
+        capitulos, PEDIDOS, _respostas(), ReguaDaTraducao((), LINGUA_INGLESA), amostra=False
+    ) == (
         Problema(
             "c001-s0002",
             (
@@ -99,9 +104,9 @@ def test_texto_que_mudou_em_limpos_depois_do_pedido_e_problema() -> None:
 
 def test_id_pedido_que_saiu_de_limpos_e_problema() -> None:
     capitulos = (CapituloLimpo("c001", (TITULO, PARAGRAFO)),)
-    assert conferir_traducao(capitulos, PEDIDOS, _respostas(), (), amostra=False) == (
-        Problema("c001-s0003", "traduzido, mas não está em limpos/"),
-    )
+    assert conferir_traducao(
+        capitulos, PEDIDOS, _respostas(), ReguaDaTraducao((), LINGUA_INGLESA), amostra=False
+    ) == (Problema("c001-s0003", "traduzido, mas não está em limpos/"),)
 
 
 def test_traducao_vazia_e_problema() -> None:
@@ -119,7 +124,12 @@ def test_nome_igual_ao_original_nao_e_problema() -> None:
     capitulos = (*CAPITULOS, CapituloLimpo("c002", (autor,)))
     pedidos = (*PEDIDOS, Pedido("c002-l001", (autor,)))
     respostas = [*_respostas(), Resposta("c002-l001", (Traduzido(autor.id, "Aldous Huxley"),))]
-    assert conferir_traducao(capitulos, pedidos, respostas, (), amostra=False) == ()
+    assert (
+        conferir_traducao(
+            capitulos, pedidos, respostas, ReguaDaTraducao((), LINGUA_INGLESA), amostra=False
+        )
+        == ()
+    )
 
 
 def test_paragrafo_que_ficou_meio_em_ingles_e_problema() -> None:
@@ -243,7 +253,9 @@ def _nota_traduzida(original: str, traducao: str) -> tuple[Problema, ...]:
     capitulos = (CapituloLimpo("c001", (TITULO, PARAGRAFO, nota)),)
     pedidos = (PEDIDOS[0], Pedido("c001-l002", (nota,)))
     respostas = [*_respostas()[:1], Resposta("c001-l002", (Traduzido(NOTA.id, traducao),))]
-    return conferir_traducao(capitulos, pedidos, respostas, (), amostra=False)
+    return conferir_traducao(
+        capitulos, pedidos, respostas, ReguaDaTraducao((), LINGUA_INGLESA), amostra=False
+    )
 
 
 def test_titulo_de_obra_copiado_do_original_nao_conta_como_ingles() -> None:
@@ -285,7 +297,9 @@ def _paragrafo_traduzido(original: str, traducao: str) -> tuple[Problema, ...]:
     um, dois = _respostas()
     traduzidos = (um.traduzidos[0], Traduzido(PARAGRAFO.id, traducao))
     respostas = [Resposta(um.lote, traduzidos), dois]
-    return conferir_traducao(capitulos, pedidos, respostas, (), amostra=False)
+    return conferir_traducao(
+        capitulos, pedidos, respostas, ReguaDaTraducao((), LINGUA_INGLESA), amostra=False
+    )
 
 
 def test_frase_curta_em_portugues_nao_dilui_a_frase_inglesa_seguinte() -> None:

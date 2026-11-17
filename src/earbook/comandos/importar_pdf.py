@@ -19,6 +19,7 @@ from earbook.dominio.blocos import Bloco, LivroMontado, montar_blocos
 from earbook.dominio.caixa_do_rotulo import acertar_rotulos
 from earbook.dominio.camada_do_ocr import tirar_camada_do_ocr
 from earbook.dominio.capitulos import dividir_em_capitulos, dividir_pelo_sumario
+from earbook.dominio.fora_da_pagina import tirar_texto_fora_da_pagina
 from earbook.dominio.hifen_da_quebra import mostrar_hifen_invisivel
 from earbook.dominio.metadados import autor_do_livro, titulo_do_livro
 from earbook.dominio.pagina import Pagina
@@ -143,9 +144,11 @@ def _limpar(paginas: Sequence[Pagina]) -> _PaginasParaOsBlocos:
     """O que sai da página antes dos blocos, na ordem, e o registro de cada remoção."""
     # Antes de tudo: o hífen gravado como U+00AD volta a ser hífen, e o dicionário do hífen e as
     # regras de texto já o veem (ADR-0004, "Hífen invisível").
-    # A camada do OCR sai primeiro: a letra de 82 pt que ninguém vê contaria como título, na
-    # paginação e no texto escondido (ADR-0004, "Camada do OCR sobre as figuras").
-    pintadas = tirar_camada_do_ocr(mostrar_hifen_invisivel(paginas))
+    # O texto fora da página e a camada do OCR saem primeiro: o que ninguém vê contaria como
+    # título, na paginação e no texto escondido (ADR-0004, "Camada do OCR sobre as figuras" e
+    # "A ordem das colunas no Miller").
+    na_pagina = tirar_texto_fora_da_pagina(mostrar_hifen_invisivel(paginas))
+    pintadas = tirar_camada_do_ocr(na_pagina.paginas)
     # O texto escondido sai antes da borda: em letra de título, ele contaria no corpo e na
     # paginação (ADR-0004, "O que ficou da Fase 1").
     visiveis = tirar_texto_escondido(pintadas.paginas)
@@ -161,6 +164,7 @@ def _limpar(paginas: Sequence[Pagina]) -> _PaginasParaOsBlocos:
     # leitura não intercalar a lista com a prosa (ADR-0004, "Bibliografia pela letra").
     sem_bibliografia = tirar_bibliografia(sem_tabelas.paginas)
     remocoes = (
+        *na_pagina.remocoes,
         *pintadas.remocoes,
         *visiveis.remocoes,
         *de_pe.remocoes,

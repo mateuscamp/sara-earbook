@@ -16,7 +16,7 @@ from __future__ import annotations
 import re
 from collections.abc import Iterator, Sequence
 
-from earbook.dominio.colunas import MESMA_ALTURA
+from earbook.dominio.lados_da_calha import MESMA_ALTURA
 from earbook.dominio.pagina import (
     DIFERENCA_DE_TAMANHO,
     RAZAO_DO_TITULO,

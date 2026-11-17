@@ -73,6 +73,9 @@ class Linha:
     nao_pintada: bool = False
     """Toda letra visível no modo de pintura 3 do PDF: o texto que a página não desenha, a camada
     que o OCR põe sobre a imagem (ADR-0004, "Camada do OCR sobre as figuras")."""
+    fora_da_pagina: bool = False
+    """A linha inteira além da borda do papel, que o leitor de PDF não mostra: o texto das
+    fórmulas do Miller (ADR-0004, "A ordem das colunas no Miller")."""
 
 
 @dataclass(frozen=True)

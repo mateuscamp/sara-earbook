@@ -125,6 +125,8 @@ Verificadas só em revisão (`code-audit`):
 - Negrito feito à mão (o mesmo texto desenhado de novo por cima, no mesmo tamanho): feito no `importar-pdf` (ADR-0004, "Negrito feito à mão"). A cópia de uma letra só ainda é lida.
 - Seção de questões de múltipla escolha no fim do capítulo: feita no `preparar`, pelo conteúdo, nunca pelo título. O enunciado de prova ("34.1 (TSA/2012) …") abre a seção no título logo antes dele, e ela vai até a última alternativa ("A.", "b)") ou enunciado, quando metade dos parágrafos ou mais é questão e há dois sinais (ADR-0008, "Tratado em português e em espanhol"). Sem enunciado de prova nada sai: a lista de letras da prosa tem a mesma forma. A questão sem a prova entre parênteses e a seção com as alternativas coladas ao gráfico (2 no Manica) ainda são lidas.
 - Resto de figura do OCR (o PDF digital em que um OCR leu o que havia dentro das imagens: "1", "l", "o o o", "~ ~"): sai no `importar-pdf`, pelo modo de pintura. A linha que a página não pinta (`Tr` 3) sai na página em que o texto pintado é a maior parte; a página escaneada fica (ADR-0004, "Camada do OCR sobre as figuras e chamada colada"). O rótulo de figura vetorial, que a página pinta (a letra do painel, o valor do eixo), ainda é lido.
+- Texto fora da página (o PDF que grava além da borda do papel o texto de cada fórmula: "V˙A/Q˙", o Miller): sai no `importar-pdf`, registrado; a linha que passa da borda só em parte fica, e a chamada da linha que sai não prova as duvidosas da página (ADR-0004, "A ordem das colunas no Miller"). O texto acima ou abaixo da página e o que está fora da caixa de recorte ainda são lidos.
+- Página em duas colunas lida por altura, com a frase de uma coluna no meio da outra: feito no `importar-pdf` quando os dois lados são texto corrido (ADR-0004, "Duas colunas"), quando um lado é prosa (6 linhas ou mais, de 35 caracteres na mediana, corrida e com margem direita comum) e o outro, de 3 linhas ou mais, tem de 80% a 105% da largura dela (a lista, a tabela na letra do corpo, o quadro), e nas colunas desalinhadas em meia linha, pela entrelinha medida dentro da coluna (ADR-0004, "A ordem das colunas no Miller"). Ainda são lidos por altura ou fora de ordem: o índice de capítulo em duas colunas de títulos (Miller p. 36 e 37), a faixa curta de poucas linhas de cada lado, o título de quadro de largura cheia a 2,5 entrelinhas das colunas (Dalgalarrondo p. 325), a seção que, depois de um subtítulo, continua uma coluna mais longa que a vizinha (Miller p. 569), a tabela de letra menor logo acima da prosa em colunas (Practical p. 302) e a página em que a calha que ganha parte o resto dela (Practical p. 862 e 1357: a calha é uma por página, e não uma por faixa).
 - Título sem letra nem algarismo ("•", "---", "~"): feito no `preparar`, antes da junção. O título só de algarismo ("2012", "1") e o de letra solta ("A") ficam, porque também são título de verdade; o parágrafo e a nota só de símbolo também (ADR-0008, "Tratado em português e em espanhol").
 - Capítulo que não se ouve (lista de autores, sumário de papel sem pontilhado, anexo de respostas): `preparar --sem-capitulo cNNN` (ADR-0008), e o `montar` o deixa fora do EPUB e do sumário, como todo capítulo que a limpeza esvaziou (ADR-0005).
 - Alternativa de exercício cuja letra só existe no CSS do `<ol>`: a voz lê "B e C" sem que nada tenha letra. Pendente.
@@ -186,9 +188,11 @@ src/earbook/
                 letra e capítulo declarado), referencias_vancouver.py (as referências médicas),
                 questoes_de_prova.py (a seção de questões de múltipla escolha),
                 cabecalho.py (cabeçalho de página),
-                colunas.py (a ordem de leitura da página em colunas), caracteres.py (a chamada
-                sobrescrita, certa ou duvidosa, e o espaço falso do PDF), camada_do_ocr.py (o texto
-                que a página do PDF não pinta), tabelas_e_figuras.py (a tabela e a figura do
+                colunas.py (a ordem de leitura da página em colunas), lados_da_calha.py (o que
+                cada lado da calha é: coluna de texto, prosa ou célula de tabela), caracteres.py (a
+                chamada sobrescrita, certa ou duvidosa, e o espaço falso do PDF), camada_do_ocr.py
+                (o texto que a página do PDF não pinta), fora_da_pagina.py (o texto além da borda
+                do papel), tabelas_e_figuras.py (a tabela e a figura do
                 PDF pela letra), paginas_de_lista.py (índice, sumário e colaboradores do PDF),
                 bibliografia_do_pdf.py (a bibliografia do PDF pela letra e a lista de leitura logo antes dela), caixa_do_rotulo.py (a
                 palavra de rótulo que o versalete do PDF trocou)

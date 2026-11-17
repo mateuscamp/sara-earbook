@@ -1521,7 +1521,8 @@ desta sessão e vão à revisão.
   quando não é bibliografia. No *Miller*, 125 páginas ainda trocam de coluna 4 vezes ou mais, e
   110 segmentos trazem o hífen da quebra seguido de uma linha da outra coluna ("…incre- rápido,
   la Palv…"). A causa mora na regra "Duas colunas", e consertá-la pede os livros em que ela foi
-  medida;
+  medida. Tratado em "A ordem das colunas no Miller" (2026-11-17): 107 → 10 segmentos, todos com
+  o hífen do próprio texto;
 - **os livros cujo PDF não está neste Mac** (*Practical*, *Bonica*, *Dalgalarrondo*,
   *Competente*, *Hard Parts*, *Maudlin*) não foram medidos: numa reimportação, a bibliografia em
   letra menor com 10 linhas de citação sai na página, e não mais no `limpar`;
@@ -1866,6 +1867,198 @@ as pastas dos livros prontos no *Manica* (com os 4 capítulos declarados) e no *
   trecho provado por aquela (10 linhas de citação de periódico em letra menor que a do corpo).
 
 
+### A ordem das colunas no Miller (2026-11-17)
+
+**Contexto.** O limite "a ordem das colunas" da seção "Bibliografia pela letra" (2026-11-13): no
+*Miller*, 125 páginas trocavam de coluna 4 vezes ou mais na leitura, e 107 segmentos traziam o
+hífen da quebra seguido de uma linha da outra coluna ("…incre- rápido, la Palv…", "com- rugía",
+`c045-s0485`). Decisão do Mateus (2026-11-17, ADR-0013, passo 1): corrigir a ordem antes de
+traduzir o livro, porque o defeito de diagramação traduzido se paga duas vezes, e o tradutor não
+desfaz a mistura pelo ID.
+
+**Medido antes de desenhar** (HEAD `9663144`, as páginas que o `montar_blocos` recebe, com a ordem
+do `dominio/colunas.py`). A conta: a linha que termina antes do meio da página é da esquerda, a
+que começa depois dele é da direita, a que atravessa o meio não conta, e cada passagem de um lado
+ao outro na ordem de leitura é uma troca. O meio é o das margens que 3 linhas ou mais repetem, e
+a linha fora da página não entra na conta (por ela, abaixo, a conta antiga dava 125). Páginas com
+4 trocas ou mais: **116**; com 3 ou mais, 167; com 2 ou mais, 199. As 116, uma a uma, pela calha
+natural (a margem da coluna da direita), têm três causas:
+- **Texto fora da página** (71 páginas): o PDF grava o texto de cada fórmula além da borda do
+  papel, à direita (x de 754 a 895, numa página de 612 pt) ou à esquerda (x negativo): "V˙A/Q˙",
+  "A c l a r a m i e n t o d e c r e a t i n i-", "—". O leitor de PDF não o mostra; a voz o lia
+  no meio da frase. São 1.217 linhas, em cerca de 185 páginas. Elas entram num lado da calha e o desfiguram: na p. 554, as linhas de x = -183
+  alargam o lado esquerdo, e a coluna da direita fica com 0,30 da largura da faixa, abaixo do
+  mínimo; na p. 1391, a do `c045-s0485`, os pedaços da fórmula e o texto dela fora da página
+  tiram a continuidade da coluna da direita. Tiradas só elas, as 116 páginas caem para 45 (numa
+  simulação com a largura de 612 pt em toda página, que tira também algum texto das páginas mais
+  largas; a regra usa a largura de cada página).
+- **Colunas desalinhadas em meia linha** (e a página partida em quatro): a entrelinha da regra
+  era a mediana da distância entre alturas seguidas da página inteira. Quando a coluna da direita
+  começa meia linha acima da da esquerda (comum no *Miller*), a distância alterna entre meia e
+  meia linha, e a entrelinha cai à metade (p. 2931: 0,0071, contra 0,0134 de verdade). O vão do
+  subtítulo (2,3 entrelinhas de verdade) passava de 2,5 entrelinhas medidas, fechava as colunas,
+  e a página saía em quatro pedaços (esquerda de cima, direita de cima, esquerda de baixo, direita
+  de baixo), com os subtítulos das duas colunas colados numa linha só ("SUPRAGLOTITIS AGUDA
+  ABSCESO RETROFARÍNGEO"). É uma página de 3 trocas, que a conta de 4 não via: das 51 páginas de
+  3 trocas, 41 eram isso.
+- **Prosa ao lado de lista** (8 páginas): a tabela na letra do corpo, a lista de recursos ou o
+  quadro numa coluna, e a prosa justificada na outra (p. 1377: "Edad > 40 años 10 < 1 0,1"; p.
+  2884: "CUADRO 83A-2"). A regra "Duas colunas" pede que os dois lados sejam texto corrido; a lista
+  continua em 0,14 a 0,36 dos pares, e a página era lida por altura, com a prosa intercalada.
+
+| Alternativa | Ganha | Perde | Por que não |
+|---|---|---|---|
+| **A. Três regras, cada uma na sua causa** (escolhida) | o texto fora da página sai do áudio onde nasce (o adaptador sabe onde a página acaba), a entrelinha volta à medida certa, e a prosa ao lado da lista ganha um critério próprio, com a forma da coluna de livro | três mudanças, medidas em cinco livros; a entrelinha nova muda o limiar do vão em todo livro | — |
+| B. Só ignorar o texto fora da página na busca da calha | não muda o que sai do áudio | a voz continua lendo "V˙A/Q˙" no meio da frase; o domínio não sabe a largura da página sem o adaptador | conserta a ordem e deixa o defeito do ouvido |
+| C. Baixar a continuidade de 0,4 para 0,15 | uma linha | já medido e recusado ("Duas colunas"): com 0,3, a tabela da p. 144 do *Competente* seria lida coluna a coluna | falso positivo medido |
+| D. As caixas do pdfminer | separam as colunas | separam igualmente a célula de tabela e a linha justificada partida ("Duas colunas") | já recusada |
+
+**Decisão (A).**
+- **Texto fora da página** (`dominio/fora_da_pagina.py`; o adaptador marca a linha,
+  `Linha.fora_da_pagina`, como a camada do OCR): sai a linha **inteira** além da borda da página,
+  à direita ou à esquerda, com a largura de cada página (a capa do *Manica* é o recorte de uma
+  página dupla). A que passa da borda só em parte fica (no *Miller*, 73 linhas: a ponta de uma
+  célula de tabela, p. 748). Sai primeiro, com a camada do OCR, antes da paginação e do texto
+  escondido, registrada com a página e o motivo "texto fora da página: além da borda do papel"; o
+  resumo a conta entre as linhas da borda. A chamada sobrescrita da linha que sai não conta entre
+  as 3 que provam as duvidosas da página (correção da revisão, abaixo).
+- **Entrelinha dentro da coluna** (`dominio/colunas.py`, `_entrelinha`): a distância entre cada
+  linha e a primeira abaixo dela que a sobrepõe na horizontal, a da mesma coluna; a mediana delas.
+  A busca vai até 40 linhas adiante (no *Miller*, 99,996% das linhas acham a de baixo até 40; 91%,
+  até 2): sem o limite, a página de 200 começos e 6.400 células que não se sobrepõem custava 0,4 s
+  a mais. Com o limite, o custo dessa página é o do HEAD (1,8 s, dos quais 0,01 s da entrelinha).
+- **Prosa ao lado** (`dominio/lados_da_calha.py`, `_prosa_ao_lado`): a faixa é lida coluna a coluna
+  também quando um lado é **prosa** e o outro, de 3 linhas ou mais, tem de **80% a 105%** da
+  largura dela. Prosa é o lado com **6 linhas ou mais**, **35 caracteres ou mais** na mediana,
+  texto corrido (a regra de antes) e **60% ou mais** das linhas a até **3 pt** da margem direita
+  mais comum. Medido no *Miller*: a linha da coluna tem de 50 a 62 caracteres; a célula de tabela
+  que quebra linha e chega à margem dela ("Porcentaje del / tiempo de", p. 2965), menos de 20. A
+  margem pelo fim mais alto, com 1 pt de folga (a do justificado de "O que ficou da Fase 1"), se
+  perdia com uma linha só 1 pt além dela (o "®" da p. 2884). A coluna de chave de uma tabela fica
+  bem mais estreita que a de valor (a regra pede 80%); a de valor mais estreita que a de chave
+  não é a coluna vizinha da página (105%).
+- O que diz se um lado da calha é coluna saiu de `colunas.py` (384 linhas) para
+  `lados_da_calha.py`, sem mudança: com as duas regras novas desligadas, as 8.687 páginas do
+  *Miller*, do *Dalgalarrondo* e do *Hard Parts* saem na ordem do HEAD.
+
+Decidido pelo Mateus (corrigir a ordem antes da tradução); as três regras, os sinais e os
+limiares são desta sessão e vão à revisão dele. Tirar do áudio o texto fora da página segue o
+precedente da camada do OCR e do texto escondido: o que o leitor de PDF não mostra não se ouve.
+
+**Medição (2026-11-17, depois do código).** Um PDF por vez. A ordem das páginas, pela conta
+acima. No *Dalgalarrondo* e no *Hard Parts*, com o `colunas.py` do HEAD e o desta mudança, nas
+mesmas páginas (os dois não têm texto fora da página). No *Miller*, das páginas e do código do
+HEAD às páginas e ao código desta mudança (o texto fora da página sai antes da ordem); a ordem
+mudada pela regra das colunas conta as páginas novas lidas pelo `colunas.py` do HEAD e pelo novo:
+
+| | *Miller* | *Dalgalarrondo* | *Hard Parts* |
+|---|---|---|---|
+| Páginas com a ordem mudada pela regra das colunas | 71 de 3.787 | 19 de 438 | 0 de 462 |
+| Páginas com 4 trocas ou mais | 116 → 27 | 45 → 42 | 32 → 32 |
+| Páginas com 3 trocas ou mais | 167 → 39 | 62 → 49 | 33 → 33 |
+| Páginas com 2 trocas ou mais | 199 → 62 | 127 → 114 | 40 → 40 |
+
+Ponta a ponta (`importar-pdf` e `preparar`, para pastas novas), contra a referência de cada um:
+o `.antes4` no *Miller* (o livro pronto de 2026-11-13) e a `regressao4-*` no *Manica*, no
+*Practical* e no *Bonica* (a medição da lista de leitura, com o código do HEAD para os dois
+comandos); no *Dalgalarrondo* e no *Hard Parts*, o HEAD, das mesmas páginas lidas.
+
+| | *Miller* | *Manica* | *Practical* | *Bonica* | *Dalgalarrondo* | *Hard Parts* |
+|---|---|---|---|---|---|---|
+| Linhas fora da página tiradas | 1.217 | 167 (a contracapa e a orelha da capa, p. 1) | 2.849 (antes saíam como texto girado: 17.273 → 14.424) | 0 | 0 | 0 |
+| Blocos (títulos, parágrafos, notas) | 5.739, 20.720, 533 → 5.755, 20.519, 564 | 4.286, 16.366, 307 → 4.283, 16.398, 307 | 3.057, 11.036, 212 → 3.062, 11.126, 210 | iguais | 259, 4.418, 1 → 259, 4.411, 4 | iguais |
+| Hífen da quebra (tirados, mantidos) | 40.726, 245 → 41.004, 249 | 33.311, 582 → 33.330, 582 | 14.986, 705 → 15.048, 712 | iguais | 11.069, 218 → 11.072, 218 | iguais |
+| Segmentos de origem | 26.992 → 26.838 | 20.959 → 20.988 | 14.305 → 14.398 | 14.875 → 14.875 | 4.678 → 4.674 | 3.292 → 3.292 |
+| Parágrafos partidos na quebra de página juntados | 447 → 296 | 98 → 95 | 284 → 272 | 3 → 3 | 229 → 229 | iguais |
+| Suspeitos ("capitular perdida?", linha curta) | 238 → 197 | 439 → 428 | 121 → 115 | 31 → 31 | 20 → 23 | iguais |
+| `limpos/`: segmentos | 26.445 → 26.442 | 18.654 → 18.671 | 13.942 → 14.009 | 14.865 → 14.865 | 4.136 → 4.131 | idênticos |
+| `limpos/`: palavras | 2.414.561 → 2.411.871 | 927.967 → 927.768 | 819.650 → 818.836 | 1.234.407 → 1.234.407 | 151.853 → 151.814 | idênticos |
+| Segmentos com o hífen seguido de minúscula | **107 → 10** | 5 → 2 | 106 → 98 | 159 → 159 | 4 → 4 | — |
+
+- **Miller, o que sai:** das 3.373 palavras de `limpos/` que somem, 2.848 são das linhas fora da
+  página, 654 da TABLA 59-6 (p. 2065), que agora sai pelo rótulo (as linhas fora da página partiam
+  a corrida dela, e ela era lida linha a linha: tabela +242 linhas nessa página, −211 em outras,
+  que agora saem como texto fora da página, como 445 de texto girado e 23 de figura), e as outras
+  são metades de palavra ("ción", "con-", "adminis-") que voltam inteiras ("concentración",
+  "administración": 683 palavras entram). Os 10 hífens que ficam são do texto ("pre- como
+  postsinápticos", "derecha- izquierda", "dosis- respuesta"). O `c045-s0485` sai inteiro.
+- **Manica:** 86 trechos mudam em 38 capítulos. Lidos um a um: a frase intercalada entre as
+  colunas volta inteira (c015, c017, c018, c021, c027, c042, c048, c060), e as seções passam a vir
+  na ordem da coluna (c067, c073, c076, c098, c099, c100); os rótulos de figura ("a v n", "E A C B
+  D") mudam de lugar, e já eram lidos. A fórmula do c030 continua, agora depois de "Lei de
+  Hagen-Poiseuille:". Nenhuma piora achada.
+- **Practical:** 72 trechos em 22 capítulos; pela conta, das 29 páginas que mudam, 4 trocas ou
+  mais vão de 131 a 116, e seis páginas que saíam de 45 a 102 trocas saem em 1 (p. 649, 685, 705,
+  797, 801 e 866: a prosa ao lado de um quadro ou de uma lista). A frase intercalada volta inteira
+  em c004, c006, c034, c036, c039, c040, c044, c048 e c078, e a lista de leitura do c019, uma das
+  5 que ficavam ("Lista de leitura logo antes da bibliografia"), agora sai pela regra Vancouver
+  do `limpar` (36 segmentos), porque as duas colunas de referências vêm inteiras. As tabelas na
+  letra do corpo do c004, c014, c022, c023 e c032 trocam a ordem das células (umas melhor, outras
+  pior). **Pioram 3 páginas** (abaixo): c020 (p. 302), c047 (p. 862) e c080 (p. 1357).
+- **Bonica:** só 2 trechos, nas mesmas palavras: as tabelas do c018 (questionário) e do c101
+  (doses intratecais), que já saíam embaralhadas; a do c101 passa a sair por coluna ("Morphine
+  0.1–0.5 mg/d … 20 mg/mL 15 mg/mL…") e perde o par droga e concentração, que a leitura por
+  altura também misturava.
+- **Dalgalarrondo:** 43 trechos em 13 capítulos. Melhoram as 12 páginas partidas em quatro (c012,
+  c014, c015, c017, c019, c020, c023, c024, c028); as tabelas de quadro do c017, c025, c037 e
+  c039 trocam células de lugar numa tabela que já saía embaralhada. **Piora a p. 325** (abaixo).
+
+**Correções da code-review e da code-audit (2026-11-17)**, cada uma com o teste visto falhar:
+- **A chamada da linha fora da página:** a página contava, entre as 3 chamadas certas que provam
+  as duvidosas, a chamada da linha que sai do áudio. Agora a linha é marcada onde nasce (o
+  `_linha` do adaptador) e não entra na conta. Teste: 2 chamadas certas e 1 fora da página deixam
+  "6 h148".
+- **Os limiares da prosa ao lado:** o teste do "®" passava também com a regra antiga do
+  justificado e com 1 pt de folga. Os testes agora prendem cada condição (6 linhas, 35
+  caracteres, 60% na margem com 3 pt, 3 linhas do outro lado, 80% e 105%, texto corrido); cada uma
+  foi vista reprovar com o seu mutante.
+- **As alturas de cada lado** se calculam uma vez por faixa (a regra roda em cada faixa de cada
+  calha candidata), e a conta das linhas na margem é uma função só, para o justificado e para a
+  prosa.
+
+**O que fica (declarado).** As pioras, por página, que a conta e a leitura dos trechos acharam:
+1 no *Miller*, 1 no *Dalgalarrondo* e 3 no *Practical*, contra mais de 100 páginas melhores no
+*Miller*, 12 no *Dalgalarrondo* e cerca de 20 no *Practical*.
+- **Practical p. 302 (c020):** as duas tabelas de 8,5 pt no alto e a prosa embaixo. A entrelinha
+  da coluna mede a distância entre as linhas das tabelas (0,02, contra 0,0137 da prosa), o vão até
+  a prosa deixa de fechar as colunas, tabela e prosa ficam numa faixa só, e a página é lida por
+  altura ("In plexopathies, motor NCSs are useful in excluding a peripheral pound muscle action
+  potential…"). Medir a entrelinha só na letra do corpo consertava esta página e partia em quatro
+  a p. 212, que a entrelinha da página inteira, puxada pela tabela, protegia; ficou de fora.
+- **Practical p. 862 (c047) e p. 1357 (c080):** a página tem uma calha só, a que põe mais linhas
+  em colunas. A prosa ao lado faz das duas colunas de referências da p. 862 uma faixa de colunas
+  com a calha em 324, que passa a ganhar da calha em 312; mas os marcadores da coluna da direita
+  começam em 312 e, com a calha em 324, atravessam e partem o quadro "Key Points" em pedaços de 4
+  e 5 linhas, lidos alternando os lados. Na p. 1357, o mesmo: outra calha ganha, e o alto da
+  página sai intercalado ("General Limitations priately evaluate the cause…"). O conserto é a
+  calha por faixa, e não uma por página: mudança de desenho, para depois.
+- **Dalgalarrondo p. 325:** o título do Quadro 29.2 fica 2,5 entrelinhas abaixo das colunas, no
+  limiar do vão (0,0423 contra 0,04225), e passa a ser lido no fim da coluna da esquerda, antes da
+  da direita: a frase "dificuldade de fa-/lar" se parte em volta dele (c030), e o destaque de
+  margem da alexitimia deixa de sair. A entrelinha de antes, medida na página inteira, ficava 13%
+  abaixo da de verdade nesse livro, e o vão ganhava folga. Uma regra para o título de quadro de
+  largura cheia (o vão de parágrafo antes de uma linha de um lado só seguida de linha que
+  atravessa a calha) consertava a p. 325 e mudava 6 páginas, piorando a 133 e a 283; ficou de
+  fora.
+- **Miller p. 569:** a regra do vão numa coluna só (A1 de "Duas colunas") olha 2,5 entrelinhas
+  acima do vão; com a entrelinha certa, a janela alcança o fim da coluna vizinha, que acabou 2,2
+  linhas acima, e a página sai em três pedaços (a seção depois do subtítulo vem depois da coluna
+  da direita).
+- **As 27 páginas do Miller com 4 trocas ou mais** que ficam: a tabela de largura inteira lida
+  linha a linha, que é o certo e que a conta trata como troca (p. 1107, 2065, 2066, 3415); o
+  índice de capítulo em duas colunas de títulos (p. 36 e 37); a faixa curta, de 1 a 3 linhas de
+  cada lado, depois de um vão (p. 2341); e as páginas de fórmula.
+- **O texto fora da página só na horizontal:** o acima ou abaixo da página e o de fora da caixa de
+  recorte, dentro da caixa da mídia, ainda são lidos. Nenhum caso medido, fora o carimbo da
+  gráfica abaixo da capa do *Manica*, que já ficava.
+- **O glifo de fórmula na calha** (o parêntese de 4 pt da p. 531, que não chega à coluna da
+  direita) ainda conta como linha que atravessa e corta a faixa; considerá-lo da esquerda
+  consertava 1 página e embaralhava os pedaços de fórmula de outras 3.
+- **Os livros cujo PDF não está neste Mac** (*Competente*, *Maudlin*): sem regressão. O
+  *Dalgalarrondo* e o *Hard Parts*, onde a regra "Duas colunas" foi medida, foram medidos
+  (os PDFs estão em `livros/trabalho/dalgalarrondo.pdf` e no Proton Drive).
+
+
 ## Consequências
 
 **Ganha:** um comando a mais na mesma esteira, sem repositório novo. Os defeitos de conversão são atacados onde nascem.
@@ -1894,6 +2087,7 @@ as pastas dos livros prontos no *Manica* (com os 4 capítulos declarados) e no *
 | Bibliografia pela letra e rótulo com a caixa trocada | testes (`tests/test_bibliografia_do_pdf.py`): 10 linhas de citação em letra menor e o título em negrito saem, registrados com a página; 9 ficam; a citação "ano;volume:página" conta; a linha sem citação no meio sai; o título em letra de título logo acima sai, e o que fica abaixo da lista na página não; a linha do corpo antes fica; a caixa em outra letra antes fica; o cabeçalho da página online entre as referências sai, e 4 linhas de outra letra partem o trecho; dois trechos de 9 ficam; a lista continua na página seguinte; as citações na letra do corpo, em outra família do tamanho do corpo e no PDF sem família ficam; do PDF de ponta a ponta, o resumo conta as linhas. (`tests/test_caixa_do_rotulo.py`): "FigurA 12.3", "QuAdro 13.1", "tAb. 4.2", "tAblA 6-1" voltam à caixa normal no parágrafo e na nota; a caixa normal, as maiúsculas, a palavra sem número, outra palavra e o título não mudam; do PDF de ponta a ponta, o resumo conta as palavras | portão | o *Miller* volta a sair com a prosa intercalada com as referências, sai linha do corpo, ou muda palavra que não é rótulo |
 | Camada do OCR e chamada colada | testes (`tests/test_camada_do_ocr.py`): a linha não pintada sai registrada com a página, cada página decide por si, e o resumo a conta; a página escaneada, a página em que a camada é a maior parte, o empate e o PDF escaneado inteiro ficam; o adaptador diz qual linha a página não pinta, o modo volta ao normal depois, e a linha que mistura não conta. (`tests/test_chamada_colada.py`): a chamada sai depois de "»", "!" e "?", depois de espaço antes de pontuação ou do fim da linha, depois de travessão, com a faixa no hífen invisível e com letra, e a lista depois de letra solta e de número; o número só depois de letra solta, de número ou do grau, e a chamada que abre a linha antes de pontuação, são duvidosos e só saem na página com 3 chamadas certas; o isótopo, a base 10, o algarismo só e o expoente no meio da fórmula ficam. (`tests/test_corrida_depois_da_tabela.py`): a figura e a outra tabela depois do fim da tabela, na mesma corrida, saem; a caixa sem rótulo fica. (`tests/test_nota_antes_da_bibliografia.py`): a nota antes do título da lista fica e a lista sai; a primeira referência em duas linhas, o cabeçalho em negrito no meio da lista e as referências antes de um subtítulo saem com ela. Cada guarda foi vista falhar com o seu mutante | portão | o resto de figura ou a chamada ficam, ou sai página escaneada, expoente ou caixa sem rótulo |
 | Lista de leitura logo antes da bibliografia | testes (`tests/test_lista_de_leitura_antes_da_bibliografia.py`): a lista na letra das citações, sob um título em letra de título, sai com o título, registrada com a página e o motivo dela, também na página anterior à da bibliografia; o subtítulo no meio sai; a caixa do corpo no meio (até 40 linhas) e a frase depois da última referência ficam; a lista sem citação, a nota depois da prosa, o título que encabeça prosa, a prosa entre o fim da lista e a bibliografia, mais de 40 linhas do corpo no meio, 4 linhas de outra letra (com ou sem linha do corpo entre elas), outra seção no caminho e a lista sem título nenhum antes não tiram nada; o título logo acima do da lista, de outra letra ou da mesma, fica; a lista longa que já saía não sai duas vezes; o título em letra de título da mesma família acima do subtítulo da bibliografia sai, e o de outra seção e o de outra família ficam; o resumo conta as duas linhas. a metade da lista entre dois trechos provados sai, sem a caixa do corpo, sem as frases das pontas e só se cita. Cada condição tem o mutante que um teste reprova (15 mutantes) | portão | a lista de leitura volta a ser lida numa reimportação, ou sai prosa na letra das citações |
+| A ordem das colunas no Miller | testes (`tests/test_texto_fora_da_pagina.py`): a linha inteira fora da página sai registrada com a página, o adaptador diz qual linha está inteira fora (dos dois lados) e deixa a que passa da borda só em parte, o resumo a conta, e a chamada da linha fora não prova as duvidosas. (`tests/test_colunas_do_miller.py`): as colunas desalinhadas em meia linha, com um subtítulo em cada, saem inteiras; a prosa ao lado de uma lista da mesma largura sai coluna a coluna, também com a margem a 2,5 pt e uma linha 2 pt além dela; ficam linha a linha a célula curta, a lista bem mais estreita ou bem mais larga que a prosa, a prosa de 5 linhas, a célula longa sem margem comum, as duas linhas ao lado da prosa e as linhas longas que não continuam. Cada condição tem o mutante que um teste reprova | portão | o texto das fórmulas volta a ser lido, a página desalinhada volta a sair em quatro pedaços, ou a tabela ao lado da prosa passa a ser lida coluna a coluna |
 | A escuta ★ | rodar `importar-pdf` + `preparar` num PDF real em `livros/` e contar o que o `limpar` ainda precisa tirar | a cada mudança no conversor | a contagem sobe |
 
 Regra derivada no `AGENTS.md`: a biblioteca de PDF só entra em `adaptadores/`.
@@ -1907,3 +2101,6 @@ principal. Os sinais, os limiares e a correção da corrida depois da tabela vã
 A seção "Lista de leitura logo antes da bibliografia" (2026-11-14) executa a decisão do Mateus de
 2026-11-13 (consertar a regressão das "Suggested Readings" numa filha), levada pela sessão
 principal. O sinal e os limiares vão à revisão dele.
+A seção "A ordem das colunas no Miller" (2026-11-17) executa a decisão do Mateus do mesmo dia
+(corrigir a ordem das colunas do Miller antes da tradução, ADR-0013), levada pela sessão
+principal. As três regras, os sinais, os limiares e as pioras declaradas vão à revisão dele.

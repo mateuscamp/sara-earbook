@@ -274,11 +274,13 @@ def _pagina(pdf: Path, numero: int, layout: LTPage, agregador: _Agregador) -> Pa
         raise PdfInvalidoError(mensagem)
     # LTTextBox é tipado como contêiner de LTTextLine; o LTTextContainer genérico não.
     brutas = [linha for caixa in layout if isinstance(caixa, LTTextBox) for linha in caixa]
-    lidas = [_linha(bruta, layout.height, agregador.nao_pinta) for bruta in brutas]
+    lidas = [_linha(bruta, layout, agregador.nao_pinta) for bruta in brutas]
     # A página com chamadas certas prova as duvidosas: só as linhas que as têm são lidas de novo.
-    if pagina_usa_chamadas(sum(len(lida.linha.chamadas) for lida in lidas if lida is not None)):
+    # A chamada da linha fora da página não conta: ela sai do áudio.
+    visiveis = [lida.linha for lida in lidas if lida is not None and not lida.linha.fora_da_pagina]
+    if pagina_usa_chamadas(sum(len(linha.chamadas) for linha in visiveis)):
         lidas = [
-            _linha(bruta, layout.height, agregador.nao_pinta, com_duvidosas=True)
+            _linha(bruta, layout, agregador.nao_pinta, com_duvidosas=True)
             if lida is not None and lida.duvidosas
             else lida
             for bruta, lida in zip(brutas, lidas, strict=True)
@@ -288,7 +290,7 @@ def _pagina(pdf: Path, numero: int, layout: LTPage, agregador: _Agregador) -> Pa
 
 def _linha(
     linha: LTTextLine,
-    altura: float,
+    pagina: LTPage,
     nao_pinta: Callable[[LTChar], bool],
     *,
     com_duvidosas: bool = False,
@@ -310,11 +312,14 @@ def _linha(
     pronta = Linha(
         texto,
         x=linha.x0,
-        topo=1 - linha.y1 / altura,
+        topo=1 - linha.y1 / pagina.height,
         tamanho=tamanho,
         monoespacada=monoespacada,
         fim=linha.x1,
         chamadas=lida.chamadas,
+        # Inteira além da borda do papel, que o leitor não mostra; a que passa da borda só em parte
+        # fica (ADR-0004, "A ordem das colunas no Miller").
+        fora_da_pagina=linha.x1 <= pagina.x0 or linha.x0 >= pagina.x1,
     )
     visiveis = [c for c in caracteres if c.get_text().strip()]
     return _LinhaLida(_com_a_letra(pronta, visiveis, nao_pinta), lida.duvidosas)

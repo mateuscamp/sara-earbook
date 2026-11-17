@@ -18,28 +18,19 @@ from enum import Enum
 from itertools import pairwise
 from statistics import median
 
-from earbook.dominio.pagina import (
-    DIFERENCA_DE_TAMANHO,
-    HIFENS_DA_QUEBRA,
-    Linha,
-    comeca_em_minuscula,
+from earbook.dominio.lados_da_calha import (
+    LINHAS_POR_COLUNA,
+    MESMA_ALTURA,
+    Regua,
+    duas_colunas,
+    por_altura,
+    texto_da_altura,
 )
+from earbook.dominio.pagina import Linha
 
-# Linhas a menos disso de topo estão na mesma altura (células de tabela no Hard Parts: 0,001).
-MESMA_ALTURA = 0.004
 CALHA_MINIMA = 10.0
 """Em pontos, do fim da linha da esquerda ao começo da da direita. Medido: o vão das colunas vai
 de 16 a 40 pt; o da linha justificada partida fica abaixo de 10."""
-LINHAS_POR_COLUNA = 3
-LARGURA_DA_COLUNA = 0.3
-"""Fração da largura da faixa que cada coluna ocupa, no mínimo. Medido: na linha do tempo do
-Competente (p. 377 a 380), o lado estreito (data ou capítulo) fica entre 6% e 27%, e é célula de
-tabela; as colunas de texto do Dalgalarrondo e do índice do Hard Parts, perto de 45%."""
-CONTINUIDADE = 0.4
-"""Fração das linhas seguidas de um lado em que a de baixo continua a de cima. Medido: das 758
-faixas aceitas no Dalgalarrondo, 58 ficam entre 0,4 e 0,6 (glossário, listas, quadros), e no
-Hard Parts, 3 de 21 (p. 412, 455 e 459); a tabela de célula curta fica em 0, e a bibliografia,
-entre 0,33 e 0,4. Com 0,3, a tabela da p. 144 do Competente seria lida coluna a coluna."""
 INICIOS_MAXIMOS = 200
 """Começos de linha diferentes acima dos quais a página não é de texto em colunas e vai como
 antes, por altura. A busca da calha custa um passe pela página por começo, e o PDF é entrada não
@@ -47,21 +38,11 @@ confiável: 1.600 linhas em x distintos levavam 2,4 s (code-review). Medido: a p
 começos tem 97 (Dalgalarrondo p. 302, uma tabela); o índice do Hard Parts, 75. Juntar os
 começos por ponto inteiro baixava a conta para 44, mas tirava as colunas de 9 páginas do
 Dalgalarrondo (glossário e bibliografia), onde a calha meio ponto à direita parte a faixa."""
-VAO_DA_FAIXA = 2.5
-"""Em entrelinhas. Medido no Dalgalarrondo: o parágrafo novo abre 2 entrelinhas; o quadro e a
-epígrafe, de 4,5 a 5,6 (p. 30 e 31)."""
-CONTINUIDADE_DO_JUSTIFICADO = 0.3
-LINHAS_CHEIAS = 0.4
-"""O lado de verbetes, que abrem em maiúscula, é texto corrido quando continua em 30% ou mais
-dos pares e 40% ou mais das linhas chegam à margem direita dele: é justificado. Medido no
-Dalgalarrondo: o glossário tem de 0,40 a 0,55 de linhas cheias, e a bibliografia, de 0,62 a
-0,77; as tabelas do Competente e do Hard Parts que passam de 0,3 de continuidade têm no máximo
-0,25 (a p. 144 do Competente, 0,11). As tabelas com a coluna da direita alinhada (Hard Parts
-p. 143) têm linhas cheias, mas continuidade zero (ADR-0004, "O que ficou da Fase 1")."""
-LINHAS_DA_COLUNA_CURTA = 2
-"""O resto do parágrafo no pé da página, ao lado de uma lista (`_curta_do_corpo`)."""
-FOLGA_DA_MARGEM = 1.0
-"""Em pontos: a linha cheia termina a menos disso da margem direita do lado."""
+LINHAS_ADIANTE = 40
+"""Quantas linhas, na ordem da altura, a entrelinha procura a de baixo da mesma coluna. Medido no
+Miller: em 99,996% das linhas ela está até 40 adiante (91% a 2, nas colunas desalinhadas). Sem
+o limite, a página de 200 começos e 6.400 linhas, toda de células que não se sobrepõem, custava
+0,4 s a mais."""
 VAO_DA_TABELA = 1.35
 """Em entrelinhas: o vão do parágrafo (o `RAZAO_DO_ESPACO` do `blocos`). Antes da primeira linha
 do corpo, depois da tabela de letra menor dos dois lados, ele já fecha as colunas (p. 324)."""
@@ -71,24 +52,6 @@ class _Lado(Enum):
     ESQUERDA = "esquerda"
     DIREITA = "direita"
     ATRAVESSA = "atravessa"
-
-
-@dataclass(frozen=True)
-class _Regua:
-    """O que mede o vão entre as faixas da página: a entrelinha dela e o corpo do livro."""
-
-    entrelinha: float
-    corpo: float
-
-    @property
-    def vao(self) -> float:
-        return VAO_DA_FAIXA * self.entrelinha
-
-    def do_corpo(self, linha: Linha) -> bool:
-        return abs(linha.tamanho - self.corpo) <= DIFERENCA_DE_TAMANHO
-
-    def menor_que_o_corpo(self, linha: Linha) -> bool:
-        return linha.tamanho < self.corpo - DIFERENCA_DE_TAMANHO
 
 
 @dataclass(frozen=True)
@@ -119,18 +82,18 @@ def _em_ordem(linhas: Sequence[Linha], corpo: float) -> list[list[Linha]]:
     ordenadas = sorted(linhas, key=lambda linha: linha.topo)
     faixas = _melhor_divisao(ordenadas, corpo)
     if faixas is None:
-        return _por_altura(linhas)
+        return por_altura(linhas)
     ordem: list[list[Linha]] = []
     soltas: list[Linha] = []
     for faixa in faixas:
         if faixa.colunas:
             esquerda, direita = _na_margem(faixa.esquerda), _na_margem(faixa.direita)
             colunas = _em_ordem(esquerda, corpo) + _em_ordem(direita, corpo)
-            ordem += _por_altura(soltas) + colunas
+            ordem += por_altura(soltas) + colunas
             soltas = []
         else:
             soltas += [*faixa.esquerda, *faixa.direita, *faixa.atravessa]
-    return ordem + _por_altura(soltas)
+    return ordem + por_altura(soltas)
 
 
 def _melhor_divisao(ordenadas: list[Linha], corpo: float) -> list[_Faixa] | None:
@@ -138,7 +101,7 @@ def _melhor_divisao(ordenadas: list[Linha], corpo: float) -> list[_Faixa] | None
     inicios = sorted({linha.x for linha in ordenadas})
     if len(inicios) > INICIOS_MAXIMOS:
         return None
-    regua = _Regua(_entrelinha(ordenadas), corpo)
+    regua = Regua(_entrelinha(ordenadas), corpo)
     melhor: tuple[int, list[_Faixa]] | None = None
     for calha in inicios:
         faixas = _faixas(ordenadas, calha, regua)
@@ -149,16 +112,33 @@ def _melhor_divisao(ordenadas: list[Linha], corpo: float) -> list[_Faixa] | None
 
 
 def _entrelinha(ordenadas: list[Linha]) -> float:
-    """A distância típica entre alturas seguidas; infinita quando há uma altura só."""
+    """A distância típica entre uma linha e a de baixo na mesma coluna; infinita quando não há.
+
+    A de baixo é a primeira que a sobrepõe na horizontal. Medida entre alturas seguidas da página
+    inteira, a entrelinha caía à metade quando as colunas estão desalinhadas em meia linha (Miller
+    p. 2931): o vão do subtítulo passava de 2,5 entrelinhas, fechava as colunas, e a página saía em
+    quatro pedaços, com os subtítulos das duas colunas colados numa linha só (ADR-0004, "A ordem
+    das colunas no Miller").
+    """
     distancias = [
-        de_baixo.topo - de_cima.topo
-        for de_cima, de_baixo in pairwise(ordenadas)
-        if de_baixo.topo - de_cima.topo >= MESMA_ALTURA
+        distancia
+        for posicao in range(len(ordenadas))
+        if (distancia := _ate_a_de_baixo(ordenadas, posicao)) is not None
     ]
     return median(distancias) if distancias else math.inf
 
 
-def _faixas(ordenadas: list[Linha], calha: float, regua: _Regua) -> list[_Faixa]:
+def _ate_a_de_baixo(ordenadas: list[Linha], posicao: int) -> float | None:
+    de_cima = ordenadas[posicao]
+    for seguinte in range(posicao + 1, min(posicao + 1 + LINHAS_ADIANTE, len(ordenadas))):
+        de_baixo = ordenadas[seguinte]
+        distancia = de_baixo.topo - de_cima.topo
+        if distancia >= MESMA_ALTURA and de_baixo.x < de_cima.fim and de_cima.x < de_baixo.fim:
+            return distancia
+    return None
+
+
+def _faixas(ordenadas: list[Linha], calha: float, regua: Regua) -> list[_Faixa]:
     """Corta a página, de cima para baixo, na linha que atravessa a calha e no vão que fecha
     as colunas."""
     lados = _lados(ordenadas, calha)
@@ -177,15 +157,15 @@ def _faixas(ordenadas: list[Linha], calha: float, regua: _Regua) -> list[_Faixa]
     return [*faixas, _faixa(esquerda, direita, regua)] if esquerda or direita else faixas
 
 
-def _faixa(esquerda: list[Linha], direita: list[Linha], regua: _Regua) -> _Faixa:
-    colunas = _duas_colunas(esquerda, direita, regua)
+def _faixa(esquerda: list[Linha], direita: list[Linha], regua: Regua) -> _Faixa:
+    colunas = duas_colunas(esquerda, direita, regua)
     return _Faixa(tuple(esquerda), tuple(direita), colunas=colunas)
 
 
 def _lados(ordenadas: list[Linha], calha: float) -> list[_Lado]:
     """O lado da calha de cada linha, altura por altura."""
     lados: list[_Lado] = []
-    for altura in _por_altura(ordenadas):
+    for altura in por_altura(ordenadas):
         lados += _lados_da_altura(altura, calha)
     return lados
 
@@ -216,7 +196,7 @@ def _lado(linha: Linha, calha: float) -> _Lado:
 
 
 def _fecha_as_colunas(
-    ordenadas: list[Linha], lados: list[_Lado], posicao: int, regua: _Regua
+    ordenadas: list[Linha], lados: list[_Lado], posicao: int, regua: Regua
 ) -> bool:
     """O vão de mais de 2,5 entrelinhas antes da linha `posicao` fecha as colunas: "Questões de
     revisão" vem depois delas (Dalgalarrondo p. 30 e 343), e a epígrafe, antes (p. 31).
@@ -238,9 +218,7 @@ def _fecha_as_colunas(
     return len(acima) != 1 or not _continua_so(lados[posicao:], acima.pop())
 
 
-def _acaba_a_tabela(
-    ordenadas: list[Linha], lados: list[_Lado], posicao: int, regua: _Regua
-) -> bool:
+def _acaba_a_tabela(ordenadas: list[Linha], lados: list[_Lado], posicao: int, regua: Regua) -> bool:
     """A linha `posicao` é do corpo, e os dois lados da calha acabam, logo acima dela, em 3 linhas
     ou mais de letra menor que o corpo: é a tabela de um quadro. Dalgalarrondo p. 324: o corpo
     vinha nas colunas da tabela do Quadro 29.1, e a coluna da direita da tabela caía depois
@@ -255,7 +233,7 @@ def _acaba_a_tabela(
     )
 
 
-def _menores_no_fim(acima: list[tuple[Linha, _Lado]], lado: _Lado, regua: _Regua) -> int:
+def _menores_no_fim(acima: list[tuple[Linha, _Lado]], lado: _Lado, regua: Regua) -> int:
     """Quantas linhas seguidas do `lado`, de baixo para cima, têm letra menor que o corpo."""
     menores = 0
     for linha, dela in reversed(acima):
@@ -283,63 +261,6 @@ def _lados_entre(ordenadas: list[Linha], lados: list[_Lado], alto: float, pe: fl
     return {lado for linha, lado in zip(ordenadas, lados, strict=True) if alto <= linha.topo <= pe}
 
 
-def _duas_colunas(esquerda: list[Linha], direita: list[Linha], regua: _Regua) -> bool:
-    if not esquerda or not direita:
-        return False
-    largura_da_faixa = _largura(esquerda + direita)
-    return all(_coluna(lado, largura_da_faixa, regua) for lado in (esquerda, direita))
-
-
-def _coluna(lado: list[Linha], largura_da_faixa: float, regua: _Regua) -> bool:
-    """Um lado da calha é coluna de texto: 3 linhas ou mais, ou a coluna curta do corpo; largo e
-    corrido."""
-    alturas = _por_altura(lado)
-    if len(alturas) < LINHAS_POR_COLUNA and not _curta_do_corpo(alturas, regua):
-        return False
-    return _largura(lado) >= LARGURA_DA_COLUNA * largura_da_faixa and _corrido(alturas)
-
-
-def _curta_do_corpo(alturas: list[list[Linha]], regua: _Regua) -> bool:
-    """Duas linhas do corpo, a de cima partida no hífen da quebra e a de baixo em minúscula: o
-    resto do parágrafo no pé da página, ao lado de uma lista (Dalgalarrondo p. 384, "…é classi-"
-    / "camente definida pela tríade:"). A célula de duas linhas de uma tabela não se parte em
-    sílaba (Hard Parts p. 257), e com qualquer continuação ela virava coluna (ADR-0004, "O que
-    ficou da Fase 1")."""
-    if len(alturas) != LINHAS_DA_COLUNA_CURTA or not all(
-        regua.do_corpo(linha) for altura in alturas for linha in altura
-    ):
-        return False
-    de_cima, de_baixo = (_texto(altura) for altura in alturas)
-    return de_cima.endswith(HIFENS_DA_QUEBRA) and comeca_em_minuscula(de_baixo)
-
-
-def _largura(linhas: list[Linha]) -> float:
-    return max(linha.fim for linha in linhas) - min(linha.x for linha in linhas)
-
-
-def _corrido(alturas: list[list[Linha]]) -> bool:
-    """Texto corrido, e não célula de tabela: a linha de baixo costuma continuar a de cima."""
-    textos = [_texto(altura) for altura in alturas]
-    pares = list(pairwise(textos))
-    continuam = sum(_continua(de_cima, de_baixo) for de_cima, de_baixo in pares)
-    if continuam >= CONTINUIDADE * len(pares):
-        return True
-    return continuam >= CONTINUIDADE_DO_JUSTIFICADO * len(pares) and _justificado(alturas)
-
-
-def _justificado(alturas: list[list[Linha]]) -> bool:
-    """40% ou mais das linhas terminam na margem direita do lado: o glossário e a bibliografia do
-    Dalgalarrondo, cujos verbetes abrem em maiúscula e continuam pouco (`LINHAS_CHEIAS`)."""
-    fins = [max(linha.fim for linha in altura) for altura in alturas]
-    margem = max(fins)
-    cheias = sum(margem - fim <= FOLGA_DA_MARGEM for fim in fins)
-    return cheias >= LINHAS_CHEIAS * len(alturas)
-
-
-def _continua(de_cima: str, de_baixo: str) -> bool:
-    return de_cima.endswith(HIFENS_DA_QUEBRA) or comeca_em_minuscula(de_baixo)
-
-
 def _na_margem(coluna: tuple[Linha, ...]) -> tuple[Linha, ...]:
     """A coluna com o x contado da margem dela, o x mais comum das suas linhas.
 
@@ -354,28 +275,13 @@ def _na_margem(coluna: tuple[Linha, ...]) -> tuple[Linha, ...]:
     return tuple(replace(linha, x=linha.x - margem, fim=linha.fim - margem) for linha in coluna)
 
 
-def _por_altura(linhas: Sequence[Linha]) -> list[list[Linha]]:
-    """Agrupa as linhas na mesma altura, de cima para baixo."""
-    alturas: list[list[Linha]] = []
-    for linha in sorted(linhas, key=lambda linha: linha.topo):
-        if alturas and abs(linha.topo - alturas[-1][0].topo) < MESMA_ALTURA:
-            alturas[-1].append(linha)
-        else:
-            alturas.append([linha])
-    return alturas
-
-
-def _texto(altura: list[Linha]) -> str:
-    return " ".join(pedaco.texto for pedaco in sorted(altura, key=lambda linha: linha.x))
-
-
 def _juntar(altura: list[Linha]) -> tuple[Linha, int]:
     # Revisão nº 2: ordenar por (topo, x) punha primeiro o pedaço da direita que ficasse um
     # pouco mais alto (618 vezes no Hard Parts). A ordem dentro da altura é só a do x.
     pedacos = sorted(altura, key=lambda linha: linha.x)
     juntas = replace(
         pedacos[0],
-        texto=_texto(pedacos),
+        texto=texto_da_altura(pedacos),
         monoespacada=all(pedaco.monoespacada for pedaco in pedacos),
         negrito=all(pedaco.negrito for pedaco in pedacos),
         versalete=all(pedaco.versalete for pedaco in pedacos),

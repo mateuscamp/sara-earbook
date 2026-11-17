@@ -30,6 +30,9 @@ A decisão está no [ADR-0001](docs/adr/0001-reescrever-com-claude-code-orquestr
   delas, invisível ("1", "l", "o o o", "~ ~"). Sai na página em que o texto pintado é a maior
   parte; a página escaneada, cujo texto só existe nessa camada, fica
   ([ADR-0004](docs/adr/0004-pdf-entra-como-comando-importar-pdf.md)).
+- No PDF, o texto fora da página: o que o PDF grava além da borda do papel, que o leitor de PDF
+  não mostra (no Miller, o texto de cada fórmula, "V˙A/Q˙"). A linha que passa da borda só em
+  parte fica ([ADR-0004](docs/adr/0004-pdf-entra-como-comando-importar-pdf.md)).
 - No PDF, a tabela, o quadro e a figura: o rótulo em inglês ("TABLE 2.1", "• Figure 2.1",
   "FIGURE 1.1"), em português ou em espanhol ("Figura 1.2", "Quadro 1.1", "Tabela 8.1",
   "TABLA 2-1", "CUADRO 4-1"), as células, os rótulos do diagrama e a legenda, quando vêm em
@@ -271,6 +274,8 @@ autor do metadado do PDF (ou os de `--titulo` e `--autor`). O que ele faz:
 - devolve o hífen gravado como caractere invisível (U+00AD): no meio da linha ele vira "-"
   ("pós-anestesia", "tabela 6-1"), e no livro que o usa assim o do fim da linha segue a regra da
   palavra partida. O número partido na quebra ("6-" | "1") volta inteiro;
+- tira o texto inteiro fora da página, além da borda do papel, que o leitor de PDF não mostra.
+  O resumo conta as linhas, com o motivo "texto fora da página: além da borda do papel";
 - tira o texto que a página não pinta (o modo de pintura 3 do PDF): a camada que um OCR põe
   sobre as figuras de um livro digital, com o que leu dentro delas. Só na página em que o texto
   pintado é a maior parte: o PDF escaneado com OCR embutido, cujo texto só existe nessa camada,
@@ -309,8 +314,10 @@ autor do metadado do PDF (ou os de `--titulo` e `--autor`). O que ele faz:
   13.1" vira "No Quadro 13.1"; "tAb. 4.2", "tab. 4.2"): só "figura", "fig.", "quadro", "tabela",
   "tab.", "tabla" e "cuadro" antes de número, e nunca no título. O resumo conta quantas;
 - lê a página em duas colunas coluna por coluna, pela calha entre elas, quando os dois lados
-  são texto corrido, também o de verbetes justificados (glossário, bibliografia). A tabela
-  continua lida linha a linha;
+  são texto corrido, também o de verbetes justificados (glossário, bibliografia), e quando um
+  lado é prosa e o outro, da mesma largura, é uma lista, uma tabela ou um quadro. As colunas
+  desalinhadas em meia linha, com um subtítulo em cada uma, também saem coluna por coluna. A
+  tabela continua lida linha a linha;
 - separa do texto o destaque de margem, que fica numa coluna estreita ao lado dele e tem letra
   de outro tamanho, para que o `preparar` o tire;
 - deixa no lugar o quadro do livro didático. Ele abre no rótulo "Quadro 5.1" ou "Tabela 5.1" em

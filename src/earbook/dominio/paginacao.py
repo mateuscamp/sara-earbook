@@ -21,7 +21,8 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from statistics import median
 
-from earbook.dominio.pagina import Linha, Pagina, tamanho_do_corpo
+from earbook.dominio.pagina import PALAVRAS_DO_ROTULO, Linha, Pagina, tamanho_do_corpo
+from earbook.dominio.rotulos import abre_com_rotulo
 
 # Medido no spike: o cabeçalho ficou acima de 90% da altura, e o rodapé abaixo de 8%.
 FAIXA_DA_BORDA = 0.08
@@ -61,6 +62,7 @@ _ROMANO = re.compile(r"M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})")
 _LETRA = re.compile(r"[^\W\d_]")
 # Data com hora, já sem os espaços: "27/09/2017 20:12:36", com ou sem os segundos.
 _CARIMBO = re.compile(r"\d{1,2}/\d{1,2}/\d{4}\d{1,2}:\d{2}(?::\d{2})?")
+_ROTULO_DO_CAPITULO = re.compile(rf"(?:{PALAVRAS_DO_ROTULO})\s*\d+\b")
 _VALOR_ROMANO = {"M": 1000, "D": 500, "C": 100, "L": 50, "X": 10, "V": 5, "I": 1}
 
 type _Ocorrencia = tuple[int, int, Linha]
@@ -99,10 +101,20 @@ def tirar_cabecalhos_e_rodapes(paginas: Sequence[Pagina]) -> PaginasLimpas:
     """
     corpo = tamanho_do_corpo(paginas)
     limite = corpo + FOLGA_DA_FONTE
-    na_borda, ao_lado = _candidatas(paginas, _mancha(paginas, corpo))
+    mancha = _mancha(paginas, corpo)
+    na_borda, ao_lado = _candidatas(paginas, mancha)
     numeros = _numeros_de_pagina([*na_borda, *ao_lado], limite)
+    # O rótulo de tabela, de figura e de quadro se repete no alto da página, mas é do livro: sem
+    # ele, a tabela ficava no texto (ADR-0004, "Rótulo e cabeçalho do capítulo na borda").
     repetidas = _repetidas(
-        o for o in na_borda if o[2].tamanho <= limite and (o[0], o[1]) not in numeros
+        (
+            o
+            for o in na_borda
+            if o[2].tamanho <= limite
+            and (o[0], o[1]) not in numeros
+            and not abre_com_rotulo(o[2].texto)
+        ),
+        mancha,
     )
     na_altura = _na_altura_do_numero(na_borda, numeros, limite)
     motivos = dict.fromkeys(numeros, "número de página") | repetidas | na_altura
@@ -230,7 +242,29 @@ def _numeros_de_pagina(candidatas: Sequence[_Ocorrencia], limite: float) -> set[
     coerentes = {
         chave for chave, paginas in paginas_por_sequencia.items() if len(paginas) >= PAGINAS_MINIMAS
     }
-    return {(p, posicao) for p, posicao, sequencia in impressos if sequencia in coerentes}
+    achados = {(p, posicao) for p, posicao, sequencia in impressos if sequencia in coerentes}
+    return achados | _entre_os_vizinhos(impressos, achados)
+
+
+def _entre_os_vizinhos(
+    impressos: Sequence[tuple[int, int, _Sequencia]], achados: set[tuple[int, int]]
+) -> set[tuple[int, int]]:
+    """O número sem sequência que fica entre os números de página das duas vizinhas, no mesmo
+    sistema e no mesmo tamanho: a paginação que pula uma página ("xvii", "xix", "xxi" no
+    Practical, onde a página xviii não está no PDF). O "10" de 24 pt entre os números de rodapé
+    fica. ADR-0004, "Rótulo e cabeçalho do capítulo na borda"."""
+    valores: dict[tuple[int, str, float | None], int] = {
+        (p, sistema, tamanho): deslocamento + p
+        for p, posicao, (sistema, deslocamento, tamanho) in impressos
+        if (p, posicao) in achados
+    }
+    entre: set[tuple[int, int]] = set()
+    for p, posicao, (sistema, deslocamento, tamanho) in impressos:
+        antes = valores.get((p - 1, sistema, tamanho))
+        depois = valores.get((p + 1, sistema, tamanho))
+        if antes is not None and depois is not None and antes < deslocamento + p < depois:
+            entre.add((p, posicao))
+    return entre
 
 
 def _tamanho_da_sequencia(linha: Linha, limite: float) -> float | None:
@@ -260,16 +294,27 @@ def _valor_romano(romano: str) -> int:
     return sum(-v if v < seguinte else v for v, seguinte in zip(valores, seguintes, strict=True))
 
 
-def _chave(texto: str) -> str:
-    """Sem espaço e com o número trocado por "#": "C O M P E T E N T E 12" = "competente#"."""
+def _chave(texto: str, *, pelo_rotulo: bool = False) -> str:
+    """Sem espaço e com o número trocado por "#": "C O M P E T E N T E 12" = "competente#".
+
+    O cabeçalho que abre com o rótulo do capítulo vale só pelo rótulo: "CHAPTER 2 Classification
+    of…" e "CHAPTER 3 Organizing…" são o mesmo cabeçalho corrente, "chapter#". No Practical, o
+    capítulo curto tem o seu em duas páginas alternadas só, e ficava (ADR-0004, "Rótulo e
+    cabeçalho do capítulo na borda"). Só com `pelo_rotulo`, que o cabeçalho acima da mancha dá.
+    """
+    rotulo = _ROTULO_DO_CAPITULO.match(texto.strip()) if pelo_rotulo else None
+    if rotulo is not None:
+        texto = rotulo.group()
     return re.sub(r"\d+", "#", "".join(texto.split()).casefold())
 
 
-def _repetidas(candidatas: Iterable[_Ocorrencia]) -> dict[tuple[int, int], str]:
+def _repetidas(
+    candidatas: Iterable[_Ocorrencia], mancha: _Mancha | None
+) -> dict[tuple[int, int], str]:
     """A linha que se repete no mesmo topo em 3 páginas ou mais, ou nas 2 de uma abertura, com o
     motivo de cada uma."""
     motivos: dict[tuple[int, int], str] = {}
-    for (chave, _), ocorrencias in _grupos(candidatas).items():
+    for (chave, _), ocorrencias in _grupos(candidatas, mancha).items():
         com_letra = _LETRA.search(chave) is not None
         for mesma_altura in _por_altura(ocorrencias):
             paginas = {pagina for pagina, _, _ in mesma_altura}
@@ -280,13 +325,17 @@ def _repetidas(candidatas: Iterable[_Ocorrencia]) -> dict[tuple[int, int], str]:
     return motivos
 
 
-def _grupos(candidatas: Iterable[_Ocorrencia]) -> dict[tuple[str, bool], list[_Ocorrencia]]:
+def _grupos(
+    candidatas: Iterable[_Ocorrencia], mancha: _Mancha | None
+) -> dict[tuple[str, bool], list[_Ocorrencia]]:
     """As ocorrências pela chave do texto e pela faixa, alto ou pé."""
     # Alto e pé em grupos separados: com o título no alto das pares e no pé das ímpares, a
     # mediana do grupo inteiro caía no meio da página e nada saía (revisão nº 3).
     grupos: defaultdict[tuple[str, bool], list[_Ocorrencia]] = defaultdict(list)
     for ocorrencia in candidatas:
-        chave = _chave(ocorrencia[2].texto)
+        # O rótulo do capítulo só junta o cabeçalho acima da mancha: a primeira linha da coluna,
+        # que no Practical cai na faixa, pode abrir com "Chapter 20" (code-review).
+        chave = _chave(ocorrencia[2].texto, pelo_rotulo=_acima_da_mancha(ocorrencia[2], mancha))
         # O1: sem letra, o "#" juntaria números diferentes ("2020.", "1999.", "1984.") num
         # rodapé falso. A chave vira o texto literal: só o mesmo rodapé em toda página sai
         # ("2021", "© 2020", uma data; A3 da auditoria).

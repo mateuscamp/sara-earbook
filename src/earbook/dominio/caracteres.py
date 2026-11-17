@@ -23,7 +23,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import Enum
 from itertools import pairwise
-from statistics import median
+from statistics import median, multimode
 
 from earbook.dominio.pagina import Letra, juntar_letras_espacadas
 from earbook.dominio.segmento import normalizar_espacos
@@ -105,6 +105,20 @@ class TextoDaLinha:
     duvidosas: int = 0
     """As chamadas duvidosas que ficaram no texto: só saem na página que tem chamadas certas
     (ADR-0004, "Camada do OCR sobre as figuras e chamada colada")."""
+
+
+def tamanho_da_linha(caracteres: Sequence[Caractere]) -> float:
+    """A letra da linha: a moda, não a média. Nome de código em 8,5 pt numa linha de 9 pt puxava a
+    média para baixo de 0,85 do corpo, e a prosa virava nota (A1 da auditoria, Hard Parts). No
+    empate, o maior: a letra menor é a do código ou da nota (pós-revisão). O que sobe acima das
+    letras e não é letra não conta: a chamada de "body.¹⁹⁶,¹⁹⁷", mais longa que a palavra, dava a
+    letra dela à linha (ADR-0004, "Chamada na linha curta"). O subscrito conta, como antes."""
+    visiveis = [c for c in caracteres if not c.virtual]
+    letras = [c for c in visiveis if c.texto.isalpha()]
+    if letras:
+        acima = median(c.base for c in letras) + SUBIDA_MINIMA * max(c.tamanho for c in letras)
+        visiveis = [c for c in visiveis if c.texto.isalpha() or c.base <= acima]
+    return max(multimode(round(c.tamanho, 1) for c in visiveis)) if visiveis else 0.0
 
 
 def texto_da_linha(

@@ -26,6 +26,35 @@ def test_chamada_sobrescrita_sai_da_linha_e_fica_registrada(tmp_path: Path) -> N
     assert _linhas(pdf) == [("of the wages. (to", ("wages.[1]",))]
 
 
+def test_chamada_com_mais_algarismos_que_a_palavra_da_linha_sai(tmp_path: Path) -> None:
+    # Practical p. 141: "body.196,197" é a linha inteira, o fim do parágrafo. Os 7 caracteres da
+    # chamada eram a letra mais comum da linha, que ficava com 5,8 pt: a chamada não era menor
+    # que a linha, e a voz lia "body cento e noventa e seis" (ADR-0004, "Chamada na linha curta").
+    linha = LinhaDeTeste("body.^196,197^", 72, 700, tamanho=10, sobrescrito=True)
+    pdf = montar_pdf(tmp_path / "livro.pdf", [[linha]])
+    assert _linhas(pdf) == [("body.", ("body.[196,197]",))]
+
+
+def test_linha_de_numeros_com_letra_de_nota_sobrescrita_fica_na_letra_dos_numeros(
+    tmp_path: Path,
+) -> None:
+    # A letra da linha é a das letras só quando ela não é menor que a de todos os caracteres: na
+    # linha de tabela "120 135 140ᵃ", a única letra é a nota, e a linha não é nota (code-review).
+    linha = LinhaDeTeste("120 135 140^a^", 72, 700, tamanho=10, sobrescrito=True)
+    pdf = montar_pdf(tmp_path / "livro.pdf", [[linha]])
+    assert [linha.tamanho for p in ler_paginas(pdf) for linha in p.linhas] == [10.0]
+
+
+def test_rotulo_de_eixo_com_subscrito_fica_na_letra_de_antes(tmp_path: Path) -> None:
+    # Manica p. 253: o "C₉₅" do gráfico (o C em 8 pt, o 95 subscrito). Só a chamada, que sobe,
+    # sai da conta da letra da linha; o subscrito, que desce, conta como antes, e a página do
+    # gráfico continua lida na mesma ordem (a seção de questões do capítulo 31 saía, e voltou ao
+    # texto na regressão de 2026-11-17).
+    linha = LinhaDeTeste("C~95~", 72, 700, tamanho=10, sobrescrito=True)
+    pdf = montar_pdf(tmp_path / "livro.pdf", [[linha]])
+    assert [linha.tamanho for p in ler_paginas(pdf) for linha in p.linhas] == [5.8]
+
+
 def test_nome_com_letra_espacada_sai_sem_o_espaco_inventado(tmp_path: Path) -> None:
     # O par "AT" do Gotham-Bold vem apertado (vão de 0,1 pt contra 1 pt), e o "ATA" parecia
     # palavra para a regra da letra espaçada.

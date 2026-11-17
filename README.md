@@ -18,7 +18,9 @@ A decisão está no [ADR-0001](docs/adr/0001-reescrever-com-claude-code-orquestr
 
 - O cabeçalho e o número de página. O parágrafo partido pela troca de página volta a ser um só,
   e a palavra partida no fim dele volta sem o hífen quando o livro a escreve inteira em outro
-  lugar.
+  lugar. No PDF, o cabeçalho que abre com o rótulo do capítulo ("CHAPTER 2 Classification of…")
+  sai também no capítulo curto, que o tem em duas páginas só
+  ([ADR-0004](docs/adr/0004-pdf-entra-como-comando-importar-pdf.md)).
 - O marcador de nota no meio da frase ("…disse ele.12"). O texto da nota vai para o fim do
   capítulo, sob "Notas". No PDF, sai também o número de referência sobrescrito ("wages.¹",
   "84%–90%.²,³", "et al.¹⁹⁴", "in 1934²²¹", "paciente»⁵²", "¹¹⁸. No"), pela letra menor e mais
@@ -33,9 +35,11 @@ A decisão está no [ADR-0001](docs/adr/0001-reescrever-com-claude-code-orquestr
 - No PDF, a tabela, o quadro e a figura: o rótulo em inglês ("TABLE 2.1", "• Figure 2.1",
   "FIGURE 1.1"), em português ou em espanhol ("Figura 1.2", "Quadro 1.1", "Tabela 8.1",
   "TABLA 2-1", "CUADRO 4-1"), as células, os rótulos do diagrama e a legenda, quando vêm em
-  letra diferente da do corpo
+  letra diferente da do corpo. Saem com a figura também a letra do painel ("A B C") e o título e
+  os eixos dela, na letra do diagrama
   ([ADR-0004](docs/adr/0004-pdf-entra-como-comando-importar-pdf.md)). O "Quadro" e a "Tabela"
-  com o rótulo em letra de título, do livro didático, ficam no lugar.
+  com o rótulo em letra de título, do livro didático, e o "BOX 10.1" do tratado em inglês ficam
+  no lugar.
 - No PDF, o texto girado: a tabela deitada na página e o rótulo de lado, que o leitor de PDF
   monta uma letra de cada coluna ("d u r n n n o o , i i t f…")
   ([ADR-0004](docs/adr/0004-pdf-entra-como-comando-importar-pdf.md)).
@@ -274,7 +278,12 @@ autor do metadado do PDF (ou os de `--titulo` e `--autor`). O que ele faz:
   livro de margem larga, sai também o cabeçalho acima de onde o texto começa e o número de página
   na margem, ao lado da coluna. O cabeçalho em letra maior que a do texto sai pela linha do
   número de página: o que está na altura do número, na letra dele, em 3 páginas ou mais. O
-  carimbo de data e hora da gráfica no pé da página ("27/09/2017 20:12:36") sai também;
+  carimbo de data e hora da gráfica no pé da página ("27/09/2017 20:12:36") sai também. O
+  cabeçalho que abre com o rótulo do capítulo ("CHAPTER 2 Classification of…") se conta pelo
+  rótulo, e sai quando o do livro inteiro se repete no mesmo lugar. O rótulo de tabela, de figura
+  ou de quadro no alto da página ("TABLE", "• BOX 9.1") não é cabeçalho, mesmo repetido. O número
+  entre os números de página das duas páginas vizinhas sai, quando o PDF pula uma página
+  ("xvii", "xix", "xxi");
 - devolve o hífen gravado como caractere invisível (U+00AD): no meio da linha ele vira "-"
   ("pós-anestesia", "tabela 6-1"), e no livro que o usa assim o do fim da linha segue a regra da
   palavra partida. O número partido na quebra ("6-" | "1") volta inteiro;
@@ -296,7 +305,8 @@ autor do metadado do PDF (ou os de `--titulo` e `--autor`). O que ele faz:
   algarismos ou mais, depois de letra solta, de número ou do sinal de grau ("6 h¹⁴⁸",
   "0,62¹¹¹"), e a chamada que abre a linha antes de pontuação ("¹¹⁸. No") saem apenas na página
   que tem 3 chamadas certas ou mais, e nunca depois da base 10 ("10¹²"). O algarismo só ("m²", "T10²"), o isótopo
-  ("¹³³Xe") e o expoente no meio da fórmula ficam. O resumo conta quantos saíram;
+  ("¹³³Xe") e o expoente no meio da fórmula ficam. A chamada não conta na letra da linha: ela sai
+  também na linha curta em que é mais longa que a palavra ("body.¹⁹⁶,¹⁹⁷"). O resumo conta quantos saíram;
 - não põe espaço no nome com letra espaçada ("NATALIE MORYL", e não "NATALI E MORY L"): o
   espaço que o pdfminer deduz do vão sai quando o vão é o mesmo que separa as letras, ou menos
   da metade do espaço de verdade da linha ("PART ONE", e não "PA R T O N E"; "CHAPTER 110", e
@@ -305,7 +315,11 @@ autor do metadado do PDF (ou os de `--titulo` e `--autor`). O que ele faz:
   remissivo, sumário, com ou sem número de página, e colaboradores) e a tabela, o quadro e a
   figura, pela letra e pelo rótulo em inglês, em português ou em espanhol. A tabela acaba na
   página seguinte, onde a letra muda, e a figura ou a outra tabela que vem depois sai pelo rótulo
-  dela. O resumo conta essas linhas à parte, cada uma com o seu motivo;
+  dela. O quadro ("• Box 49.4") logo depois de uma tabela ou de uma legenda fica, mesmo na letra
+  das células. A figura leva a letra do painel ("A B", "I II") e o que vem na letra do diagrama
+  (o título dela e os valores do eixo), mesmo maiores que a legenda, e a legenda da figura
+  continuada ("• Figure 3.1, cont’d."). O resumo conta essas linhas à parte, cada uma com o seu
+  motivo;
 - tira a bibliografia em letra menor que a do corpo, pelas citações de periódico, antes de montar
   os parágrafos. A nota do autor na mesma letra, logo acima do título da lista e sem citação,
   fica. A lista de leitura sugerida logo antes das referências, na letra delas, sai junto, com o
@@ -320,12 +334,15 @@ autor do metadado do PDF (ou os de `--titulo` e `--autor`). O que ele faz:
   "tab.", "tabla" e "cuadro" antes de número, e nunca no título. O resumo conta quantas;
 - lê a página em duas colunas coluna por coluna, pela calha entre elas, quando os dois lados
   são texto corrido, também o de verbetes justificados (glossário, bibliografia). A tabela
-  continua lida linha a linha;
+  continua lida linha a linha. O título da coluna da esquerda que abre uma faixa da largura da
+  página ("Summary" e "Key Points" no fim do capítulo do tratado) é lido entre as faixas, e os
+  pontos-chave não se intercalam com a prosa;
 - separa do texto o destaque de margem, que fica numa coluna estreita ao lado dele e tem letra
   de outro tamanho, para que o `preparar` o tire;
 - deixa no lugar o quadro do livro didático. Ele abre no rótulo "Quadro 5.1" ou "Tabela 5.1" em
-  letra de título (1,2 vez a do texto ou mais), e o conteúdo dele, em letra menor, é lido como parágrafo, e não como nota no fim do
-  capítulo. Ele entra depois da frase que interrompe, e a frase volta a ser uma só;
+  letra de título (1,2 vez a do texto ou mais), ou no "BOX 10.1" do tratado em inglês, e o
+  conteúdo dele, em letra menor ou em outra família, é lido como parágrafo, e não como nota no
+  fim do capítulo. Ele entra depois da frase que interrompe, e a frase volta a ser uma só;
 - lê a linha toda em negrito, do tamanho do texto, como subtítulo; no livro em que essa linha
   tem a medida da linha comum (a prosa em negrito de um romance, como a voz do Corvo no *Kafka à
   beira-mar*), o negrito é ênfase de trechos inteiros e fica no parágrafo;

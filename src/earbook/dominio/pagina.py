@@ -100,6 +100,18 @@ def tamanho_do_corpo(paginas: Sequence[Pagina]) -> float:
     return caracteres.most_common(1)[0][0] if caracteres else 0.0
 
 
+def familia_do_corpo(paginas: Sequence[Pagina], corpo: float) -> str:
+    """A família com mais caracteres no tamanho `corpo`; vazia se o PDF não a diz. No Practical, a
+    AGaramondPro: o quadro em HelveticaNeueLTStd de 9,5 pt não é corpo (ADR-0004, "Quadro em
+    inglês")."""
+    caracteres: Counter[str] = Counter()
+    for pagina in paginas:
+        for linha in pagina.linhas:
+            if round(linha.tamanho, 1) == corpo:
+                caracteres[linha.fonte] += len(linha.texto)
+    return caracteres.most_common(1)[0][0] if caracteres else ""
+
+
 def corpo_em_negrito(paginas: Sequence[Pagina], corpo: float) -> bool:
     """Se a maior parte do texto do tamanho `corpo` está em linha toda negrito.
 

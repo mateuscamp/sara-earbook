@@ -271,12 +271,14 @@ def test_arvore_com_filho_que_nao_e_objeto_e_recusada_com_o_nome(tmp_path: Path)
 def test_erro_da_propria_conversao_nao_vira_pdf_invalido(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    # Revisão nº 1: o except em volta de tudo mostrava bug do adaptador como PDF ruim.
+    # Revisão nº 1: o except em volta de tudo mostrava bug do adaptador como PDF ruim. O bug é
+    # plantado na letra da linha, que o adaptador pede ao domínio desde 2026-11-17 (antes, no
+    # `multimode` que ele chamava direto).
     def moda_quebrada(_: object) -> float:
         mensagem = "bug plantado"
         raise TypeError(mensagem)
 
-    monkeypatch.setattr("earbook.adaptadores.pdf.multimode", moda_quebrada)
+    monkeypatch.setattr("earbook.adaptadores.pdf.tamanho_da_linha", moda_quebrada)
     pdf = montar_pdf(tmp_path / "bom.pdf", [[LinhaDeTeste("Texto.", 72, 700)]])
     with pytest.raises(TypeError, match="bug plantado"):
         _ = ler_paginas(pdf)

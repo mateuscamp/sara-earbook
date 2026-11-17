@@ -23,6 +23,7 @@ from earbook.dominio.pagina import (
     Linha,
     Pagina,
     corpo_em_negrito,
+    familia_do_corpo,
     so_maiusculas,
     tamanho_do_corpo,
 )
@@ -59,6 +60,8 @@ class Medidas:
     maiusculas_destacam: bool
     """O corpo não é negrito: a linha toda em negrito e em maiúsculas é título mesmo no livro de
     prosa em negrito (a manchete do Kafka; ADR-0004, "Prosa em negrito do tamanho do corpo")."""
+    familia: str = ""
+    """A família da letra do corpo; vazia se o PDF não a diz (`familia_do_corpo`)."""
 
 
 def tipo_da_linha(linha: Linha, medidas: Medidas) -> TipoDeBloco:
@@ -103,7 +106,8 @@ def medir(paginas: Sequence[Pagina]) -> Medidas:
             if distancia > 0:
                 distancias[distancia] += 1
     entrelinha = distancias.most_common(1)[0][0] if distancias else 0.0
-    return replace(sem_entrelinha, entrelinha=entrelinha)
+    familia = familia_do_corpo(paginas, corpo)
+    return replace(sem_entrelinha, entrelinha=entrelinha, familia=familia)
 
 
 def _destaca(linha: Linha, medidas: Medidas) -> bool:

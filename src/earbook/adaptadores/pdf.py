@@ -12,7 +12,6 @@ from collections import Counter
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass, replace
 from pathlib import Path
-from statistics import multimode
 from typing import BinaryIO, override
 
 from pdfminer.converter import PDFPageAggregator
@@ -32,7 +31,13 @@ from pdfminer.pdftypes import PDFObjRef
 from pdfminer.utils import decode_text
 
 from earbook.adaptadores.sumario_do_pdf import itens_do_sumario
-from earbook.dominio.caracteres import Caractere, lido, pagina_usa_chamadas, texto_da_linha
+from earbook.dominio.caracteres import (
+    Caractere,
+    lido,
+    pagina_usa_chamadas,
+    tamanho_da_linha,
+    texto_da_linha,
+)
 from earbook.dominio.pagina import Linha, Pagina, em_versalete
 from earbook.dominio.segmento import normalizar_espacos
 from earbook.dominio.sumario_interno import ItemDoSumario
@@ -296,13 +301,11 @@ def _linha(
     caracteres = [c for c in linha if isinstance(c, LTChar)]
     if not caracteres or not normalizar_espacos(linha.get_text()):
         return None
-    # A moda, não a média: nome de código em 8,5 pt numa linha de 9 pt puxava a média
-    # para baixo de 0,85 do corpo, e a prosa virava nota (A1 da auditoria, Hard Parts).
-    # No empate, o maior: a letra menor é a do código ou da nota (pós-revisão).
-    tamanho = max(multimode(round(c.size, 1) for c in caracteres))
+    dela = _caracteres(linha)
+    tamanho = tamanho_da_linha(dela)
     # A chamada sobrescrita e o espaço inventado saem aqui, onde o caractere ainda tem tamanho e
     # posição (ADR-0004, "Número de referência e espaço falso").
-    lida = texto_da_linha(_caracteres(linha), tamanho, com_duvidosas=com_duvidosas)
+    lida = texto_da_linha(dela, tamanho, com_duvidosas=com_duvidosas)
     # Toda letra, não alguma: no Hard Parts, as 584 linhas de código são 100% monoespaçadas
     # e as 183 de prosa com um nome de código no meio ("ss.survey") ficam entre 0 e 90%.
     monoespacada = all(_fonte_casa(_FONTE_MONOESPACADA, c.fontname) for c in caracteres)

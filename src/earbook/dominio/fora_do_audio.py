@@ -30,6 +30,10 @@ PALAVRAS_DO_DESTAQUE = 6
 MOTIVO_DO_DESTAQUE = "destaque de margem: repete o texto vizinho"
 # Aspa ou parêntese depois do ponto ainda fecham a frase.
 _FECHA_FRASE = re.compile(r"[.!?\u2026][\u201d\u2019\"')]*$")
+# A fala de diálogo abre com travessão ou meia-risca; o destaque de margem, nunca. A fala que
+# repete a anterior ("— Um lugar para onde possam retornar?") é a resposta, e fica (ADR-0008,
+# "Fala de diálogo não é destaque": 4 no Kafka à beira-mar).
+_ABRE_FALA = re.compile(r"^\s*[\u2014\u2013]")
 # O hífen da quebra ("pri-" + "meiros") e o do composto ("divi-dem-se", contra "dividem-se" no
 # destaque) não contam na comparação.
 _HIFEN_NA_PALAVRA = re.compile(r"(?<=[^\W\d_])[-\u2010\u00ad]\s*(?=[^\W\d_])")
@@ -340,10 +344,11 @@ def _e_destaque(
 
 def _parece_frase(segmento: Segmento) -> bool:
     """Parágrafo que abre em maiúscula e fecha frase. O título que veio como parágrafo ("ATO
-    VOLITIVO OU ATO DE VONTADE"), a continuação em minúscula e a pergunta que termina em ":"
-    também repetem o vizinho, e ficam."""
+    VOLITIVO OU ATO DE VONTADE"), a continuação em minúscula, a pergunta que termina em ":" e a
+    fala de diálogo que ecoa a anterior também repetem o vizinho, e ficam."""
     return (
         segmento.papel is Papel.PARAGRAFO
+        and _ABRE_FALA.match(segmento.texto) is None
         and primeira_letra(segmento.texto).isupper()
         and _FECHA_FRASE.search(segmento.texto) is not None
         and len(PALAVRA.findall(segmento.texto)) >= PALAVRAS_DO_DESTAQUE

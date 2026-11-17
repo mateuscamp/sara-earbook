@@ -835,6 +835,41 @@ O que o inventário por script ainda acusa (segmentos):
   título, com outro igual ou um grupo "a), b), c)" adiante, e metade dos parágrafos ou mais
   nessas formas.
 
+## Fala de diálogo não é destaque (2026-11-17)
+
+### Contexto
+
+O primeiro romance da esteira, *Kafka à beira-mar* (Murakami, PDF em pt-BR), perdeu 4 falas
+pela regra do destaque de margem: a personagem repete, perguntando, o fim da fala do outro.
+`c028-s0126` "— Um lugar para onde possam retornar?", logo depois de "— Mesmo que um dia acabem
+desvirtuadas, as pessoas precisam de um lugar para onde possam retornar."; `c013-s0060`
+"— Vo-ca-bu-lá-rio res-tri-to?"; `c035-s0101` "— Passou de um lado para o outro?"; `c041-s0129`
+"— Biblioteca Me-mo-ri-al Komura?". A fala tem forma de frase, 6 palavras ou mais (a soletrada
+conta cada sílaba) e repete o vizinho palavra por palavra: as três condições da regra. Mas ela é
+a resposta do diálogo, e o ouvinte perde a vez de quem fala.
+
+### Decisão
+
+A fala de diálogo não é destaque: o parágrafo que abre com travessão (U+2014) ou meia-risca
+(U+2013), depois de espaço, fica. É o critério mais estreito que separa os dois casos: os 4 do
+Kafka abrem com travessão, e nenhum destaque dos livros medidos abre assim (o destaque repete uma
+frase da prosa, que não abre com travessão). A pergunta também separaria os 4 (nenhum dos 243
+destaques do Dalgalarrondo termina em "?"), mas é mais larga: a fala que afirma e repete a
+anterior ("— Amanhã cedo, na estação.") também é resposta, e o destaque que pergunta é
+frase-tema comum em livro didático. O hífen ("- item") continua contando: é item de lista,
+não fala.
+
+### Medição (2026-11-17, depois do código)
+
+`preparar` nos EPUBs da regressão (`regressao4-*.epub`, o Manica com os 4 `--sem-capitulo` de
+antes), no do Kafka e no do Dalgalarrondo, importado do PDF no HEAD `9663144`:
+
+| Livro | Destaques antes → depois | O resto |
+|---|---|---|
+| *Kafka à beira-mar* | **4 → 0** | só `c013`, `c028`, `c035` e `c041` mudam em `limpos/`, com a fala de volta |
+| *Dalgalarrondo* | 243 → 243 | `limpos/` idêntico (o "antes" é o mesmo `preparar` com a regra desligada) |
+| *Practical*, *Bonica*, *Manica*, *Miller* | 0, 1, 0, 0 → os mesmos | `limpos/` e `limpeza.json` idênticos |
+
 ## Consequências
 
 **Ganha:**

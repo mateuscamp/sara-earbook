@@ -293,6 +293,35 @@ def test_paragrafo_que_nao_e_destaque_fica(paragrafos: list[str]) -> None:
 
 
 @pytest.mark.parametrize(
+    "dialogo",
+    [
+        # Kafka à beira-mar c028: a personagem repete, perguntando, o fim da fala do outro.
+        [
+            (
+                "— Mesmo que um dia acabem desvirtuadas, as pessoas precisam de um lugar para "
+                "onde possam retornar."
+            ),
+            "— Um lugar para onde possam retornar?",
+        ],
+        # c013: a repetição soletrada, sílaba por sílaba.
+        [
+            "— É que o pobre coitado tem um vocabulário restrito, entende?",
+            "— Vo-ca-bu-lá-rio res-tri-to?",
+        ],
+        # A fala com meia-risca, como a grafam outras editoras.
+        [
+            "\u2013 Ele passou de um lado para o outro do muro sem fazer barulho.",
+            "\u2013 Passou de um lado para o outro?",
+        ],
+    ],
+)
+def test_fala_de_dialogo_que_ecoa_a_anterior_fica(dialogo: list[str]) -> None:
+    # Kafka à beira-mar: 4 falas que repetem a anterior saíam como destaque de margem, e o
+    # ouvinte perdia a resposta do diálogo. O destaque de margem nunca abre com travessão.
+    assert _destaques(_limpar(dialogo)) == []
+
+
+@pytest.mark.parametrize(
     ("frase", "saem"),
     [("A emoção cega o homem.", []), ("A emoção cega o homem sempre.", ["c001-s0001"])],
 )

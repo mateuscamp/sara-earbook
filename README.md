@@ -69,7 +69,8 @@ A decisão está no [ADR-0001](docs/adr/0001-reescrever-com-claude-code-orquestr
   ([ADR-0008](docs/adr/0008-codigo-e-indice-saem-do-audio.md)). O índice curto fica.
 - O destaque de margem que repete, palavra por palavra, uma frase do texto ao lado dele. A frase
   que ele partia volta inteira ([ADR-0008](docs/adr/0008-codigo-e-indice-saem-do-audio.md)). O
-  destaque que resume ou reescreve a frase fica.
+  destaque que resume ou reescreve a frase fica, e a fala de diálogo que repete a anterior
+  ("— Um lugar para onde possam retornar?"), que abre com travessão, também.
 - A bibliografia no padrão ABNT ("ABDO, C. H. N. Diagnóstico… 1996."): 10 referências seguidas
   ou mais, com o título logo antes delas
   ([ADR-0008](docs/adr/0008-codigo-e-indice-saem-do-audio.md)). A bibliografia de outro padrão

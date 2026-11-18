@@ -71,7 +71,9 @@ A decisão está no [ADR-0001](docs/adr/0001-reescrever-com-claude-code-orquestr
   símbolo ("* This paper…") que vem depois fica e vai para o fim do capítulo
   ([ADR-0004](docs/adr/0004-pdf-entra-como-comando-importar-pdf.md)).
 - O trecho que seria lido duas vezes (`<p>` dentro de `<blockquote>`).
-- A página de direitos autorais.
+- A página de direitos autorais, com os créditos e o aviso de ficção que ficam entre o aviso de
+  direitos e o ISBN da ficha catalográfica, e o fim da ficha ("CDD", "CDU")
+  ([ADR-0003](docs/adr/0003-preparar-para-o-ouvido-e-o-produto.md)).
 - O bloco de código e o índice remissivo que o EPUB marca como tais. Sai também o parágrafo
   idêntico em metade ou mais dos arquivos do livro, como a marca d'água "OceanofPDF.com"
   ([ADR-0008](docs/adr/0008-codigo-e-indice-saem-do-audio.md)).

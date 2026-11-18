@@ -260,3 +260,69 @@ def test_ponta_de_dez_por_cento_num_livro_grande(posicao: int, removidas: int) -
     corpo = [(P, f"Parágrafo {n}.") for n in range(300)]
     corpo[posicao] = (P, "© 2020 Fulana.")
     assert len(_saem(_limpar(*corpo))) == removidas
+
+
+KAFKA = [
+    (
+        P,
+        (
+            "Copy right © 2005 by Haruki Murakami Todos os direitos desta edição reservados à "
+            "Editora Objetiva Ltda. Rua Cosme Velho, 103 Rio de Janeiro — RJ www.objetiva.com.br"
+        ),
+    ),
+    (P, "Título original Umibe no Kafuka"),
+    (P, "Capa Christiano Menezes"),
+    (P, "Revisão Ana Kronemberger Lilia Zanetti Raquel Corrêa"),
+    (P, "Coordenação de e-book Marcelo Xavier"),
+    (P, "Conversão para e-book Abreu\u2019s System Ltda."),
+    (
+        P,
+        (
+            "Esta é uma obra de ficção. Nomes, personagens, organizações empresariais, lugares, "
+            "eventos e acontecimentos são produto da imaginação do autor."
+        ),
+    ),
+    (
+        P,
+        (
+            "CIP-BRASIL. CATALOGAÇÃO-NA-FONTE SINDICATO NACIONAL DOS EDITORES DE LIVROS, RJ M944k "
+            "Murakami, Haruki Kafka à beira-mar. ISBN 978-85-7962-140-6 (recurso eletrônico)"
+        ),
+    ),
+    (
+        P,
+        (
+            "1. Romance japonês. 2. Livros eletrônicos. I. Gotoda, Leiko. II. Título. 12-2540. "
+            "CDD: 895.63 CDU: 821.521-3"
+        ),
+    ),
+]
+
+
+def test_creditos_entre_o_aviso_e_o_isbn_saem_e_o_fim_da_ficha_tambem() -> None:
+    # Kafka à beira-mar: a corrente parava em "Título original", sem marca, e a voz lia a ficha
+    # técnica, o aviso de ficção e o fim da ficha catalográfica (ADR-0003, "Créditos entre duas
+    # marcas fortes").
+    prologo = "Prólogo \u2013 Um Menino Chamado Corvo"
+    livro = _limpar(*KAFKA, (T, prologo), (P, "— Dinheiro, então?"))
+    assert _ficam(livro) == [prologo, "— Dinheiro, então?"]
+
+
+def test_linhas_demais_entre_o_aviso_e_o_isbn_ficam() -> None:
+    livro = _limpar(
+        (P, "© 2020 Fulana. Todos os direitos reservados."),
+        *[(P, f"Parágrafo {n} do prefácio.") for n in range(9)],
+        (P, "ISBN 978-85-0000-000-0"),
+    )
+    assert len(_ficam(livro)) == 9
+
+
+def test_titulo_entre_o_aviso_e_o_isbn_segura_o_que_vem_entre_eles() -> None:
+    livro = _limpar(
+        (P, "© 2020 Fulana. Todos os direitos reservados."),
+        (P, "Capa Beltrana"),
+        (T, "Prefácio"),
+        (P, "Este livro nasceu de um curso."),
+        (P, "ISBN 978-85-0000-000-0"),
+    )
+    assert _ficam(livro) == ["Capa Beltrana", "Prefácio", "Este livro nasceu de um curso."]

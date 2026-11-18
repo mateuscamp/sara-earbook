@@ -132,6 +132,48 @@ O Mateus aprovou como lote B da revisão do destaque ("A, B e C").
 Fica como limite: o composto que o livro escreve com hífen num lugar e sem hífen em outro perde o
 hífen na emenda. Isso segue a grafia do próprio livro.
 
+### Créditos entre duas marcas fortes (2026-11-17)
+
+**Contexto.** O primeiro romance da esteira, *Kafka à beira-mar* (PDF da Objetiva, importado pelo
+`importar-pdf`), tem uma página de direitos em 9 parágrafos: o "Copy right © 2005… Todos os
+direitos desta edição reservados", a ficha técnica ("Título original Umibe no Kafuka", "Capa
+Christiano Menezes", "Revisão…", "Coordenação de e-book…", "Conversão para e-book…"), o aviso
+"Esta é uma obra de ficção…", a ficha catalográfica com o ISBN e o fim dela ("1. Romance japonês.
+2. Livros eletrônicos. I. Gotoda, Leiko. II. Título. 12-2540. CDD: 895.63 CDU: 821.521-3"). Saíam
+só o aviso e a ficha com o ISBN: a corrente de vizinhas parava em "Título original", sem marca,
+seguido de "Capa…", também sem marca, e o ISBN sozinho não abre corrente (N6). A voz lia sete
+parágrafos de créditos.
+
+**Decisão.** Entre o aviso de direitos e a marca forte mais perto dele, de cada lado, as linhas
+sem marca saem juntas (`ENTRE_AS_MARCAS`, até 8; no Kafka são 6), desde que nenhuma seja título
+nem dedicatória. A marca do outro lado fica provada como parte da página e passa a abrir a
+corrente de vizinhas, como o aviso: o ISBN da ficha que fecha a página leva a linha seguinte com
+marca fraca. "CDD" e "CDU", a classificação que fecha a ficha catalográfica brasileira, entram
+nas marcas fracas. O motivo no `limpeza.json` é o da linha vizinha.
+
+**O aviso de ficção sai**, pelo precedente: a página de direitos do *Hard Parts* já tirava o
+boilerplate da editora ("…title, author, publisher, and ISBN", acima), e na decisão 6 do Mateus
+no ADR-0011 os créditos saem do áudio. "Esta é uma obra de ficção…" é boilerplate da editora,
+dentro da página de créditos.
+
+**Medido** no Kafka, com o `importar-pdf` da mesma rodada (ADR-0004, "Romance convertido pelo
+Calibre"): saem os 9 parágrafos do `c002`, que fica sem texto e sai do EPUB montado (ADR-0005). O
+título "Prólogo – Um Menino Chamado Corvo", que vinha colado ao fim da ficha, agora abre o prólogo
+(ADR-0004). Nos outros livros da regressão, a página de direitos sai como antes (a tabela da
+seção do ADR-0004).
+
+**O que fica:**
+- a página de créditos sem marca forte nenhuma, ou com mais de 8 linhas entre o aviso e o ISBN,
+  continua lida como antes;
+- o título ou a dedicatória entre as duas marcas segura todas as linhas do meio, como na corrente;
+- *Huxley* e *Tides* (EPUB) não foram medidos de novo: os originais não estão neste Mac. A regra
+  só age entre um aviso de direitos e outra marca forte a até 8 linhas dele; o efeito nos dois
+  fica para a próxima rodada em que eles estiverem à mão.
+
+Testes (`tests/test_pagina_de_direitos.py`): os créditos do Kafka entre o aviso e o ISBN saem,
+com o fim da ficha, e o título do prólogo fica; 9 linhas entre as marcas ficam; o título entre
+elas segura o meio.
+
 ## Consequências
 
 **Ganha:**
@@ -162,6 +204,7 @@ Limites registrados pela auditoria de 2026-11-01, sem caso nos livros medidos:
 | Nada some na limpeza | `conferir`: origem = mantidos + removidos + juntados, por ID | antes do `montar` | algum ID de origem não aparece em nenhum dos três |
 | Padrões medidos | testes com EPUB sintético que reproduz cada padrão (cabeçalho `Título N`, parágrafo partido, capitular ausente, sumário) | portão | o padrão volta a passar para o texto |
 | O hífen da quebra sai só com prova | testes (`tests/test_juncao.py`, `tests/test_destaque.py`): "identifi-" + "car" vira "identificar" quando o livro escreve a palavra; "relaciona-se", "embrioná-ria" e "sub-commander" ficam | portão | o hífen fica onde o livro prova a palavra, ou sai do composto |
+| Créditos entre duas marcas fortes | testes (`tests/test_pagina_de_direitos.py`): o que fica entre o aviso e o ISBN sai, até 8 linhas, e o ISBN provado leva a linha de "CDD"; o título e a dedicatória no meio seguram tudo | portão | volta a ficha técnica do Kafka, ou sai texto entre duas marcas longe uma da outra |
 | Escuta ★ (manual) | rodar a esteira nos livros de `livros/` e contar o que sobrou | a cada mudança na limpeza; responsável: Mateus | a contagem sobe |
 
 Regra derivada no `AGENTS.md`: a limpeza registra toda remoção; nada sai do texto sem o ID de origem.

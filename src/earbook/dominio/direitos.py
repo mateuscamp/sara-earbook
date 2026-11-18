@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Callable, Sequence
+from itertools import pairwise
 
 from earbook.dominio.segmento import Papel, Segmento
 
@@ -34,6 +35,9 @@ _MARCAS_FRACAS_DE_DIREITOS = (
     r"www\.",
     r"\bedi[çc][ãa]o\b",
     r"\bedition\b",
+    # A classificação da ficha catalográfica, que fecha a página no Kafka à beira-mar ("CDD:
+    # 895.63 CDU: 821.521-3"; ADR-0003, "Créditos entre duas marcas fortes").
+    r"\bCD[DU]\b",
 )
 _MARCA_FRACA_DE_DIREITOS = re.compile("|".join(_MARCAS_FRACAS_DE_DIREITOS), re.IGNORECASE)
 # A página de direitos fica nas pontas do livro: nos quatro livros, a marca forte apareceu a
@@ -43,6 +47,10 @@ PONTA_MINIMA = 20
 # A página de direitos real tem até 3 linhas sem marca forte de cada lado da âncora (Tides);
 # o limite segura a corrente que entraria numa lista de links (A1 da auditoria).
 VIZINHAS_MAXIMAS = 5
+# Entre o aviso e a marca forte mais perto dele, as linhas sem marca forte saem juntas, até este
+# tanto: a página de créditos do Kafka à beira-mar tem 6 (a ficha técnica e o aviso de ficção)
+# entre o "©" e o ISBN da ficha catalográfica (ADR-0003, "Créditos entre duas marcas fortes").
+ENTRE_AS_MARCAS = 8
 # A corrente não leva a dedicatória, que pode vir ao lado do aviso ou da linha da edição.
 _ABERTURAS_DE_DEDICATORIA = (
     "para",
@@ -80,11 +88,45 @@ def pagina_de_direitos(
     """
     fortes = [i for i, s in enumerate(segmentos) if na_ponta(i) and _forte(s.texto)]
     saem = dict.fromkeys(fortes, MOTIVO_DA_PAGINA_DE_DIREITOS)
-    for i in (i for i in fortes if _AVISO.search(segmentos[i].texto)):
+    avisos = {i for i in fortes if _AVISO.search(segmentos[i].texto)}
+    entre, provadas = _entre_as_marcas(segmentos, fortes, avisos, na_ponta)
+    for j in entre:
+        _ = saem.setdefault(j, MOTIVO_DA_VIZINHA_DE_DIREITOS)
+    for i in sorted(avisos | provadas):
         for passo in (-1, 1):
             for j in _vizinhas_de_direitos(segmentos, i, passo, na_ponta):
                 _ = saem.setdefault(j, MOTIVO_DA_VIZINHA_DE_DIREITOS)
     return saem
+
+
+def _entre_as_marcas(
+    segmentos: Sequence[Segmento],
+    fortes: Sequence[int],
+    avisos: set[int],
+    na_ponta: Callable[[int], bool],
+) -> tuple[list[int], set[int]]:
+    """As linhas entre o aviso e a marca forte mais perto dele, de cada lado, e as marcas assim
+    provadas, que também abrem a corrente de vizinhas: o ISBN sozinho não abre (N6), mas o da
+    ficha que fecha a página do aviso, sim. Até `ENTRE_AS_MARCAS` linhas, nenhuma título nem
+    dedicatória (ADR-0003, "Créditos entre duas marcas fortes")."""
+    entre: list[int] = []
+    provadas: set[int] = set()
+    for antes, depois in pairwise(fortes):
+        meio = range(antes + 1, depois)
+        if not {antes, depois} & avisos or len(meio) > ENTRE_AS_MARCAS:
+            continue
+        if all(_pode_sair(segmentos, j, na_ponta) for j in meio):
+            entre += meio
+            provadas |= {antes, depois}
+    return entre, provadas
+
+
+def _pode_sair(segmentos: Sequence[Segmento], j: int, na_ponta: Callable[[int], bool]) -> bool:
+    """A linha está no capítulo, na ponta do livro, e não é título nem dedicatória."""
+    if not 0 <= j < len(segmentos) or not na_ponta(j):
+        return False
+    segmento = segmentos[j]
+    return segmento.papel is not Papel.TITULO and not _DEDICATORIA.match(segmento.texto)
 
 
 def _vizinhas_de_direitos(
@@ -98,10 +140,7 @@ def _vizinhas_de_direitos(
     """
 
     def pode_sair(j: int) -> bool:
-        if not 0 <= j < len(segmentos) or not na_ponta(j):
-            return False
-        segmento = segmentos[j]
-        return segmento.papel is not Papel.TITULO and not _DEDICATORIA.match(segmento.texto)
+        return _pode_sair(segmentos, j, na_ponta)
 
     def marcada(j: int) -> bool:
         texto = segmentos[j].texto if pode_sair(j) else ""

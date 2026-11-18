@@ -2570,6 +2570,28 @@ tabela, o PubMed), 1 é a tabela de c008, e 1 é o limite de "PEs", abaixo.
 também mexeu na tabela do capítulo 35; contra ela, o c041 passa de 165 para 174 segmentos, e o c015 não muda (287). O mapa
 de cada ID está em `livros/trabalho/miller-ids-da-amostra.txt` (fora do git).
 
+**Segunda revisão (code-review e code-audit do `6e4e218..5f3bf8e`, 2026-11-18),** pedida pela
+sessão principal para as quatro regras que entraram depois da primeira:
+- **Corrigido, a linha visual juntada:** o `_juntar` (`dominio/colunas.py`) copiava a fonte do
+  versalete do primeiro pedaço, e a linha que não é toda em versalete podia fechar o título de cima
+  pela regra da fonte. Agora a linha juntada só leva a fonte quando todo pedaço a tem. No *Miller*,
+  nada muda.
+- **Corrigido, o custo:** a tabela da fonte de símbolo e as regras do nome da fonte são procuradas
+  uma vez por nome de fonte (`functools.cache`), e não a cada letra. O cache recebe só texto: o
+  nome que o PDF malformado dá como lista não é chave, e cairia a importação (teste visto falhar
+  com o cache plantado no nível do nome cru).
+- **Recusado, a linha de 3 pedaços ou mais não se partir:** a revisão previa a linha de tabela com
+  a primeira célula em versalete. Ela não aparece nos quatro livros, e a guarda partia um caso real:
+  em c107 ("Paciente en decúbito Prono. Como el desequilibrio V̇/Q̇…"), os pontos sobre o V e o Q
+  são pedaços próprios na mesma altura, e o subtítulo voltava a colar na frase.
+- **Sem mudança, a quebra por fonte vale para todo título em versalete:** além dos 35 subtítulos
+  corridos, ela parte 2 títulos da base, os dois de seção seguida de subseção ("Desequilibrio De
+  elecTróliTos" | "alteraciones del sodio", "consiDeraciones esPeciales" | "Factores del
+  Paciente"), o que está certo.
+- **Fica, as partes repetem o texto da linha:** um passo novo que reescreva o texto da linha antes
+  dos blocos precisa reescrever as partes, como o hífen invisível; senão, a regra do prefixo deixa
+  a linha inteira, em silêncio.
+
 ## Consequências
 
 **Ganha:** um comando a mais na mesma esteira, sem repositório novo. Os defeitos de conversão são atacados onde nascem.

@@ -9,10 +9,12 @@ começa na mesma linha, em StoneSerif: "uso clínico dE sugammadEx En paciEntEs 
 
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 
 from earbook.adaptadores.pdf import ler_paginas
 from earbook.dominio.blocos import montar_blocos
+from earbook.dominio.colunas import linhas_visuais
 from earbook.dominio.hifen_da_quebra import mostrar_hifen_invisivel
 from earbook.dominio.nome_da_fonte import fim_da_abertura_em_versalete, toda_em_versalete
 from earbook.dominio.pagina import Linha, Pagina
@@ -284,3 +286,19 @@ def test_linha_que_abre_na_letra_grega_e_segue_no_corpo_nao_tem_abertura() -> No
     # Miller p. 1279: "β-bloqueante", com o "β" na MathPiOneBold e o resto no corpo.
     letras = [("b", "X+MathPiOneBold"), ("-", "X+StoneSans"), ("b", "X+StoneSans")]
     assert fim_da_abertura_em_versalete(letras) is None
+
+
+def test_linha_juntada_de_versalete_e_corpo_nao_leva_a_fonte_do_versalete() -> None:
+    # Revisão: o `_juntar` copiava a fonte do versalete do primeiro pedaço, e a linha que não é
+    # toda em versalete fechava o título de cima pela regra da fonte.
+    em_versalete = Linha(
+        "dosis", x=RECUO, fim=120, topo=0.3, tamanho=10.5, versalete=True,
+        fonte_do_versalete=BOLD,
+    )  # fmt: skip
+    no_corpo = linha("habitual", 0.3, 125)
+    juntada, _ = linhas_visuais([replace(no_corpo, fim=170), em_versalete], 10.5)[0]
+    assert (juntada.texto, juntada.versalete, juntada.fonte_do_versalete) == (
+        "dosis habitual",
+        False,
+        "",
+    )

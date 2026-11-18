@@ -11,7 +11,8 @@ from __future__ import annotations
 
 import re
 from collections import Counter
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
+from functools import cache
 
 # Medido no spike: o código do "Hard Parts" vem em UbuntuMono.
 _FONTE_MONOESPACADA = re.compile(r"mono|courier|code|consol", re.IGNORECASE)
@@ -112,24 +113,35 @@ def fonte_do_versalete(nomes_das_fontes: Iterable[object]) -> str:
 
 
 def _de_simbolo(nome_da_fonte: object) -> bool:
-    if not isinstance(nome_da_fonte, str):
-        return False
+    return _desenhos_da_fonte(nome_da_fonte) is not None
+
+
+def _desenhos_da_fonte(nome_da_fonte: object) -> Mapping[str, str] | None:
+    """A tabela da fonte de símbolo; None nas outras fontes e no nome que não é texto, que o PDF
+    malformado pode dar como lista, e a lista não serve de chave do cache."""
+    return _desenhos_pelo_nome(nome_da_fonte) if isinstance(nome_da_fonte, str) else None
+
+
+@cache
+def _desenhos_pelo_nome(nome_da_fonte: str) -> Mapping[str, str] | None:
+    """Pelo nome sem o subconjunto, guardada por nome: o livro tem poucas fontes, e milhões de
+    letras (code-review)."""
     sem_subconjunto = nome_da_fonte.rsplit("+", 1)[-1]
-    return any(padrao.match(sem_subconjunto) for padrao, _ in _FONTES_DE_SIMBOLO)
+    return next((d for padrao, d in _FONTES_DE_SIMBOLO if padrao.match(sem_subconjunto)), None)
 
 
 def _casa(padrao: re.Pattern[str], nome_da_fonte: object) -> bool:
-    return isinstance(nome_da_fonte, str) and padrao.search(nome_da_fonte) is not None
+    return isinstance(nome_da_fonte, str) and _casa_o_nome(padrao, nome_da_fonte)
+
+
+@cache
+def _casa_o_nome(padrao: re.Pattern[str], nome_da_fonte: str) -> bool:
+    return padrao.search(nome_da_fonte) is not None
 
 
 def letra_desenhada(texto: str, nome_da_fonte: object) -> str:
     """O que a fonte de símbolo desenha no lugar da letra que o PDF diz; o próprio `texto` em
     qualquer outra fonte, e na letra que a tabela não tem (ADR-0004, "Letra grega da fonte de
     símbolo")."""
-    if not isinstance(nome_da_fonte, str):
-        return texto
-    sem_subconjunto = nome_da_fonte.rsplit("+", 1)[-1]
-    for padrao, desenhos in _FONTES_DE_SIMBOLO:
-        if padrao.match(sem_subconjunto):
-            return desenhos.get(texto, texto)
-    return texto
+    desenhos = _desenhos_da_fonte(nome_da_fonte)
+    return texto if desenhos is None else desenhos.get(texto, texto)

@@ -292,5 +292,12 @@ def _juntar(altura: list[Linha]) -> tuple[Linha, int]:
         negrito=all(pedaco.negrito for pedaco in pedacos),
         versalete=all(pedaco.versalete for pedaco in pedacos),
         fim=max(pedaco.fim for pedaco in pedacos),
+        # A fonte do versalete vale só se todo pedaço a tem (ADR-0004, "Subtítulo em versalete no
+        # começo do parágrafo").
+        fonte_do_versalete=_a_mesma({pedaco.fonte_do_versalete for pedaco in pedacos}),
     )
     return juntas, len(pedacos)
+
+
+def _a_mesma(fontes: set[str]) -> str:
+    return fontes.pop() if len(fontes) == 1 else ""

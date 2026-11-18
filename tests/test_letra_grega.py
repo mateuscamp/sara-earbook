@@ -132,3 +132,8 @@ def test_letra_grega_da_linha_que_sai_da_pagina_nao_conta(tmp_path: Path) -> Non
     ]
     pdf = montar_pdf_com_nome_de_fonte(tmp_path / "fora.pdf", f"/{PI}".encode(), linhas)
     assert importar_pdf(pdf, tmp_path / "livro.epub").letras_gregas == 0
+
+
+def test_nome_de_fonte_que_nao_se_guarda_no_cache_nao_derruba_a_leitura() -> None:
+    # O PDF é entrada não confiável: o nome da fonte pode vir como lista.
+    assert letra_desenhada("m", ["MathematicalPi-One"]) == "m"

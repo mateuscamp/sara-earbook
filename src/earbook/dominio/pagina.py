@@ -76,6 +76,18 @@ class Linha:
     fora_da_pagina: bool = False
     """A linha inteira além da borda do papel, que o leitor de PDF não mostra: o texto das
     fórmulas do Miller (ADR-0004, "A ordem das colunas no Miller")."""
+    partes: tuple[Linha, ...] = ()
+    """A linha partida onde acaba a fonte de versalete que a abre: a abertura em versalete e o
+    resto, cada um com a sua letra e a sua posição. Vazia na linha que não abre em fonte de
+    versalete ou que é toda nela (ADR-0004, "Subtítulo em versalete no começo do parágrafo")."""
+    fonte_do_versalete: str = ""
+    """O nome inteiro da fonte de versalete, sem o subconjunto ("StoneSerif-Bold-SC700"), na linha
+    toda em fonte de versalete; vazio nas outras. O título da seção e o subtítulo corrido logo
+    abaixo dele vêm em fontes diferentes no Miller (ADR-0004, "Subtítulo em versalete no começo
+    do parágrafo")."""
+    letras_gregas: int = 0
+    """Quantas letras da fonte de símbolo viraram a letra grega que a fonte desenha ("20 µg/kg"
+    no Miller, e não "20 mg/kg"): ADR-0004, "Letra grega da fonte de símbolo"."""
 
 
 @dataclass(frozen=True)

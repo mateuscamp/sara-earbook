@@ -91,4 +91,9 @@ def _com_o_hifen(linha: Linha, *, no_fim: bool) -> Linha:
     texto = _INVISIVEL_NO_MEIO.sub("-", linha.texto)
     if no_fim and texto.endswith(HIFEN_SUAVE):
         texto = texto[:-1] + "-"
-    return linha if texto == linha.texto else replace(linha, texto=texto)
+    if texto == linha.texto:
+        return linha
+    # As partes do subtítulo em versalete seguem a linha, ou deixam de ser o texto dela (ADR-0004,
+    # "Subtítulo em versalete no começo do parágrafo"). O fim do resto é o fim da linha.
+    partes = tuple(_com_o_hifen(parte, no_fim=no_fim) for parte in linha.partes)
+    return replace(linha, texto=texto, partes=partes)

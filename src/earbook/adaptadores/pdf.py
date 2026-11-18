@@ -7,15 +7,13 @@
 from __future__ import annotations
 
 import logging
-import re
-from collections import Counter
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import BinaryIO, override
 
 from pdfminer.converter import PDFPageAggregator
-from pdfminer.layout import LAParams, LTChar, LTPage, LTTextBox, LTTextLine
+from pdfminer.layout import LAParams, LTAnno, LTChar, LTPage, LTTextBox, LTTextLine
 from pdfminer.pdfcolor import PDFColorSpace
 from pdfminer.pdfdevice import PDFTextSeq
 from pdfminer.pdfdocument import PDFDocument, PDFEncryptionError
@@ -31,8 +29,10 @@ from pdfminer.pdftypes import PDFObjRef
 from pdfminer.utils import decode_text
 
 from earbook.adaptadores.sumario_do_pdf import itens_do_sumario
+from earbook.dominio import nome_da_fonte
 from earbook.dominio.caracteres import (
     Caractere,
+    espacos_no_lugar,
     lido,
     pagina_usa_chamadas,
     tamanho_da_linha,
@@ -41,24 +41,6 @@ from earbook.dominio.caracteres import (
 from earbook.dominio.pagina import Linha, Pagina, em_versalete
 from earbook.dominio.segmento import normalizar_espacos
 from earbook.dominio.sumario_interno import ItemDoSumario
-
-# Medido no spike: o código do "Hard Parts" vem em UbuntuMono.
-_FONTE_MONOESPACADA = re.compile(r"mono|courier|code|consol", re.IGNORECASE)
-# O estilo vem depois do traço ou da vírgula do nome: "SourceSans3-SemiboldIt" (Competente),
-# "MyriadPro-SemiboldCond" (Hard Parts), "Arial,Bold". Sem o separador, "Blackadder" seria
-# negrito. ADR-0004, "Subtítulo em negrito do tamanho do corpo".
-_FONTE_NEGRITO = re.compile(r"[-,]\w*(?:bold|black|heavy|demi)", re.IGNORECASE)
-
-# O versalete de fonte própria vem num tamanho só, e por isso a letra maior não o acha: no Maudlin,
-# "Archer-Medium-SC700" (ADR-0004, "Versalete de fonte própria"). O "SC" vem no fim do nome,
-# depois do separador: sem ele, "DiscoSC" seria versalete. Sem caixa, como as outras fontes.
-_FONTE_VERSALETE = re.compile(r"[-_]SC\d*$", re.IGNORECASE)
-# A família da letra: o nome sem o prefixo do subconjunto ("TCMKGG+") e sem o estilo, depois do
-# traço ou da vírgula ("AGaramondPro-Regular", "Arial,Bold"). ADR-0004, "Tabela e figura pela
-# letra". O "MT" do fim fica: "TimesNewRomanPSMT" e "TimesNewRomanPS-BoldMT" saem como duas
-# famílias, e é por isso que o rótulo "TABLE 1.1" do Bonica, em negrito no tamanho do corpo, não
-# conta como letra do corpo (ADR-0004, "Tratado em português e em espanhol", "O que fica").
-_ESTILO_DA_FONTE = re.compile(r"[-,].*$")
 
 _MODO_SEM_TINTA = 3
 """O modo de pintura do PDF em que a letra nem se preenche nem se contorna (`3 Tr`): a camada que
@@ -300,29 +282,64 @@ def _linha(
     *,
     com_duvidosas: bool = False,
 ) -> _LinhaLida | None:
-    caracteres = [c for c in linha if isinstance(c, LTChar)]
-    if not caracteres or not normalizar_espacos(linha.get_text()):
+    """A linha lida e, se ela abre em fonte de versalete e continua noutra, as duas partes
+    (ADR-0004, "Subtítulo em versalete no começo do parágrafo")."""
+    itens = list(linha)
+    topo = 1 - linha.y1 / pagina.height
+    lida = _trecho(itens, topo, pagina, nao_pinta, com_duvidosas=com_duvidosas)
+    corte = nome_da_fonte.fim_da_abertura_em_versalete(
+        (item.get_text(), item.fontname if isinstance(item, LTChar) else None) for item in itens
+    )
+    if lida is None or corte is None:
+        return lida
+    # O espaço entre a abertura e o resto não vai para nenhuma das duas.
+    comeco = next((i for i in range(corte, len(itens)) if itens[i].get_text().strip()), corte)
+    partes = tuple(
+        parte.linha
+        for pedaco in (itens[:corte], itens[comeco:])
+        if (parte := _trecho(pedaco, topo, pagina, nao_pinta, com_duvidosas=com_duvidosas))
+    )
+    match partes:
+        case (_, _):
+            return replace(lida, linha=replace(lida.linha, partes=partes))
+        case _:
+            return lida
+
+
+def _trecho(
+    itens: Sequence[LTChar | LTAnno],
+    topo: float,
+    pagina: LTPage,
+    nao_pinta: Callable[[LTChar], bool],
+    *,
+    com_duvidosas: bool,
+) -> _LinhaLida | None:
+    """A linha do domínio feita dos caracteres `itens`: a linha inteira ou uma parte dela."""
+    caracteres = [c for c in itens if isinstance(c, LTChar)]
+    if not caracteres or not normalizar_espacos("".join(item.get_text() for item in itens)):
         return None
-    dela = _caracteres(linha)
+    dela = _caracteres(itens)
     tamanho = tamanho_da_linha(dela)
     # A chamada sobrescrita e o espaço inventado saem aqui, onde o caractere ainda tem tamanho e
     # posição (ADR-0004, "Número de referência e espaço falso").
     lida = texto_da_linha(dela, tamanho, com_duvidosas=com_duvidosas)
     # Toda letra, não alguma: no Hard Parts, as 584 linhas de código são 100% monoespaçadas
     # e as 183 de prosa com um nome de código no meio ("ss.survey") ficam entre 0 e 90%.
-    monoespacada = all(_fonte_casa(_FONTE_MONOESPACADA, c.fontname) for c in caracteres)
+    monoespacada = all(nome_da_fonte.monoespacada(c.fontname) for c in caracteres)
     texto = normalizar_espacos(lida.texto) if monoespacada else lido(lida, tamanho)
+    x0, x1 = min(c.x0 for c in caracteres), max(c.x1 for c in caracteres)
     pronta = Linha(
         texto,
-        x=linha.x0,
-        topo=1 - linha.y1 / pagina.height,
+        x=x0,
+        topo=topo,
         tamanho=tamanho,
         monoespacada=monoespacada,
-        fim=linha.x1,
+        fim=x1,
         chamadas=lida.chamadas,
+        letras_gregas=sum(_desenhada(c) != c.get_text() for c in caracteres),
         # Inteira além da borda do papel, que o leitor não mostra; a que passa da borda só em parte
         # fica (ADR-0004, "A ordem das colunas no Miller").
-        fora_da_pagina=linha.x1 <= pagina.x0 or linha.x0 >= pagina.x1,
+        fora_da_pagina=x1 <= pagina.x0 or x0 >= pagina.x1,
     )
     visiveis = [c for c in caracteres if c.get_text().strip()]
     return _LinhaLida(_com_a_letra(pronta, visiveis, nao_pinta), lida.duvidosas)
@@ -336,9 +353,10 @@ def _com_a_letra(
         linha,
         # Toda letra visível, como na monoespaçada: a ênfase no meio da prosa (619 linhas no
         # Competente) não faz a linha negrito.
-        negrito=all(_fonte_casa(_FONTE_NEGRITO, c.fontname) for c in visiveis),
+        negrito=all(nome_da_fonte.negrito(c.fontname) for c in visiveis),
         versalete=_versalete(visiveis, linha.tamanho),
-        fonte=_familia(visiveis),
+        fonte=nome_da_fonte.familia(c.fontname for c in visiveis),
+        fonte_do_versalete=nome_da_fonte.fonte_do_versalete(c.fontname for c in visiveis),
         # Toda letra visível, como no negrito. O `upright` do pdfminer é a matriz sem giro: a
         # itálica, que só inclina, continua de pé (ADR-0004, "Texto girado").
         girada=bool(visiveis) and not any(c.upright for c in visiveis),
@@ -347,40 +365,22 @@ def _com_a_letra(
     )
 
 
-def _caracteres(linha: LTTextLine) -> list[Caractere]:
+def _caracteres(itens: Sequence[LTChar | LTAnno]) -> list[Caractere]:
     """Os caracteres da linha para o domínio. O espaço do pdfminer (`LTAnno`) não tem posição:
-    ganha o fim da letra antes e o começo da letra depois. Uma passada de trás para frente guarda
-    o começo da próxima letra."""
-    caracteres: list[Caractere] = []
-    comeco_da_seguinte: float | None = None
-    for item in reversed(list(linha)):
-        if isinstance(item, LTChar):
-            # O pé da caixa, e não a matriz: a subida do `Ts` só entra na caixa (pdfminer).
-            caracteres.append(Caractere(item.get_text(), item.x0, item.x1, item.size, item.y0))
-            comeco_da_seguinte = item.x0
-        else:
-            caracteres.append(
-                Caractere(item.get_text(), 0.0, comeco_da_seguinte or 0.0, 0.0, 0.0, virtual=True)
-            )
-    caracteres.reverse()
-    fim_da_anterior = 0.0
-    for i, caractere in enumerate(caracteres):
-        if caractere.virtual:
-            depois = caractere.x1 or fim_da_anterior
-            caracteres[i] = replace(caractere, x0=fim_da_anterior, x1=depois)
-        else:
-            fim_da_anterior = caractere.x1
-    return caracteres
-
-
-def _familia(visiveis: list[LTChar]) -> str:
-    """A família da letra da maioria dos caracteres visíveis; vazia se o nome não é texto."""
-    familias = Counter(
-        _ESTILO_DA_FONTE.sub("", c.fontname.rsplit("+", 1)[-1])
-        for c in visiveis
-        if isinstance(c.fontname, str)
+    `espacos_no_lugar` a dá."""
+    return espacos_no_lugar(
+        # O pé da caixa, e não a matriz: a subida do `Ts` só entra na caixa (pdfminer).
+        # A letra da fonte de símbolo é a grega que ela desenha (ADR-0004, "Letra grega da fonte
+        # de símbolo").
+        Caractere(_desenhada(item), item.x0, item.x1, item.size, item.y0)
+        if isinstance(item, LTChar)
+        else Caractere(item.get_text(), 0.0, 0.0, 0.0, 0.0, virtual=True)
+        for item in itens
     )
-    return familias.most_common(1)[0][0] if familias else ""
+
+
+def _desenhada(letra: LTChar) -> str:
+    return nome_da_fonte.letra_desenhada(letra.get_text(), letra.fontname)
 
 
 def _versalete(visiveis: list[LTChar], tamanho: float) -> bool:
@@ -390,10 +390,5 @@ def _versalete(visiveis: list[LTChar], tamanho: float) -> bool:
     versalete e o resto no corpo é parágrafo.
     """
     feito_a_mao = em_versalete([(c.get_text(), c.size) for c in visiveis], tamanho)
-    de_fonte = all(_fonte_casa(_FONTE_VERSALETE, c.fontname) for c in visiveis)
+    de_fonte = nome_da_fonte.toda_em_versalete(c.fontname for c in visiveis)
     return feito_a_mao or de_fonte
-
-
-def _fonte_casa(padrao: re.Pattern[str], nome_da_fonte: object) -> bool:
-    """O pdfminer entrega o nome cru quando ele não é nome PDF: bytes ou número (F1)."""
-    return isinstance(nome_da_fonte, str) and padrao.search(nome_da_fonte) is not None

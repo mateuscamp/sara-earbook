@@ -32,6 +32,7 @@ from earbook.dominio.pagina import (
     so_maiusculas,
 )
 from earbook.dominio.quadro import abre_o_quadro, letra_de_quadro, solta_o_quadro
+from earbook.dominio.subtitulo_em_versalete import pecas_da_linha
 from earbook.dominio.tipo_da_linha import Medidas, TipoDeBloco, medir, tipo_da_linha
 
 RAZAO_DO_ESPACO = 1.35
@@ -93,6 +94,8 @@ class _Aberto:
     """Título em versalete: a linha seguinte só em maiúsculas, do mesmo tamanho, o continua."""
     quadro: bool = False
     """Bloco de quadro: espera em `_Montador._quadro` e não mexe na retomada do texto."""
+    fonte_do_versalete: str = ""
+    """A do título em versalete de fonte própria: a linha em outra fonte de versalete abre outro."""
 
 
 def montar_blocos(
@@ -107,9 +110,12 @@ def montar_blocos(
     montador = _Montador(medidas, dicionario_do_livro(prova_do_hifen or paginas))
     for pagina in paginas:
         anterior: Linha | None = None
-        for linha, pedacos in linhas_visuais(pagina.linhas, medidas.corpo):
-            montador.acrescentar(pagina.numero, linha, anterior, pedacos)
-            anterior = linha
+        for visual, pedacos in linhas_visuais(pagina.linhas, medidas.corpo):
+            # O subtítulo em versalete que abre o parágrafo na mesma linha é título, e o resto
+            # começa o parágrafo (ADR-0004, "Subtítulo em versalete no começo do parágrafo").
+            for linha in pecas_da_linha(visual):
+                montador.acrescentar(pagina.numero, linha, anterior, pedacos)
+                anterior = linha
     return montador.livro()
 
 
@@ -171,6 +177,7 @@ class _Montador:
             negrito=negrito,
             versalete=linha.versalete,
             quadro=self._no_quadro,
+            fonte_do_versalete=linha.fonte_do_versalete,
         )
 
     def livro(self) -> LivroMontado:
@@ -253,6 +260,11 @@ class _Montador:
         1", linha em branco, "O começo" é um título e um capítulo (N1 da pós-auditoria).
         """
         if anterior is None or abs(linha.tamanho - aberto.tamanho) > DIFERENCA_DE_TAMANHO:
+            return True
+        # O título da seção e o subtítulo corrido logo abaixo dele, em outra fonte de versalete
+        # (ADR-0004, "Subtítulo em versalete no começo do parágrafo").
+        fontes = {aberto.fonte_do_versalete, linha.fonte_do_versalete}
+        if "" not in fontes and len(fontes) > 1:
             return True
         if aberto.tamanho >= self._medidas.corpo * RAZAO_DO_TITULO:
             return False

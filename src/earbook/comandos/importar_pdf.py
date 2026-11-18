@@ -72,6 +72,7 @@ class Importacao:
     chamadas: tuple[LinhaRemovida, ...] = ()
     rotulos_acertados: int = 0
     """As palavras de rótulo que voltaram à caixa normal nas menções ("QuAdro 13.1")."""
+    letras_gregas: int = 0
 
 
 def epub_padrao(pdf: Path) -> Path:
@@ -106,7 +107,9 @@ def importar_pdf(
     gravar_epub(epub, titulo, idioma, capitulos, autor=autor)
     remocoes, chamadas = limpas.remocoes, _chamadas(paginas)
     feito = Importacao(epub, len(paginas), remocoes, livro, len(capitulos), titulo, autor, chamadas)
-    return replace(feito, rotulos_acertados=rotulos)
+    # Só as que chegam aos blocos: a do texto fora da página e a da bibliografia não se ouvem.
+    gregas = sum(linha.letras_gregas for pagina in limpas.paginas for linha in pagina.linhas)
+    return replace(feito, rotulos_acertados=rotulos, letras_gregas=gregas)
 
 
 def _montar_o_livro(
@@ -221,6 +224,12 @@ def resumo_da_importacao(importacao: Importacao) -> str:
         linhas.append(
             f"{rotulos} {plural} de rótulo com a caixa acertada (Figura, Quadro, Tabela)."
         )
+    if gregas := importacao.letras_gregas:
+        # ADR-0004, "Letra grega da fonte de símbolo": "20 µg/kg", e não "20 mg/kg".
+        letras = "letra" if gregas == 1 else "letras"
+        lidas = "lida" if gregas == 1 else "lidas"
+        desenho = "pelo desenho, e não pela letra latina"
+        linhas.append(f"{gregas} {letras} de fonte de símbolo {lidas} {desenho}.")
     linhas.append(f"Próximo passo: earbook preparar {importacao.epub}")
     return "\n".join(linhas)
 

@@ -363,7 +363,14 @@ autor do metadado do PDF (ou os de `--titulo` e `--autor`). O que ele faz:
   beira-mar*), o negrito é ênfase de trechos inteiros e fica no parágrafo;
 - lê o subtítulo em versalete como título, e não como nota no fim do capítulo: o feito à mão
   (maiúsculas de dois tamanhos) e o de fonte própria (o nome da fonte termina em "SC", como
-  "Archer-Medium-SC700");
+  "Archer-Medium-SC700"). O subtítulo corrido em fonte de versalete que fecha com ponto e abre a
+  linha em que a frase começa ("uso clínico dE sugammadEx En paciEntEs sanos. La primera") sai
+  título, e o resto da linha começa o parágrafo; o título da seção logo acima, em outra fonte de
+  versalete, fica à parte. A caixa trocada do subtítulo fica como veio;
+- lê a letra da fonte de símbolo pelo que ela desenha, e não pela letra latina que o PDF diz:
+  "20 µg/kg", e não "20 mg/kg"; "γ-ciclodextrina", e não "g-ciclodextrina". A tabela tem só o que
+  se viu desenhado (a Mathematical Pi One e a Four: µ, α, β, γ, δ, λ, θ, ′ e ≥; a Symbol: κ e ω).
+  O resumo conta as letras trocadas;
 - divide os capítulos pelo sumário interno do PDF (os marcadores), quando a maioria dos itens
   de um nível traz o rótulo "Capítulo 3" ou "Chapter 24": cada item desse nível e dos de cima
   abre capítulo na página que o sumário diz, e dá o nome dele no sumário do EPUB. Sem sumário

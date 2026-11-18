@@ -2438,6 +2438,138 @@ em minúscula.
 - **Livros que não estão neste Mac** (*Dalgalarrondo*, *Hard Parts*, *Competente*, *Maudlin*):
   sem regressão. O título que atravessa e o quadro pela família são as regras que podem mudá-los.
 
+### Letra grega da fonte de símbolo e subtítulo em versalete no começo do parágrafo (2026-11-18)
+
+**Contexto.** A amostra do `tradutor-es` (ADR-0013, 6 lotes dos capítulos 35 e 9 do *Miller*)
+achou dois defeitos que nascem no `importar-pdf`, os dois vistos pelo pdfminer na p. 1183. Decisão
+do Mateus (2026-11-17): corrigir antes da escuta da amostra, que se refaz sobre o livro
+reimportado.
+
+**1. Letra grega da fonte de símbolo.**
+- **O defeito:** a MathematicalPi-One desenha µ, α, β e γ, mas o PDF diz "m", "a", "b" e "g".
+  "20 µg/kg" de atropina saía "20 mg/kg", e a voz lia a dose mil vezes maior; "γ-ciclodextrina"
+  saía "g-ciclodextrina".
+- **Medido antes** (HEAD `6e4e218`, uma passada do pdfminer no *Miller* inteiro, letra a letra):
+  48 fontes. As de símbolo e as letras que o PDF diz nelas:
+
+  | Fonte | Letras (vezes) | O que a página desenha |
+  |---|---|---|
+  | MathematicalPi-One | m 1.130, b 1.099, a 1.019, g 202, d 142, u 69, l 36, 9 11, U+E024 2, U+E03F 1 | µ, β, α, γ, δ, θ, λ, ′ (T3′), ≥; o U+E03F é o ponto do "V̇" |
+  | MathPiOneItalic | l 18, g 16, a 13, b 9, m 3, u 1, d 1 | µ e δ vistos; o resto está no texto fora da página |
+  | MathPiOneBold, MathPiOneBoldItalic | b 7, a 1 | β, α |
+  | MathematicalPi-One-SC700 | a 6, b 2 | α, β (nos títulos em versalete) |
+  | MathematicalPi-Four, -Four-SC700 | b 10, a 5, g 2, m 1 | β, α, γ, µ |
+  | Symbol, Symbol-Italic, Symbol-Bold | k 106, w 20 e 2.230 caracteres que o PDF já diz certos (=, ×, ε, ρ, π…) | κ (NF-κB), ω (Zin(ω)) |
+  | MT-Extra, EuclidExtra | `(cid:31)` e afins, 461 | glifos sem letra; ficam |
+  | ZapfDingbats | ❏ 32 | o PDF já diz certo |
+
+  Cada letra da tabela foi vista na página renderizada (pdftoppm, 200 dpi): µ em "20 µg/kg"
+  (p. 1183) e em "µg/kg/min" (p. 1132, a Four); α, β e γ em "α-, β- y γ-ciclodextrinas"
+  (p. 1183), "RECEPTORES α Y β" (p. 427), "ReceptoRes α-adRenéRgicos" (p. 428), "β-bloqueantes"
+  (p. 1409); δ em "desde δ" (p. 350); θ em "theta (θ)" (p. 346); λ em "donde λ" (p. 348); ′ em
+  "T3′" (p. 238); ≥ em "carótida ≥ 70%" (p. 2472); κ em "NF-κB" (p. 673 e 851); ω em "Zin(ω)"
+  (p. 830).
+- **A regra** (`dominio/nome_da_fonte.py`, `letra_desenhada`): a letra numa fonte de símbolo da
+  tabela vira o que a fonte desenha. A família vem pelo nome sem o subconjunto: a Mathematical Pi
+  One em todo estilo ("MathematicalPi-One", "MathPiOneItalic", "-SC700"), a Four, que no *Miller*
+  só tem as quatro letras dela, e a Symbol, só com o "k" e o "w". O adaptador troca a letra antes de
+  o domínio ver o caractere (`adaptadores/pdf.py`, `_caracteres`), e a linha conta as trocas
+  (`Linha.letras_gregas`). O resumo do `importar-pdf` diz quantas chegaram aos blocos: "N letras de
+  fonte de símbolo lidas pelo desenho, e não pela letra latina."
+- **O que fica:** a letra que a tabela não tem (o U+E03F do "V̇", e as letras da Mathematical Pi
+  que o *Miller* não usa), as outras fontes de símbolo e a Symbol com outras letras. Quatro letras
+  da MathPiOneItalic ("g", "a", "u", "l") só aparecem no texto fora da página, e entram pela
+  família, sem glifo visto: a italic desenha "m" e "d" como a redonda.
+- **Recusado: a tabela padrão da Symbol inteira** (a → α, b → β…). No *Miller*, a Symbol já diz
+  em grego tudo o que desenha, menos o "k" e o "w"; o resto da tabela padrão não foi visto em livro
+  nenhum.
+
+**2. Subtítulo em versalete no começo do parágrafo.**
+- **O defeito:** o subtítulo corrido do *Miller* vem em fonte só de versaletes
+  (StoneSerif-Bold-SC700 e StoneSerif-Semibold-SC700), com a caixa trocada, fecha com ponto, e a
+  frase começa na mesma linha, em StoneSerif: "uso clínico dE sugammadEx En paciEntEs sanos. La
+  primera" (p. 1185). A linha inteira tinha a letra pequena do versalete na maioria (6,3 pt, contra
+  9 do corpo) e virava nota, que o `montar` leva para o fim do capítulo: a frase perdia o começo, e
+  o subtítulo saía do lugar. Com o subtítulo curto, a linha era parágrafo, e o subtítulo era lido
+  como o começo da frase ("bronCoConstriCCión. Tras la administración…").
+- **Medido antes:** 3.039 linhas com letra de fonte de versalete; 869 todas nela (já são título);
+  888 abrem nela e continuam em outra; 822 dessas fecham a abertura com ponto, 266 com a letra do
+  versalete na maioria (nota) e 556 com a do corpo (parágrafo). As 66 que não fecham com ponto são
+  "P u n t o s c l a v e (cont.)", nome de colaborador, prefixo químico ("d-lactato", "l-adrenalina")
+  e a abertura em que a letra grega da Mathematical Pi corta o versalete. Na pasta da amostra, 167
+  das 564 notas tinham o subtítulo de caixa trocada.
+- **A regra:**
+  - o adaptador parte a linha onde acaba a fonte de versalete que a abre (`Linha.partes`, a
+    abertura e o resto, cada uma com a sua letra e a sua posição). A abertura acaba na última letra
+    em versalete: o espaço depois do ponto vem na letra do corpo, e em "do." ele dava 9 pt à
+    abertura (p. 1730), que deixava de continuar o título de 6,3 pt da linha de cima. A letra da
+    fonte de símbolo no meio ("ReceptoRes β-adRenéRgicos.") não acaba a abertura, mas sozinha não
+    a abre ("β-bloqueante", p. 1279); e a linha toda em versalete com uma letra grega continua
+    versalete;
+  - o domínio (`dominio/subtitulo_em_versalete.py`) usa as partes quando a abertura fecha com
+    ponto e as duas começam o texto da linha: a abertura é título, pelo versalete de fonte própria,
+    e o resto começa o parágrafo, na margem da linha. O pedaço que a linha visual juntou depois
+    delas vai com o resto ("El PO4" e a carga sobrescrita, p. 2062);
+  - a abertura continua o título em versalete da linha de cima na mesma fonte de versalete (o
+    subtítulo corrido de duas linhas, "…anES-" | "tESiología…", 87 pares no livro) e abre outro
+    título na outra fonte (o título da seção em Bold e o subtítulo corrido logo abaixo em Semibold,
+    35 pares: "…adultos mayorEs" | "pediatría.", p. 1187). `Linha.fonte_do_versalete` leva o nome
+    inteiro da fonte;
+  - o hífen invisível que vira hífen na linha vira também nas partes.
+  A caixa trocada fica como veio: a certa não está no PDF (decisão do Mateus, 2026-11-13). Quem a
+  desfaz é o tradutor.
+- **Recusado: partir toda abertura em versalete.** A abertura de capítulo do *Maudlin* ("Physics
+  has TradiTionally been") não fecha com ponto e é o começo da frase.
+
+**Para caber nas 400 linhas**, as regras do nome da fonte saíram de `adaptadores/pdf.py` para
+`dominio/nome_da_fonte.py` (monoespaçada, negrito, versalete, família), e o lugar do espaço
+virtual, para `dominio/caracteres.py` (`espacos_no_lugar`), sem mudar o comportamento.
+
+**Medido depois do código** (a base é o HEAD `6e4e218`, reimportado na mesma rodada; um PDF por
+vez):
+
+| *Miller* | base | novo |
+|---|---|---|
+| Blocos do `importar-pdf` (títulos, parágrafos, notas) | 5.729, 20.336, 535 | 6.490, 20.355, 346 |
+| Letras de fonte de símbolo lidas pelo desenho | — | 3.151 |
+| Hífen de fim de linha tirados | 41.006 | 41.074 (o subtítulo de duas linhas emendado: "anES-" + "tESiología") |
+| Segmentos do `preparar` (`limpos/`) | 26.600 (26.215) | 27.191 (26.806) |
+| Notas, e as com o subtítulo de caixa trocada | 535, 164 | 346, 7 |
+| Suspeitas "capitular perdida?" | 162 | 46 (a frase que perdia o começo para a nota) |
+| Capitular devolvida | 1, falsa ("Fdo. El EEG", c055) | 0: "…no proCesado." volta inteiro |
+| "µ", "µg/kg", "mg/kg" | 1, 1, 1.039 | 924, 429, 611 |
+| "g-ciclodextrina" | 6 | 0 |
+| Texto | 13.311.317 caracteres, sem espaço nem hífen | os mesmos, na mesma ordem, com a letra grega de volta à latina |
+
+Gregas novas no texto: µ 923, α 846, β 920, γ 150, δ 110, κ 97, θ 56, λ 25, ω 18, ′ 4, ≥ 2.
+As 7 notas de caixa trocada que ficam: 5 são nota de verdade (o rodapé com "*" ou "†", a fonte de
+tabela, o PubMed), 1 é a tabela de c008, e 1 é o limite de "PEs", abaixo.
+
+| Livro (base → novo) | O que muda |
+|---|---|
+| *Manica* | 5 letras: "NF-kB" → "NF-κB" (a Symbol, c101-s0048, s0063, s0064); 20.964 segmentos, os mesmos |
+| *Practical* | nada: 11.810 segmentos idênticos, 0 letras trocadas |
+| *Bonica* | nada: 14.843 segmentos idênticos, 0 letras trocadas |
+
+**O que fica:**
+- **a sigla em versalete logo depois do ponto** ("potenCiales evoCados sensitivos. Los PEs son",
+  p. 1733, c055-s0080): a abertura acaba em "PEs", sem ponto, e a linha continua nota. 1 caso;
+- **o subtítulo cuja primeira linha falta** (c041-s0076, "frEntE a acción intErmEdia)."): já
+  faltava na base, onde o resto colava no parágrafo de cima; agora sai título sozinho;
+- **a linha que a regra não parte em silêncio:** quando as partes não começam o texto da linha
+  visual, ela fica inteira, e o resumo não conta. Medido no *Miller*: nenhuma nota de subtítulo
+  fica por isso;
+- **as letras da MathPiOneItalic sem glifo visto** ("g", "a", "u", "l", só no texto fora da
+  página), que entram pela família, e o U+E03F do "V̇", que fica;
+- **os livros cujo PDF não está neste Mac** (*Dalgalarrondo*, *Hard Parts*, *Competente*,
+  *Maudlin*) não foram medidos. O *Maudlin* tem fonte de versalete ("Archer-Medium-SC700"): numa
+  reimportação, a abertura em versalete que fecha com ponto vira título, e o título em versalete
+  que muda de fonte de versalete na segunda linha se parte em dois.
+
+**Os IDs mudam.** A pasta da amostra (`miller-anestesia.earbook`) é anterior ao `e48bb90`, que
+também mexeu na tabela do capítulo 35; contra ela, o c041 passa de 165 para 174 segmentos, e o c015 não muda (287). O mapa
+de cada ID está em `livros/trabalho/miller-ids-da-amostra.txt` (fora do git).
+
 ## Consequências
 
 **Ganha:** um comando a mais na mesma esteira, sem repositório novo. Os defeitos de conversão são atacados onde nascem.
@@ -2470,6 +2602,7 @@ em minúscula.
 | Notas finais do capítulo | testes (`tests/test_notas_finais.py`): a seção provada sai com o título, registrada com a página e o motivo, também a que atravessa a página e a que tem fórmula em outra letra e a explicação dela mais recuada no meio; as notas de rodapé com símbolo depois dela, o corpo e a legenda antes do título ficam; a seção para na linha do tamanho do corpo; 9 chaves, chaves sem citação autor-ano, a bibliografia com poucas chaves na margem e o livro sem família de letra não tiram nada; a seção curta sai com o título de 2 seções provadas, e fica com o de uma só, com outro título ou com poucas chaves na margem; a linha em outra margem ou em outra letra antes das chaves não é título, e a legenda seguida de nota solta não engole a seção depois dela; as notas de uma linha sem título ficam; o resumo do `importar-pdf` conta as linhas. Cada condição tem o mutante que um teste reprova (13 mutantes) | portão | as notas finais voltam a ser lidas, ou sai nota de rodapé com símbolo, legenda ou bibliografia |
 | Prosa em negrito do tamanho do corpo | testes (`tests/test_blocos_subtitulo.py`): a prosa em negrito da medida da linha comum é parágrafo, e a frase que passa para a letra comum segue num parágrafo só; a manchete em maiúsculas continua título, a fala em maiúsculas que fecha frase e a linha sem letra não; no corpo em negrito, nada é título; o trecho longo em negrito não apaga os subtítulos, pela mediana | portão | o Kafka volta a ter prosa como título, ou um livro técnico perde subtítulo |
 | Tabela, quadro e pontos-chave do tratado em duas colunas | testes (`tests/test_rotulo_fora_da_borda.py`): o rótulo de tabela e de quadro no alto de três páginas fica; o cabeçalho com o rótulo do capítulo sai em duas páginas alternadas, e a abertura em letra grande e a primeira linha da coluna que abre com o rótulo ficam; o número entre os das vizinhas sai, e o fora da ordem fica. (`tests/test_figura_pelo_diagrama.py`): o quadro logo depois da tabela e da legenda fica; a letra do painel, o eixo e o título na família do diagrama e a legenda continuada saem; o quadro e a caixa sem rótulo da mesma família logo acima ficam. (`tests/test_titulo_que_atravessa_as_colunas.py`): o título da esquerda no vão da direita abre faixa; o subtítulo com a direita ao lado, o título depois de frase acabada e o título de duas linhas ficam. (`tests/test_quadro_em_ingles.py`): o "BOX" entra depois da frase que interrompe, com a linha de outra família dentro dele. (`tests/test_caracteres_no_pdf.py`): a chamada mais longa que a palavra sai, a linha de números com a nota sobrescrita fica na letra deles, e o rótulo de eixo com subscrito fica na letra de antes. Cada guarda foi vista falhar com o seu mutante | portão | a tabela, o cabeçalho, o painel ou a chamada voltam a ser lidos, os pontos-chave voltam a se intercalar, o quadro sai com a tabela, ou sai prosa |
+| Letra grega e subtítulo em versalete no começo do parágrafo | testes (`tests/test_letra_grega.py`): cada letra da tabela vira o que a Mathematical Pi One, a Four e a Symbol desenham, em todo estilo visto; a letra que não se viu desenhada, outra família, outra fonte e o nome que não é texto ficam; do PDF montado em código, "20 µg/kg" sai com a troca contada, a letra da linha fora da página não conta, e o resumo diz quantas. (`tests/test_subtitulo_em_versalete.py`): a linha que abre em versalete fechado com ponto e continua no corpo sai título e começo do parágrafo, também a de letra do corpo na maioria e a que continua o título da linha de cima; a abertura sem ponto (o Maudlin) continua a frase; as partes que não são o texto da linha não a partem; o hífen invisível vira hífen também nas partes; o adaptador parte a linha onde a fonte de versalete acaba, e não parte a linha toda em versalete nem a que abre no corpo. As guardas do ponto e do texto foram vistas falhar com o seu mutante | portão | a dose volta a ser lida em mg, a letra grega volta latina, o subtítulo volta a ser nota no fim do capítulo com o começo da frase, ou a abertura de capítulo do Maudlin vira título |
 | A escuta ★ | rodar `importar-pdf` + `preparar` num PDF real em `livros/` e contar o que o `limpar` ainda precisa tirar | a cada mudança no conversor | a contagem sobe |
 
 Regra derivada no `AGENTS.md`: a biblioteca de PDF só entra em `adaptadores/`.
@@ -2492,3 +2625,7 @@ vão à revisão dele.
 A seção "Tabela, quadro e pontos-chave do tratado em duas colunas" (2026-11-17) executa a decisão
 do Mateus do mesmo dia (pausar a tradução do *Practical* e do *Bonica* e consertar a limpeza
 antes), levada pela sessão principal. Os sinais e os limiares vão à revisão dele.
+A seção "Letra grega da fonte de símbolo e subtítulo em versalete no começo do parágrafo"
+(2026-11-18) executa a decisão do Mateus de 2026-11-17 (corrigir os dois defeitos que a amostra
+do `tradutor-es` achou antes da escuta), levada pela sessão principal. A tabela das letras, o sinal
+do ponto e a medição vão à revisão dele.

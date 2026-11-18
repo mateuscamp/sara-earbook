@@ -19,8 +19,8 @@ from __future__ import annotations
 
 import re
 from collections import Counter
-from collections.abc import Sequence
-from dataclasses import dataclass
+from collections.abc import Iterable, Sequence
+from dataclasses import dataclass, replace
 from enum import Enum
 from itertools import pairwise
 from statistics import median, multimode
@@ -105,6 +105,27 @@ class TextoDaLinha:
     duvidosas: int = 0
     """As chamadas duvidosas que ficaram no texto: só saem na página que tem chamadas certas
     (ADR-0004, "Camada do OCR sobre as figuras e chamada colada")."""
+
+
+def espacos_no_lugar(caracteres: Iterable[Caractere]) -> list[Caractere]:
+    """Os caracteres, com o espaço virtual entre o fim da letra antes e o começo da letra depois.
+    Uma passada de trás para frente guarda o começo da próxima letra; sem letra depois, o espaço
+    acaba onde começa."""
+    lidos = list(caracteres)
+    comeco_da_seguinte = 0.0
+    for i in reversed(range(len(lidos))):
+        if lidos[i].virtual:
+            lidos[i] = replace(lidos[i], x1=comeco_da_seguinte)
+        else:
+            comeco_da_seguinte = lidos[i].x0
+    fim_da_anterior = 0.0
+    for i, caractere in enumerate(lidos):
+        if caractere.virtual:
+            depois = caractere.x1 or fim_da_anterior
+            lidos[i] = replace(caractere, x0=fim_da_anterior, x1=depois)
+        else:
+            fim_da_anterior = caractere.x1
+    return lidos
 
 
 def tamanho_da_linha(caracteres: Sequence[Caractere]) -> float:

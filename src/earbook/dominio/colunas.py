@@ -27,6 +27,7 @@ from earbook.dominio.lados_da_calha import (
     texto_da_altura,
 )
 from earbook.dominio.pagina import Linha
+from earbook.dominio.titulo_que_atravessa import titulos_que_atravessam
 
 CALHA_MINIMA = 10.0
 """Em pontos, do fim da linha da esquerda ao começo da da direita. Medido: o vão das colunas vai
@@ -142,6 +143,11 @@ def _faixas(ordenadas: list[Linha], calha: float, regua: Regua) -> list[_Faixa]:
     """Corta a página, de cima para baixo, na linha que atravessa a calha e no vão que fecha
     as colunas."""
     lados = _lados(ordenadas, calha)
+    # O título da esquerda que abre faixa da largura da página (ADR-0004, "Título que atravessa
+    # as colunas").
+    de = {lado: [k for k, dela in enumerate(lados) if dela is lado] for lado in _Lado}
+    titulos = titulos_que_atravessam(ordenadas, de[_Lado.ESQUERDA], de[_Lado.DIREITA], regua.corpo)
+    lados = [_Lado.ATRAVESSA if k in titulos else lado for k, lado in enumerate(lados)]
     faixas: list[_Faixa] = []
     esquerda: list[Linha] = []
     direita: list[Linha] = []

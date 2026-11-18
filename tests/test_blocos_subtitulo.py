@@ -6,7 +6,16 @@ from __future__ import annotations
 import pytest
 
 from earbook.dominio.capitulos import dividir_em_capitulos
-from tests.linhas_de_teste import ENTRELINHA, em_negrito, linha, montar, resumo, texto_corrido
+from earbook.dominio.pagina import Linha
+from tests.linhas_de_teste import (
+    ENTRELINHA,
+    RECUO,
+    em_negrito,
+    linha,
+    montar,
+    resumo,
+    texto_corrido,
+)
 
 
 def test_subtitulo_em_negrito_do_tamanho_do_corpo_vira_titulo_fora_do_paragrafo() -> None:
@@ -171,3 +180,116 @@ def test_capitulo_de_titulo_em_duas_linhas_nao_vira_dois_capitulos() -> None:
         for n in range(1, 4)
     ]
     assert len(dividir_em_capitulos(montar(*paginas).blocos)) == 3
+
+
+# Kafka à beira-mar (ADR-0004, "Prosa em negrito do tamanho do corpo"): a voz do Corvo, as
+# perguntas do interrogador e as passagens na segunda pessoa vêm em Times negrito de 6 pt, o
+# tamanho do corpo, em linhas cheias como as do texto. Eram título no meio do capítulo.
+TEMPESTADE = [
+    "Em certas ocasiões, o destino se assemelha a uma pequena tempestade",
+    "de areia, cujo curso sempre se altera. Você procura fugir dela e",
+    "orienta seus passos noutra direção. Mas então a tempestade também",
+    "muda de direção e o segue. Você muda mais uma vez o seu rumo.",
+]
+
+
+def _negrito_do_kafka(topo: float) -> list[Linha]:
+    return [em_negrito(linha(t, topo + ENTRELINHA * n)) for n, t in enumerate(TEMPESTADE)]
+
+
+def test_prosa_em_negrito_do_tamanho_do_corpo_continua_paragrafo() -> None:
+    pagina = [*texto_corrido(0.1), *_negrito_do_kafka(0.3), *texto_corrido(0.45)]
+    assert [tipo for tipo, _ in resumo(montar(pagina))] == ["paragrafo"] * 3
+    assert resumo(montar(pagina))[1] == ("paragrafo", " ".join(TEMPESTADE))
+
+
+def test_frase_que_passa_do_negrito_para_a_letra_comum_segue_um_paragrafo() -> None:
+    # Kafka p. 134: "…Esta é a sua imagem" em negrito e "real? — diz atônito…" na letra comum.
+    # O título partia a frase, e o `limpar` via "capitular perdida?" no começo em minúscula.
+    pagina = [
+        *texto_corrido(0.1),
+        *_negrito_do_kafka(0.3),
+        em_negrito(
+            linha("— Ora, onde já se viu? Você está todo encolhido, com medo do", 0.45, RECUO)
+        ),
+        em_negrito(linha("silêncio e da escuridão! Como um menino! Esta é a sua imagem", 0.471)),
+        linha("real? — diz atônito o menino chamado Corvo. — Você sempre se", 0.492),
+        linha("julgou valente, mas pelo visto não é.", 0.513),
+    ]
+    frase = (
+        "— Ora, onde já se viu? Você está todo encolhido, com medo do silêncio e da escuridão! "
+        "Como um menino! Esta é a sua imagem real? — diz atônito o menino chamado Corvo. — "
+        "Você sempre se julgou valente, mas pelo visto não é."
+    )
+    assert resumo(montar(pagina))[-1] == ("paragrafo", frase)
+
+
+def test_manchete_em_negrito_e_maiusculas_continua_titulo_no_livro_de_prosa_em_negrito() -> None:
+    # Kafka p. 199: a manchete do jornal, centrada, em negrito do corpo, colava no subtítulo da
+    # notícia logo abaixo ("CHUVA DE PEIXES DESABA DO FIRMAMENTO Cerca de 2 mil sardinhas…").
+    pagina = [
+        *texto_corrido(0.1),
+        *_negrito_do_kafka(0.3),
+        em_negrito(linha("CHUVA DE PEIXES DESABA DO FIRMAMENTO", 0.45, 120)),
+        linha("Cerca de 2 mil sardinhas e cavalinhas caem do céu em Nakano", 0.468),
+    ]
+    assert resumo(montar(pagina))[-2:] == [
+        ("titulo", "CHUVA DE PEIXES DESABA DO FIRMAMENTO"),
+        ("paragrafo", "Cerca de 2 mil sardinhas e cavalinhas caem do céu em Nakano"),
+    ]
+
+
+def test_linha_em_maiusculas_no_livro_de_corpo_em_negrito_continua_paragrafo() -> None:
+    # No livro de corpo em negrito, nenhum negrito destaca, nem o em maiúsculas.
+    pagina = [em_negrito(corpo) for corpo in [*texto_corrido(0.1), *texto_corrido(0.3)]]
+    pagina.append(em_negrito(linha("AVISO AO LEITOR", 0.5)))
+    assert [tipo for tipo, _ in resumo(montar(pagina))] == ["paragrafo"] * 3
+
+
+def test_fala_em_maiusculas_que_fecha_frase_segue_paragrafo_no_livro_de_prosa_em_negrito() -> None:
+    # Code-review: a fala gritada ("— NÃO!") e a última linha curta de um trecho em negrito
+    # ("EUA.") são só maiúsculas, mas fecham a frase; a manchete e o rótulo do relatório, não.
+    pagina = [
+        *texto_corrido(0.1),
+        *_negrito_do_kafka(0.3),
+        em_negrito(linha("— NÃO!", 0.45, RECUO)),
+        linha("Ele grita e corre para fora da cabana sem olhar para trás.", 0.471),
+    ]
+    assert resumo(montar(pagina))[-1] == (
+        "paragrafo",
+        "— NÃO! Ele grita e corre para fora da cabana sem olhar para trás.",
+    )
+
+
+def test_livro_de_subtitulos_com_um_trecho_longo_em_negrito_continua_com_subtitulos() -> None:
+    # A pergunta é do livro, pela mediana: uma caixa em negrito longo não apaga os subtítulos.
+    pagina = [*texto_corrido(0.1)]
+    for n, nome in enumerate(["Pedaços", "Tokens", "Contexto", "Atenção", "Memória"]):
+        topo = 0.25 + n * 0.12
+        pagina += [em_negrito(linha(nome, topo)), *texto_corrido(topo + 0.03, linhas=2)]
+    pagina += _negrito_do_kafka(0.9)[:2]
+    tipos = [tipo for tipo, _ in resumo(montar(pagina))]
+    assert tipos.count("titulo") >= 5
+
+
+def test_mediana_e_nao_media_decide_a_prosa_em_negrito() -> None:
+    # Code-audit: uma caixa em negrito de largura cheia, com linhas três vezes mais longas que as
+    # da coluna, puxaria a média para cima e apagaria os subtítulos; a mediana fica com eles.
+    larga = "Caixa em negrito que atravessa as duas colunas da página " * 3
+    pagina = [*texto_corrido(0.1)]
+    for n, nome in enumerate(["Pedaços", "Tokens", "Contexto", "Atenção"]):
+        topo = 0.25 + n * 0.12
+        pagina += [em_negrito(linha(nome, topo)), *texto_corrido(topo + 0.03, linhas=2)]
+    pagina += [em_negrito(linha(larga, 0.8 + n * ENTRELINHA)) for n in range(3)]
+    assert [tipo for tipo, _ in resumo(montar(pagina))].count("titulo") >= 4
+
+
+def test_linha_sem_letra_em_negrito_segue_paragrafo_no_livro_de_prosa_em_negrito() -> None:
+    # Code-audit: a pausa de cena em negrito ("* * *") não tem letra minúscula, mas não é manchete.
+    pagina = [
+        *texto_corrido(0.1),
+        *_negrito_do_kafka(0.3),
+        em_negrito(linha("* * *", 0.45, 150)),
+        *texto_corrido(0.5),
+    ]
+    assert ("titulo", "* * *") not in resumo(montar(pagina))

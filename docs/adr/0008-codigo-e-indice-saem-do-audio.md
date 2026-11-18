@@ -835,6 +835,41 @@ O que o inventário por script ainda acusa (segmentos):
   título, com outro igual ou um grupo "a), b), c)" adiante, e metade dos parágrafos ou mais
   nessas formas.
 
+## Fala de diálogo não é destaque (2026-11-17)
+
+### Contexto
+
+O primeiro romance da esteira, *Kafka à beira-mar* (Murakami, PDF em pt-BR), perdeu 4 falas
+pela regra do destaque de margem: a personagem repete, perguntando, o fim da fala do outro.
+`c028-s0126` "— Um lugar para onde possam retornar?", logo depois de "— Mesmo que um dia acabem
+desvirtuadas, as pessoas precisam de um lugar para onde possam retornar."; `c013-s0060`
+"— Vo-ca-bu-lá-rio res-tri-to?"; `c035-s0101` "— Passou de um lado para o outro?"; `c041-s0129`
+"— Biblioteca Me-mo-ri-al Komura?". A fala tem forma de frase, 6 palavras ou mais (a soletrada
+conta cada sílaba) e repete o vizinho palavra por palavra: as três condições da regra. Mas ela é
+a resposta do diálogo, e o ouvinte perde a vez de quem fala.
+
+### Decisão
+
+A fala de diálogo não é destaque: o parágrafo que abre com travessão (U+2014) ou meia-risca
+(U+2013), depois de espaço, fica. É o critério mais estreito que separa os dois casos: os 4 do
+Kafka abrem com travessão, e nenhum destaque dos livros medidos abre assim (o destaque repete uma
+frase da prosa, que não abre com travessão). A pergunta também separaria os 4 (nenhum dos 243
+destaques do Dalgalarrondo termina em "?"), mas é mais larga: a fala que afirma e repete a
+anterior ("— Amanhã cedo, na estação.") também é resposta, e o destaque que pergunta é
+frase-tema comum em livro didático. O hífen ("- item") continua contando: é item de lista,
+não fala.
+
+### Medição (2026-11-17, depois do código)
+
+`preparar` nos EPUBs da regressão (`regressao4-*.epub`, o Manica com os 4 `--sem-capitulo` de
+antes), no do Kafka e no do Dalgalarrondo, importado do PDF no HEAD `9663144`:
+
+| Livro | Destaques antes → depois | O resto |
+|---|---|---|
+| *Kafka à beira-mar* | **4 → 0** | só `c013`, `c028`, `c035` e `c041` mudam em `limpos/`, com a fala de volta |
+| *Dalgalarrondo* | 243 → 243 | `limpos/` idêntico (o "antes" é o mesmo `preparar` com a regra desligada) |
+| *Practical*, *Bonica*, *Manica*, *Miller* | 0, 1, 0, 0 → os mesmos | `limpos/` e `limpeza.json` idênticos |
+
 ## Consequências
 
 **Ganha:**
@@ -877,7 +912,7 @@ O que o inventário por script ainda acusa (segmentos):
 | O link do `landmarks` não é índice | teste: `<a epub:type="index">` no `nav` fica | portão | o sumário perde o item |
 | Marca d'água sai, o repetido de propósito fica | testes: o parágrafo em metade dos arquivos sai, registrado; abaixo da metade, em menos de 10 arquivos, como título, como citação ou sem letra, fica | portão | a marca fica, ou sai texto que não é marca |
 | Destaque sai, registrado, e a frase se emenda | testes (`tests/test_destaque.py`): o destaque ao lado do texto, no meio da frase, no meio da palavra partida, com hífen diferente e abrindo no meio da frase do texto sai com o motivo "destaque de margem: repete o texto vizinho"; do PDF de ponta a ponta, a frase da p. 250 volta inteira | portão | o destaque fica, ou a frase não se emenda |
-| O que não é destaque fica | testes: título como parágrafo, continuação em minúscula, pergunta com ":", pedaço que abre em algarismo, outro número, outra obra com uma palavra a menos, menos de 6 palavras, texto a mais de 3 segmentos ou em outro capítulo, citação e nota, gêmeos fora do meio da frase | portão | sai texto que o vizinho não repete |
+| O que não é destaque fica | testes: fala de diálogo que abre com travessão ou meia-risca e ecoa a anterior (Kafka à beira-mar), título como parágrafo, continuação em minúscula, pergunta com ":", pedaço que abre em algarismo, outro número, outra obra com uma palavra a menos, menos de 6 palavras, texto a mais de 3 segmentos ou em outro capítulo, citação e nota, gêmeos fora do meio da frase | portão | sai texto que o vizinho não repete |
 | Bibliografia sai, registrada, só pelo conteúdo | testes (`tests/test_bibliografia.py`): 10 referências ABNT seguidas e o título logo antes saem com o motivo "bibliografia: referências no padrão ABNT"; 9 ficam; a referência sem ano parte a sequência; a APA fica; o título sozinho não tira nada; o título longe das referências fica | portão | a bibliografia fica, ou o título sozinho tira texto |
 | Vancouver sai, registrada, só pelo conteúdo | testes (`tests/test_referencias_vancouver.py`): 10 referências numeradas e o título logo antes saem com o motivo "bibliografia: referências no estilo Vancouver"; 9 citações ficam; as coladas numa nota que abre no meio saem, e o título do capítulo seguinte e o crédito em maiúsculas ficam; o pedaço sem sinal entre referências sai; 3 parágrafos sem sinal partem a região e ficam; as "Suggested Readings" se juntam à lista depois de "References", também com o subtítulo no meio; o título do próximo capítulo e a prosa que cita um periódico ficam; "Stage IV," não é autor; a prosa com cara de autor antes do título fica; o pedaço fraco depois da última referência sai; a numerada sem citação antes da primeira sai; a prosa com URL logo antes fica; a prosa com "et al." e "2011;36" fica; o `preparar` registra em `limpeza.json` | portão | a referência fica, ou sai prosa |
 | Índice sai pelo conteúdo, registrado | testes (`tests/test_indice_pelo_conteudo.py`): 10 entradas seguidas e o título logo antes saem com o motivo "índice remissivo: termos seguidos do número da página"; 9 ficam; a letra no meio sai com o índice; a entrada que termina em remissão conta; mais de 8 palavras por número não é entrada; a vírgula sem espaço (decimal e milhar), o ano e o número antes do parêntese não são página, cada um no meio de 10 entradas; o título sozinho não tira nada | portão | o índice fica, ou sai texto que não é índice |

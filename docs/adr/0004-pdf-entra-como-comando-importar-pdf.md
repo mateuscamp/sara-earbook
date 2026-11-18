@@ -196,7 +196,7 @@ Correção da pós-auditoria (2026-11-01): **N1**, as duas regras (item de lista
 
 Ficam como limite (o verbete do glossário, que ficava abaixo do piso e colado na definição, foi resolvido em "Verbete em negrito abaixo do corpo"):
 - o negrito que não vem no nome da fonte (o falso negrito desenhado com contorno, `Tr 2`, ou a família TeX `CMBX`) não é reconhecido, e o subtítulo continua colado;
-- uma linha inteira de ênfase em negrito no meio do parágrafo o partiria em três; não apareceu nos livros medidos. A guarda óbvia (a linha de antes fechou a frase) quebraria os 36 subtítulos do apêndice do Competente, que vêm depois de linha terminada em URL (revisão nº 3);
+- uma linha inteira de ênfase em negrito no meio do parágrafo o partiria em três; não apareceu nos livros medidos. Apareceu no *Kafka à beira-mar*, com o livro inteiro de prosa em negrito, resolvido em "Prosa em negrito do tamanho do corpo" (2026-11-17); a linha de ênfase solta num livro de subtítulos curtos continua partindo o parágrafo. A guarda óbvia (a linha de antes fechou a frase) quebraria os 36 subtítulos do apêndice do Competente, que vêm depois de linha terminada em URL (revisão nº 3);
 - um PDF sem título grande em 3 páginas ou mais, como um artigo com o título só na primeira, passa a cortar capítulo em cada subtítulo em negrito do corpo, onde antes saía um capítulo só (revisão nº 4);
 - o subtítulo com um glifo de fonte de reserva (aspa curva, seta, travessão de outra fonte) não é todo negrito e continua colado (revisão nº 7); e a regex só conhece o estilo por extenso depois de `-` ou `,`: abreviação (`-Bd`, `-Blk`, `-Sb`) e nome com espaço (`Arial Bold`, de `#20`) ficam de fora (revisão nº 8);
 - o nível sai da ordem dos tamanhos no livro todo, até o `h6`: no Competente, a seção de 12 pt e o subtítulo de 10,5 caem os dois no `h6`. O ouvido não percebe; a tela perderia a hierarquia.
@@ -2059,6 +2059,384 @@ e 1357; Dalgalarrondo p. 325; Miller p. 569) foram aceitas pelo Mateus em 2026-1
   *Dalgalarrondo* e o *Hard Parts*, onde a regra "Duas colunas" foi medida, foram medidos
   (os PDFs estão em `livros/trabalho/dalgalarrondo.pdf` e no Proton Drive).
 
+### Notas finais do capítulo (2026-11-17)
+
+**Contexto.** Decisão do Mateus (2026-11-17, levada pela sessão principal): a seção "Notes" do
+fim de cada capítulo do *Being You* (Anil Seth; PDF que o Calibre gerou de um EPUB) sai do áudio.
+São notas finais sem marcador no corpo, cada uma aberta pela frase do texto que comenta
+("global workspace theory: Baars (1988); Dehaene & Changeux (2011)…"): citação autor-ano e URL,
+lidas em voz alta no fim de cada capítulo. A nota de rodapé com símbolo, que o corpo chama ("to be
+a bat.*"), não está decidida: fica no fim do capítulo, como a regra das notas manda.
+
+**Medido** (HEAD `9663144`, páginas do *Being You* antes dos blocos):
+- Corpo em ArialMT de 15 pt; a seção inteira vem em 12,5 pt (abaixo de 0,85 do corpo: é nota
+  para `tipo_da_linha`). 15 títulos "Notes", um por capítulo com notas, todos numa linha só, na
+  margem do corpo (x = 84,5), em 12,5 pt.
+- Cada nota final abre na margem com a chave e dois-pontos, e continua com recuo pendente
+  (x = 100,7). Depois das notas finais vêm as notas de rodapé com símbolo ("*", "†", "‡", "§",
+  "¶", "||"), o símbolo em x = 106,3 a 108,4 e o texto em x = 125,7.
+- No `importar-pdf` de hoje, tudo isso vira bloco de nota, **um por página**: o título gruda na
+  primeira nota ("Notes global workspace theory: …"), e a última página de notas finais e a
+  primeira de rodapé viram um bloco só ("…they must be related. * This paper is one of…"). São
+  105 blocos de nota, com 15.702 palavras no `limpos/`.
+- Na mesma letra e com o mesmo recuo pendente: a bibliografia (p. 290–310), que abre a entrada
+  pelo autor ("Albright, T. D. (2012)."), e o índice (já tirado como página de remissões). Uma
+  fórmula em MathJax de 10,4 pt, com a explicação dela no recuo do rodapé, está no meio de uma
+  nota final ("The rule itself: Here's how Bayes' rule is normally written:", p. 124).
+
+| Alternativa | Ganha | Perde | Por que não |
+|---|---|---|---|
+| **A. Na página, antes dos blocos: a seção pela letra, pela margem e pela chave** (escolhida) | a nota final e a de rodapé ainda estão separadas (linha própria, recuo próprio, símbolo no começo); a regra não lê o título; segue o padrão da bibliografia pela letra | a remoção fica no registro do `importar-pdf` (página e motivo, contada no resumo), e não em `limpeza.json`; o EPUB do `importar-pdf` já sai sem as notas finais | — |
+| B. No `limpar`, pelo conteúdo do segmento de nota | registro em `limpeza.json`, com o ID | o segmento junta as duas notas por página: separá-las é trocar texto, um registro que o `limpar` não tem (o mesmo motivo da alternativa B de "Bibliografia pela letra"); o título "Notes" gruda na primeira nota | não separa o que deve ficar |
+| C. Na página, marcar a seção no EPUB (`<aside>` próprio) para o `limpar` tirar com registro | a separação de A e o registro de B | um papel novo de segmento, um contrato novo entre `importar-pdf` e `preparar`, e a decisão do que fazer com a marca padrão de nota final (`epub:type="endnotes"`) no EPUB de editora, que o Mateus não tomou (e o *Huxley*, cujas notas vão para o fim do capítulo, não está neste Mac para medir) | custo de fronteira nova para um livro; fica como saída se o registro em `limpeza.json` for exigido |
+| D. Pelo título "Notes" | pega todas, também as curtas | decide pelo texto do título, que o ADR-0008 proíbe; cada idioma pede uma palavra nova em `src/` | o título não é prova |
+
+**Decisão (A)** (`dominio/notas_finais.py`, depois da bibliografia em `_limpar`). Nas corridas de
+linhas fora da letra do corpo e da de título (as da bibliografia pela letra):
+- **Abre a seção** a linha que não é chave seguida de uma chave na mesma margem (meio ponto) e na
+  mesma letra: o título. **Chave** é o começo da linha com até 80 caracteres sem ".", "!", "?"
+  nem ":", e depois dois-pontos e espaço ("A computer that plays Go: Silver…"); "https://" não
+  tem o espaço, e "Fulano, A. (1988)." tem o ponto antes.
+- **Acaba a seção** na primeira linha que abre com símbolo de nota de rodapé ("*", "†", "‡", "§",
+  "¶", "#", "|"), na linha do tamanho do corpo (a de outra família, Arial contra ArialMT, não
+  fecha a corrida) ou no fim da corrida. O que vem no meio, também a fórmula em outra letra e a
+  explicação dela mais recuada, sai com a nota.
+- **Sai a seção provada:** 10 chaves ou mais, 10 citações autor-ano ou mais ("(1988)",
+  "(Searle, 1980)", "(Chalmers, 1995a)") e ao menos 3 de cada 4 linhas da margem abrindo com
+  chave. Medido: de 13 a 41 chaves, de 19 a 73 citações, de 31 em 31 a 36 em 37 linhas da
+  margem; na bibliografia, 49 em 444, e ela fica.
+- **Sai a seção curta** que abre com o título de 2 seções provadas ou mais, com 3 de cada 4
+  linhas da margem abrindo com chave: o livro prova o próprio título, sem que a regra o conheça
+  (3 no *Being You*, com 1, 2 e 3 notas, sob o "Notes" que 12 seções provadas repetem).
+- O motivo é "notas finais do capítulo: chave em frase e citação autor-ano", e o resumo conta as
+  linhas à parte ("N linhas de notas finais do capítulo tiradas: …").
+- **Fica** a nota de rodapé com símbolo, que continua indo para o fim do capítulo; a legenda
+  antes do título, em outra margem ("Fig. 7: …", p. 103); o glossário em letra menor ("termo:
+  definição", sem citação); a bibliografia.
+
+Decidido pelo Mateus (a seção sai); a camada, o sinal e os limiares são desta sessão e vão à
+revisão.
+
+**Medição (2026-11-17, depois do código).** Um PDF por vez; `importar-pdf` e `preparar` para
+pastas novas (`notas-<livro>-antes` no `9663144`, `notas-<livro>-depois` com a regra), o *Being
+You* com os 5 capítulos declarados pela sessão principal (`c001`, `c003`, `c020`, `c021`,
+`c023`).
+
+| | *Being You* | *Practical* | *Bonica* |
+|---|---|---|---|
+| Linhas de notas finais tiradas | 1.324, em 15 seções (as 15 "Notes") | 0 | 0 |
+| Blocos de nota no `importar-pdf` | 105 → 71 | 212 → 212 | 217 → 217 |
+| Blocos de título e de parágrafo | iguais (31 e 1.183) | iguais | iguais |
+| Hífen de fim de linha (tirados, mantidos) | 23, 72 → 21, 47 (os das linhas que saíram) | iguais | iguais |
+| Capítulos | 23 → 23 | 87 → 87 | 116 → 116 |
+| Segmentos de origem | 1.319 → 1.285 | 14.305 → 14.305 | 14.875 → 14.875 |
+| `limpos/`: segmentos e palavras | 932 → 898; 91.250 → **78.090** (−13.160) | idênticos | idênticos |
+| `limpeza.json` | idêntico | idêntico | idêntico |
+
+- **O que sai no *Being You*:** só segmentos de nota mudam. Saem 45 segmentos de nota de antes
+  e entram 11: as notas de rodapé com símbolo que vinham coladas no fim das notas finais da mesma
+  página ("…they must be related. * This paper…"), agora num segmento só delas. Nenhum parágrafo,
+  título ou capítulo muda. O que fica em nota são 45 segmentos, 2.542 palavras: as notas de rodapé
+  com símbolo, as 23 legendas "Fig. N:" e 4 epígrafes; restam nelas 5 citações autor-ano e 5 URLs,
+  todas do comentário do autor.
+- **Falsos positivos procurados:** as 15 seções abrem no título "Notes" e acabam na primeira
+  nota de rodapé com símbolo ou no título do capítulo seguinte (lidas uma a uma nas páginas); a
+  seção do `c016` não tem nota "*", e as "†", "‡", "§" e "¶" ficam. A bibliografia (p. 290–310),
+  com a mesma letra e o mesmo recuo, abre duas candidatas e as duas ficam (2 de 11 e 49 de 444
+  linhas da margem com chave). *Practical* e *Bonica*: a regra não tira nenhuma linha.
+  **Falsos positivos achados: 0.**
+
+**O que fica (declarado).**
+- **A seção sem título na letra das notas** (o título em letra de título fecha a corrida antes da
+  primeira chave): não abre, e é lida. Nenhum livro medido tem.
+- **A margem espelhada** (outro x nas páginas pares e ímpares): só contam as chaves na margem do
+  título, e a seção longa pode não se provar. O *Being You* tem a mesma margem em todas as
+  páginas.
+- **A linha de continuação que abre com símbolo** ("§ 230 of the Act…", "# of trials"): a seção
+  acaba ali, e as notas finais depois dela são lidas. Nenhuma no *Being You*.
+- **A linha solta na margem, logo antes de uma chave e antes do título** (o crédito de figura na
+  letra das notas): a seção abre nela, e ela sai junto. No *Being You*, as 15 seções abrem no
+  título.
+- **O registro** é o resumo do `importar-pdf`, e não `limpeza.json` (alternativa C, acima).
+- **A legenda "Fig. N:"** (23 no *Being You*) continua virando nota no fim do capítulo: a regra da
+  figura pela letra não reconhece "Fig.". O símbolo de nota no corpo ("to be a bat.*",
+  "neurons.†)", 48) continua lido. O hífen com espaço do *Being You* ("Jean- Dominique", "semi-
+  Englishman", "Co- Director") também. Os três ficam fora desta seção.
+
+### Prosa em negrito do tamanho do corpo (2026-11-17)
+
+**Contexto.** O primeiro romance da esteira, *Kafka à beira-mar* (Murakami, PDF em pt-BR da
+Objetiva, 448 páginas), saiu do `importar-pdf` com 64 títulos no meio dos capítulos, muitos com
+centenas de caracteres: a voz do menino chamado Corvo, as perguntas do interrogador nos
+relatórios militares (`c005`, `c007`, `c011`) e as passagens na segunda pessoa (`c028`, `c032`,
+`c036`, `c042`, `c044`). Às vezes a frase se partia entre o título e o parágrafo seguinte
+(`c018-s0006` "…Esta é a sua imagem" | `c018-s0007` "real? — diz atônito…"), e o `limpar` via
+"capitular perdida?" no começo em minúscula (`c007-s0003`, `c018-s0007`).
+
+**Medido.** O corpo do Kafka é Times de 6 pt (`TimesNewRomanPSMT`), e esses trechos vêm em
+`TimesNewRomanPS-BoldMT` de 6 pt: negrito, e não itálico, no tamanho do corpo, em linhas
+cheias como as do texto. É a regra do subtítulo do Competente ("Subtítulo em negrito do tamanho
+do corpo"), que já listava o limite: "uma linha inteira de ênfase em negrito no meio do
+parágrafo o partiria em três; não apareceu nos livros medidos". Apareceu. A linha toda em
+negrito da faixa do subtítulo (do corpo menos 0,5 pt a 1,2 vez o corpo), contra a linha comum
+do tamanho do corpo, em letras por linha:
+
+| Livro | Linhas em negrito da faixa | Letras (mediana) | Linha comum (mediana) | Razão |
+|---|---|---|---|---|
+| *Kafka à beira-mar* | 330 | 73 | 69 | **1,06** |
+| *Bonica* | 4.462 | 23 | 69 | 0,33 |
+| *Hard Parts* | 170 | 12 | 80 | 0,15 |
+| *Manica* | 7.379 | 8 | 59 | 0,14 |
+| *Dalgalarrondo* | 0 | — | 38 | — |
+
+O *Miller* e o *Practical* não foram medidos à parte (a leitura do Miller caiu no meio da troca
+de assinatura do `tipo_da_linha`, e a do Practical ficou de fora pelo tempo); o `importar-pdf`
+deles sai igual, o que mostra que a regra não disparou.
+
+O negrito de subtítulo é curto (o nome da seção, o cabeçalho de tabela); o de prosa tem a
+medida da linha comum. A pergunta é do livro, e não da linha, como a do corpo em negrito
+(`corpo_em_negrito`, revisão nº 1): uma linha de ênfase no meio do parágrafo se parece com um
+subtítulo de duas linhas, mas um livro inteiro de ênfase não se parece com um livro de
+subtítulos.
+
+**Decisão.** No livro em que a mediana de letras da linha toda em negrito da faixa do subtítulo
+é 0,8 da mediana da linha comum do corpo ou mais (`negrito_em_prosa`, em
+`dominio/tipo_da_linha.py`), o negrito não destaca subtítulo: a linha em negrito é parágrafo,
+quebra como ele (recuo, vão, item de lista) e não é verbete. O limiar fica entre o 1,06 do Kafka
+e o maior dos livros técnicos (0,15), longe dos dois. A exceção é a linha em negrito toda em
+maiúsculas, com ao menos uma letra e sem fechar a frase, que continua título: a manchete do jornal ("CHUVA DE
+PEIXES DESABA DO FIRMAMENTO", centrada, colava no subtítulo da notícia logo abaixo), o
+"RELATÓRIO DO SERVIÇO DE INTELIGÊNCIA MILITAR (MIS) DO EXÉRCITO AMERICANO" e o "DADOS DE
+COPYRIGHT". No livro de corpo em negrito, nem ela é título. A frase que passa do negrito para a
+letra comum segue num parágrafo só, porque nenhuma das duas linhas abre bloco.
+
+**Regressão** (`importar-pdf` e `preparar`, um livro por vez; o "antes" é a `regressao4` do
+HEAD `0a2f5d5`, igual ao `9663144` no `importar-pdf`, ou, no Hard Parts e no Dalgalarrondo, o
+mesmo código com a regra desligada; no Kafka, o EPUB que a sessão principal importou no `9663144`,
+guardado em `livros/trabalho/kafka-a-beira-mar.antes.epub`):
+
+| Livro | Títulos | Blocos | Palavras do EPUB | `preparar` |
+|---|---|---|---|---|
+| *Kafka à beira-mar* | **66 → 6** | 5.266 → 5.268 | 194.681 = | suspeitos 2 → 0 (as "capitulares perdidas" eram a frase partida); junções 58 = 58; o resto, só os 4 destaques do ADR-0008 |
+| *Hard Parts* | 375 = | 3.213 = | 106.951 = | EPUB idêntico |
+| *Dalgalarrondo* | 259 = | 4.678 = | 166.131 = | EPUB idêntico |
+| *Manica* | 4.286 = | 20.959 = | 984.820 = | EPUB e `limpos/` idênticos |
+| *Miller* | 5.739 = | 26.992 = | 2.415.232 = | EPUB, `limpos/` e `limpeza.json` idênticos |
+| *Bonica* | 3.644 = | 14.875 = | 1.235.132 = | EPUB, `limpos/` e `limpeza.json` idênticos |
+| *Practical* | 3.057 = | 14.305 = | 820.693 = | EPUB, `limpos/` e `limpeza.json` idênticos |
+
+No Kafka, os 6 títulos que ficam são os de verdade: "DADOS DE COPYRIGHT" (`c001`, a página
+do Le Livros), os três "RELATÓRIO DO SERVIÇO DE INTELIGÊNCIA MILITAR…" e as duas manchetes.
+Os 64 trechos que eram título voltam a parágrafo, e a frase do Corvo sai inteira: "…Esta é a
+sua imagem real? — diz atônito o menino chamado Corvo…".
+
+**O que fica:**
+- **o corte do capítulo 2 do Kafka anda 4 parágrafos:** a página 21, que o sumário interno abre
+  como capítulo, começa por "Este documento, de classificação ultra-secreta…" e só depois tem o
+  "RELATÓRIO…", agora o primeiro título dela. Pela regra do corte ("o que vem antes do primeiro
+  título da página é o fim do capítulo anterior", "Capítulos pelo sumário interno do PDF", com
+  teste), os 4 parágrafos (194 palavras, de `c004-s0031` em diante) fecham o `c004` em vez de
+  abrir o `c005`. A ordem da leitura não muda; muda o ponto em que o sumário do EPUB leva. Antes,
+  a página começava por um título (a prosa em negrito), e o corte acertava por acaso. Mudar a
+  regra do corte é decisão à parte: ela tem teste e 4 casos medidos no *Manica*;
+- **a largura da coluna entra na razão:** a conta é em letras, e num livro de colunas estreitas
+  (o Dalgalarrondo tem 38 letras por linha) um subtítulo em negrito de 30 letras daria perto de
+  0,8. Não há caso nos livros medidos; uma régua pela geometria (a linha que vai até a margem da
+  coluna) seria a saída;
+- **as outras regras que leem o negrito como título** (o título do rótulo do quadro, em
+  `tabelas_e_figuras`, e o da bibliografia, em `bibliografia_do_pdf`) continuam perguntando só
+  pelo corpo em negrito. No Kafka não há rótulo nem bibliografia;
+- **a linha de ênfase em negrito solta num livro de subtítulos** continua partindo o parágrafo,
+  como no limite de 2026-11-01;
+- **a linha em maiúsculas que fecha frase** ("— NÃO!", "EUA.") e a **sem letra** ("* * *") são
+  parágrafo no livro de prosa em negrito (code-review e code-audit); a manchete com ponto final
+  sairia como parágrafo.
+
+Testes (`tests/test_blocos_subtitulo.py`): a prosa em negrito do tamanho do corpo é parágrafo; a
+frase que passa do negrito para a letra comum segue num parágrafo só; a manchete em maiúsculas
+continua título; no livro de corpo em negrito, nem a linha em maiúsculas é título; a fala em
+maiúsculas que fecha frase e a linha sem letra seguem parágrafo; um trecho longo em negrito
+num livro de subtítulos não apaga os subtítulos, e a decisão é pela mediana, não pela média.
+
+### Tabela, quadro e pontos-chave do tratado em duas colunas (2026-11-17)
+
+**Contexto.** O Mateus decidiu (2026-11-17) traduzir o *Practical* e o *Bonica*. Os tradutores
+dos primeiros capítulos do *Practical* acharam, na lista `defeitos-practical-na-traducao.md`,
+tabelas, quadros, rótulos de figura e cabeçalhos no texto, e a caixa "Key Points" intercalada
+com a prosa. A tradução paga por isso, e o ouvinte ouve lixo. Decisão do Mateus: pausar a
+tradução e consertar a limpeza antes, numa filha. Os IDs da lista são da pasta de trabalho do
+*Practical*, igual à `regressao4-practical`.
+
+**Medido** (HEAD `9663144`, com as páginas já lidas de `tratados-mapa/*-paginas.pkl`; o mesmo
+código de antes reproduz a `regressao4` do *Practical* e do *Bonica* segmento a segmento):
+- **Rótulo tirado como cabeçalho.** O rótulo "TABLE" do *Practical* abre a tabela a 7,5% da
+  altura, dentro da faixa da borda (8%), e se repete no mesmo topo de 137 páginas: a regra da
+  repetição o tirava como cabeçalho, e a tabela sem rótulo ficava no texto, com as colunas
+  embaralhadas (os grupos 2 da lista: "IASP Axes with Codes", "2.2", "4.9", as células). Saíam
+  da mesma forma 32 rótulos "• BOX N.N" e 7 "Figure N.N".
+- **Cabeçalho do capítulo.** O cabeçalho corrente do *Practical* é "CHAPTER 2 Classification
+  of…", só nas páginas ímpares. O capítulo curto o tem em duas páginas alternadas, e o par
+  alternado fica (ADR-0004, "O que ficou da Fase 1"): 18 ficavam no texto, 8 sozinhos e 10
+  colados ao parágrafo. No *Bonica*, os 115 "CHAPTER N" de `limpos/` são todos a abertura do
+  capítulo, e ficam.
+- **Quadro levado pela tabela e pela figura.** A tabela segue a corrida de linhas fora do corpo
+  até a letra do corpo, e o quadro do *Practical* ("• Box 49.4", conteúdo em HelveticaNeueLTStd
+  de 8,5 pt) vem na letra das células: o quadro logo depois de uma tabela saía com ela. A figura
+  tira tudo depois da legenda na página, e o quadro logo depois de uma legenda saía com ela.
+- **Diagrama maior que a legenda.** A figura tira, antes da legenda, a letra não maior que a
+  dela (7 pt contra 8). A letra do painel ("A B", Helvetica de 10 pt: 186 linhas), o título da
+  figura ("Pain Systems", Helvetica negrito de 10 pt) e o valor do eixo do gráfico (8,3 pt)
+  ficavam, e a letra do painel partia a frase (74 segmentos só de letras no *Practical*). A
+  legenda da figura continuada ("• Figure 3.1, cont’d.") não era rótulo.
+- **Título que atravessa as colunas.** No pé do capítulo, "Summary", "Conclusion" e "Key
+  Points" ficam na coluna da esquerda, mas abrem uma faixa nova da largura da página (p. 203). A
+  coluna da direita para logo acima deles, e o texto da esquerda logo acima do título continua
+  no alto da direita. Lida coluna a coluna, a página intercalava os pontos-chave com a prosa (o
+  grupo 1 da lista: `c012`, `c013`, `c005`, `c009`, `c011`). O vão do `_fecha_as_colunas` não
+  corta: o título fica a 1,6 entrelinha do texto de cima, abaixo das 2,5.
+- **Quadro em inglês.** O quadro do *Practical* abre com "• BOX 10.1" em MyriadPro negrito de
+  10 pt, e o Quadro do Dalgalarrondo só abria com "Quadro" ou "Tabela": o "BOX 10.1", no alto da
+  página, entrava no meio da frase da página de antes ("…confirmed that damage" | quadro | "to
+  S1/S2 produces…"). A linha de 9,5 pt dentro dele ("Advanced MRI Techniques") passava por corpo
+  pelo tamanho só, a meio ponto do corpo de 10, e soltava o quadro no meio dele.
+- **Chamada na linha curta.** "body.¹⁹⁶,¹⁹⁷" é uma linha inteira: os 7 caracteres da chamada são
+  a letra mais comum dela, e a linha ficava com 5,8 pt. A chamada não era menor que a linha, e
+  a voz lia "body.196,197" (19 assim no *Practical*: "period.48,49,50", "care.132,133").
+- **Número de página que pula.** "xvii", "xix", "xxi": o PDF não tem a página xviii, e o "xix"
+  ficava sem sequência. É o único caso nos quatro tratados.
+- **Bonica.** Os mesmos defeitos não aparecem: 24 parágrafos que abrem em minúscula, contra 212
+  no *Practical*. A tabela dele abre com "TABLE 1.1" na linha do título, no meio da página.
+
+| Alternativa | Ganha | Perde | Por que não |
+|---|---|---|---|
+| **A. Corrigir cada regra onde o defeito nasce, pela forma** (escolhida): a borda não tira o rótulo e junta o cabeçalho pelo rótulo do capítulo; a tabela e a figura param no rótulo do quadro; a figura leva o painel e a família do diagrama; o título da esquerda no vão da direita corta a faixa; o "BOX" abre o Quadro, e a letra do quadro compara a família | conserta na página, onde a letra e a posição ainda existem; cada regra tem o seu teste e a sua medida | seis mudanças pequenas em seis módulos | — |
+| B. Tirar o que sobra no `limpar`, pelo texto ("CHAPTER N" no meio do parágrafo, segmento só de letras soltas) | não toca na página | o texto já perdeu a ordem: a caixa "Key Points" intercalada e a tabela sem rótulo não se desfazem no `limpar` (ADR-0004, "Bibliografia pela letra") | não conserta a ordem |
+| C. A regra da repetição com o par alternado (o cabeçalho de duas páginas com uma entre elas) | pega o cabeçalho do capítulo curto | já recusada (ADR-0004, "O que ficou da Fase 1"): no *Hard Parts*, o rodapé tirado colava um item de lista no parágrafo seguinte | regressão medida |
+| D. Ler o título ("Key Points", "Summary") para cortar a faixa | uma linha | decide pelo texto, que o ADR-0008 proíbe; cada livro pede uma palavra nova | o título não é prova |
+
+**Decisão (A).** Nenhum nome de livro, de capítulo ou de seção entra em `src/`.
+
+#### Rótulo e cabeçalho do capítulo na borda
+(`dominio/rotulos.py`, `dominio/paginacao.py`.) Os rótulos de tabela, de figura e de quadro
+moram em `rotulos.py`, que a borda, a tabela e o quadro leem. A linha que abre com um deles
+nunca é cabeçalho repetido. O cabeçalho que abre com o rótulo do capítulo ("CHAPTER 2
+Classification…") vale só pelo rótulo na chave da repetição: os de todos os capítulos são o
+mesmo cabeçalho, "chapter#", e saem quando se repetem no mesmo topo em 3 páginas ou mais. Só
+o cabeçalho **acima da mancha** do corpo se conta assim: a prosa do *Practical* começa a 7% da
+altura, dentro da faixa, e a primeira linha da coluna que abre com "Chapter 20 describes…" não
+é cabeçalho (R1 da revisão). A abertura do capítulo, maior que o corpo, não entra na regra da
+repetição. O número sem sequência
+entre os números de página das duas vizinhas, no mesmo sistema e na mesma sequência de tamanho,
+é paginação que pulou uma página ("xix" entre "xvii" e "xxi"); o "10" de 24 pt entre os números
+do pé fica.
+
+#### Figura pelo diagrama e quadro depois da tabela
+(`dominio/tabelas_e_figuras.py`.) O rótulo do quadro fecha a tabela e a figura, para a frente e
+para trás. Antes da legenda, a figura leva também a letra do painel em qualquer tamanho (só
+letras soltas: maiúsculas, minúsculas de "a" a "h" e algarismos romanos, "A B C", "c d c d", "I
+I II II") e a letra maior na família de uma linha do diagrama já tirada, fora a família da
+legenda (o eixo de 8,3 pt e o título de 10 pt em Helvetica, com os rótulos de 7,6), quando
+ela não fecha frase: a caixa sem rótulo na mesma família, logo acima, fecha, e fica (R3 da
+revisão). A legenda da
+figura continuada ("• Figure 3.1, cont’d.") é rótulo.
+
+#### Título que atravessa as colunas
+(`dominio/titulo_que_atravessa.py`, chamado do `colunas`.) O título da coluna da esquerda (1,2
+vez o corpo ou mais) atravessa a página quando os três sinais vêm juntos: a coluna da direita
+não tem linha a até 1,5 entrelinha dele e tem texto acima e abaixo; a frase da esquerda logo
+acima dele não acabou, e a da direita logo acima do vão acabou; e o bloco da direita que termina
+no vão começa continuando a frase da esquerda (minúscula ou hífen da quebra). A entrelinha é a
+da coluna, e não a da página, que com as duas colunas misturadas dá a metade. As linhas de
+título seguidas, a até 1,5 entrelinha uma da outra, atravessam juntas ou ficam juntas: no
+*Miller*, julgadas uma a uma, a segunda linha de "BLOQUEOS ILIOINGUINAL" | "E ILIOHIPOGÁSTRICO"
+atravessava sozinha, e o texto da direita entrava entre as duas.
+
+#### Quadro em inglês
+(`dominio/quadro.py`, `dominio/pagina.py`, `dominio/tipo_da_linha.py`.) O "BOX N.N" em letra de
+título abre o Quadro como o "Quadro N.N", e o quadro espera a frase que interrompe acabar (ADR-
+0004, "Quadro no lugar"). A medida do livro guarda a família do corpo (a de mais caracteres no
+tamanho dele), e a linha de outra família no tamanho do corpo não é corpo: continua o quadro e
+não o solta. No PDF que não diz a família, a regra é a de antes.
+
+#### Chamada na linha curta
+(`dominio/caracteres.py`, `tamanho_da_linha`, que o adaptador chama.) Na moda que dá a letra da
+linha não conta o que sobe acima das letras e não é letra: a chamada de "body.¹⁹⁶,¹⁹⁷" volta a
+ser menor que a linha, e sai. O subscrito, que desce, conta como antes: a primeira versão, pela
+moda das letras, mudava a letra do rótulo de eixo "C₉₅" do gráfico do *Manica* (de 4,7 para 8
+pt), a página da figura era lida em outra ordem, e a seção de questões do capítulo 31 voltava
+ao texto (achado na regressão). A linha de tabela "120 135 140ᵃ", cuja única letra é a nota,
+fica na letra dos números (R2 da revisão). A chamada de "body.¹⁹⁶,¹⁹⁷" volta a ser
+menor que a linha, e sai.
+
+**Revisão (2026-11-17).** A `code-review` achou três defeitos, corrigidos com teste visto
+falhar: R1, a chave pelo rótulo tirava a primeira linha da coluna que abre com "Chapter N" em 3
+páginas; R2, a linha cuja única letra é a nota sobrescrita ficava na letra dela (a regra
+final, pela subida, também a cobre); R3, a família
+do diagrama levava a caixa sem rótulo na mesma família. Ficam declarados, sem conserto: a linha
+do corpo de outra família (a de mais caracteres) não fecha o quadro (o *Dalgalarrondo* não está
+neste Mac para medir); o título que atravessa compara com as linhas de cima da página inteira,
+e não só da faixa; e a regra roda a cada calha candidata (custo medido: +4 s numa importação de
+20 min). A `code-audit` viu os 16 testes de comportamento novo falharem na base pela asserção,
+e cada guarda reprovar com o seu mutante.
+
+**Medição (2026-11-17, depois do código).**
+
+Um PDF por vez; `importar-pdf` e `preparar` para pastas novas (`regressao5-limpeza-*`, pela
+`tratados-mapa/rodada5.sh`), contra a `regressao4-*` (o código do `9663144`, idêntico ao da
+rodada 4). "Frase partida" é o parágrafo de 6 palavras ou mais que não fecha a frase, ou que abre
+em minúscula.
+
+| | *Practical* | *Bonica* | *Manica* | *Miller* |
+|---|---|---|---|---|
+| Linhas de tabela tiradas | 5.770 → 12.727 | 27.183 → 27.183 | 23.124 → 23.124 | 35.640 → 37.156 |
+| Linhas de figura tiradas | 4.681 → 5.789 | 2.598 → 2.597 | 13.755 → 13.804 | 11.355 → 11.355 |
+| Cabeçalho repetido tirado | 1.080 → 931 (sem os 137 "TABLE", 32 "BOX" e 7 "Figure"; com os 18 "CHAPTER N") | — | 6 → 6 | 3.700 → 3.675 |
+| Chamadas sobrescritas tiradas | 12.416 → 12.436 | 17.184 → 17.216 | 9.795 → 9.809 | 23.521 → 23.538 |
+| `limpos/`: segmentos | 13.942 → 11.647 | 14.865 → 14.833 | 18.654 → 18.632 | 26.445 → 26.164 |
+| `limpos/`: palavras | 819.650 → **791.195** (−28.455) | 1.234.407 → 1.234.408 | 927.967 → 927.906 | 2.414.561 → 2.410.620 |
+| Parágrafo sem fim de frase | 1.706 → **610** | 304 → 271 | 642 → 627 | 1.070 → 916 |
+| Parágrafo que abre em minúscula | 212 → **84** | 24 → 24 | 360 → 360 | 1.005 → 997 |
+| `conferir` | limpo | limpo | limpo | limpo |
+
+- **O que sai no *Practical*:** dos 1.122 segmentos de antes com mais da metade das sequências
+  de 5 palavras fora do livro de depois, 141 têm cara de frase (verbo comum, ponto final, 15
+  palavras ou mais). Lidos na amostra e na página: são célula de tabela (as recomendações da
+  Tabela 65.6, a "Table 79.1", os artigos da Tabela 5.6), legenda e conteúdo de figura, e a prosa
+  que vinha misturada palavra a palavra com a tabela (`c006`), que fica sem ela. **Nenhuma linha
+  na letra do corpo sai pela tabela ou pela figura**: as duas regras andam só pela corrida fora
+  do corpo, e a ordem de leitura nova só muda o lugar do texto (0 segmentos perdidos entre os
+  dois remendos das colunas, medido nas páginas guardadas).
+- **Da lista dos tradutores** (`defeitos-practical-na-traducao.md`, 11 capítulos): mudam os
+  segmentos de todos os grupos, menos os declarados abaixo: o lixo da capa (`c001`), a lista de
+  leitura e os apêndices do `c004`, o DOI solto do `c011` e as colunas da tabela 4.11, ao lado da
+  4.10, no `c005`. As 19 chamadas coladas em lista ("period.48,49,50", "body.196,197") saem
+  todas. O "BOX 10.1" e a prosa do `c011` ficam, no lugar.
+- **No *Miller*:** os rótulos "CUADRO 38-2" e "TABLA" no alto da página saíam como cabeçalho
+  repetido, e o quadro ficava no texto, intercalado com a prosa: agora sai, como o ADR já
+  mandava (52 parágrafos de célula e de quadro, 2.361 palavras). Saem também 25 cabeçalhos
+  "Capítulo N: …" das páginas online ("72.e1"). Nenhuma prosa sai: os parágrafos longos que
+  mudam eram tabela intercalada com a prosa, e a prosa fica.
+- **No *Bonica*:** 33 parágrafos partidos voltam a ser um só (a chamada da linha curta, 32 a
+  mais); nada sai.
+- **No *Manica*:** um resto de figura sai (33 palavras); a seção de questões do capítulo 31
+  continua saindo (ver "Chamada na linha curta").
+- **Capítulos do *Practical* que mudam em `limpos/`, de `c001` a `c020`:** todos menos `c002` e
+  `c016`. Os lotes já traduzidos deles se traduzem de novo.
+
+**O que fica (declarado).**
+- **O lixo do logotipo da capa** do *Practical* ("*0", "I I SI \ II R"): nenhuma forma o separa
+  da letra de painel ou do título curto. Dois segmentos.
+- **A tabela ao lado de outra**, cujas células o PDF grava depois do corpo, e a continuação da
+  tabela na página seguinte depois da prosa: 10 corridas, cerca de 600 palavras no *Practical*.
+- **O título da coluna da direita** que atravessa a página, e o da esquerda sem a frase partida:
+  continuam lidos coluna a coluna.
+- **Os apêndices de cobrança do `c004`** do *Practical* (Appendix A a D: o roteiro de
+  documentação de consulta americana, avaliação e manejo, com caixas de marcar "⬜"): 64
+  segmentos, 1.136 palavras, só neste capítulo; o "Appendix" do `c062` é outro. Tirá-los do
+  áudio é decisão de gosto do Mateus (`preparar --sem-capitulo` não serve: são o fim de um
+  capítulo).
+- **Livros que não estão neste Mac** (*Dalgalarrondo*, *Hard Parts*, *Competente*, *Maudlin*):
+  sem regressão. O título que atravessa e o quadro pela família são as regras que podem mudá-los.
 
 ## Consequências
 
@@ -2089,6 +2467,9 @@ e 1357; Dalgalarrondo p. 325; Miller p. 569) foram aceitas pelo Mateus em 2026-1
 | Camada do OCR e chamada colada | testes (`tests/test_camada_do_ocr.py`): a linha não pintada sai registrada com a página, cada página decide por si, e o resumo a conta; a página escaneada, a página em que a camada é a maior parte, o empate e o PDF escaneado inteiro ficam; o adaptador diz qual linha a página não pinta, o modo volta ao normal depois, e a linha que mistura não conta. (`tests/test_chamada_colada.py`): a chamada sai depois de "»", "!" e "?", depois de espaço antes de pontuação ou do fim da linha, depois de travessão, com a faixa no hífen invisível e com letra, e a lista depois de letra solta e de número; o número só depois de letra solta, de número ou do grau, e a chamada que abre a linha antes de pontuação, são duvidosos e só saem na página com 3 chamadas certas; o isótopo, a base 10, o algarismo só e o expoente no meio da fórmula ficam. (`tests/test_corrida_depois_da_tabela.py`): a figura e a outra tabela depois do fim da tabela, na mesma corrida, saem; a caixa sem rótulo fica. (`tests/test_nota_antes_da_bibliografia.py`): a nota antes do título da lista fica e a lista sai; a primeira referência em duas linhas, o cabeçalho em negrito no meio da lista e as referências antes de um subtítulo saem com ela. Cada guarda foi vista falhar com o seu mutante | portão | o resto de figura ou a chamada ficam, ou sai página escaneada, expoente ou caixa sem rótulo |
 | Lista de leitura logo antes da bibliografia | testes (`tests/test_lista_de_leitura_antes_da_bibliografia.py`): a lista na letra das citações, sob um título em letra de título, sai com o título, registrada com a página e o motivo dela, também na página anterior à da bibliografia; o subtítulo no meio sai; a caixa do corpo no meio (até 40 linhas) e a frase depois da última referência ficam; a lista sem citação, a nota depois da prosa, o título que encabeça prosa, a prosa entre o fim da lista e a bibliografia, mais de 40 linhas do corpo no meio, 4 linhas de outra letra (com ou sem linha do corpo entre elas), outra seção no caminho e a lista sem título nenhum antes não tiram nada; o título logo acima do da lista, de outra letra ou da mesma, fica; a lista longa que já saía não sai duas vezes; o título em letra de título da mesma família acima do subtítulo da bibliografia sai, e o de outra seção e o de outra família ficam; o resumo conta as duas linhas. a metade da lista entre dois trechos provados sai, sem a caixa do corpo, sem as frases das pontas e só se cita. Cada condição tem o mutante que um teste reprova (15 mutantes) | portão | a lista de leitura volta a ser lida numa reimportação, ou sai prosa na letra das citações |
 | A ordem das colunas no Miller | testes (`tests/test_texto_fora_da_pagina.py`): a linha inteira fora da página sai registrada com a página, o adaptador diz qual linha está inteira fora (dos dois lados) e deixa a que passa da borda só em parte, o resumo a conta, e a chamada da linha fora não prova as duvidosas. (`tests/test_colunas_do_miller.py`): as colunas desalinhadas em meia linha, com um subtítulo em cada, saem inteiras; a prosa ao lado de uma lista da mesma largura sai coluna a coluna, também com a margem a 2,5 pt e uma linha 2 pt além dela; ficam linha a linha a célula curta, a lista bem mais estreita ou bem mais larga que a prosa, a prosa de 5 linhas, a célula longa sem margem comum, as duas linhas ao lado da prosa e as linhas longas que não continuam. Cada condição tem o mutante que um teste reprova | portão | o texto das fórmulas volta a ser lido, a página desalinhada volta a sair em quatro pedaços, ou a tabela ao lado da prosa passa a ser lida coluna a coluna |
+| Notas finais do capítulo | testes (`tests/test_notas_finais.py`): a seção provada sai com o título, registrada com a página e o motivo, também a que atravessa a página e a que tem fórmula em outra letra e a explicação dela mais recuada no meio; as notas de rodapé com símbolo depois dela, o corpo e a legenda antes do título ficam; a seção para na linha do tamanho do corpo; 9 chaves, chaves sem citação autor-ano, a bibliografia com poucas chaves na margem e o livro sem família de letra não tiram nada; a seção curta sai com o título de 2 seções provadas, e fica com o de uma só, com outro título ou com poucas chaves na margem; a linha em outra margem ou em outra letra antes das chaves não é título, e a legenda seguida de nota solta não engole a seção depois dela; as notas de uma linha sem título ficam; o resumo do `importar-pdf` conta as linhas. Cada condição tem o mutante que um teste reprova (13 mutantes) | portão | as notas finais voltam a ser lidas, ou sai nota de rodapé com símbolo, legenda ou bibliografia |
+| Prosa em negrito do tamanho do corpo | testes (`tests/test_blocos_subtitulo.py`): a prosa em negrito da medida da linha comum é parágrafo, e a frase que passa para a letra comum segue num parágrafo só; a manchete em maiúsculas continua título, a fala em maiúsculas que fecha frase e a linha sem letra não; no corpo em negrito, nada é título; o trecho longo em negrito não apaga os subtítulos, pela mediana | portão | o Kafka volta a ter prosa como título, ou um livro técnico perde subtítulo |
+| Tabela, quadro e pontos-chave do tratado em duas colunas | testes (`tests/test_rotulo_fora_da_borda.py`): o rótulo de tabela e de quadro no alto de três páginas fica; o cabeçalho com o rótulo do capítulo sai em duas páginas alternadas, e a abertura em letra grande e a primeira linha da coluna que abre com o rótulo ficam; o número entre os das vizinhas sai, e o fora da ordem fica. (`tests/test_figura_pelo_diagrama.py`): o quadro logo depois da tabela e da legenda fica; a letra do painel, o eixo e o título na família do diagrama e a legenda continuada saem; o quadro e a caixa sem rótulo da mesma família logo acima ficam. (`tests/test_titulo_que_atravessa_as_colunas.py`): o título da esquerda no vão da direita abre faixa; o subtítulo com a direita ao lado, o título depois de frase acabada e o título de duas linhas ficam. (`tests/test_quadro_em_ingles.py`): o "BOX" entra depois da frase que interrompe, com a linha de outra família dentro dele. (`tests/test_caracteres_no_pdf.py`): a chamada mais longa que a palavra sai, a linha de números com a nota sobrescrita fica na letra deles, e o rótulo de eixo com subscrito fica na letra de antes. Cada guarda foi vista falhar com o seu mutante | portão | a tabela, o cabeçalho, o painel ou a chamada voltam a ser lidos, os pontos-chave voltam a se intercalar, o quadro sai com a tabela, ou sai prosa |
 | A escuta ★ | rodar `importar-pdf` + `preparar` num PDF real em `livros/` e contar o que o `limpar` ainda precisa tirar | a cada mudança no conversor | a contagem sobe |
 
 Regra derivada no `AGENTS.md`: a biblioteca de PDF só entra em `adaptadores/`.
@@ -2105,3 +2486,9 @@ principal. O sinal e os limiares vão à revisão dele.
 A seção "A ordem das colunas no Miller" (2026-11-17) executa a decisão do Mateus do mesmo dia
 (corrigir a ordem das colunas do Miller antes da tradução, ADR-0013), levada pela sessão
 principal. As três regras, os sinais, os limiares e as pioras declaradas vão à revisão dele.
+A seção "Notas finais do capítulo" (2026-11-17) executa a decisão do Mateus do mesmo dia (a seção
+"Notes" do *Being You* sai do áudio), levada pela sessão principal. A camada, o sinal e os limiares
+vão à revisão dele.
+A seção "Tabela, quadro e pontos-chave do tratado em duas colunas" (2026-11-17) executa a decisão
+do Mateus do mesmo dia (pausar a tradução do *Practical* e do *Bonica* e consertar a limpeza
+antes), levada pela sessão principal. Os sinais e os limiares vão à revisão dele.

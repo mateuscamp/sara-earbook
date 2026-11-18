@@ -29,24 +29,19 @@ from earbook.dominio.pagina import (
     corpo_em_negrito,
 )
 from earbook.dominio.paginacao import LinhaRemovida, PaginasLimpas
+from earbook.dominio.rotulos import (
+    FIGURA_LOCAL,
+    ROTULO_DA_CAIXA,
+    ROTULO_DA_FIGURA,
+    ROTULO_DA_TABELA,
+    TABELA_LOCAL,
+)
 
 MOTIVO_DA_TABELA = "tabela: rótulo e letra fora do corpo"
 MOTIVO_DA_FIGURA = "figura e legenda: rótulo e letra fora do corpo"
 MOTIVO_DO_TEXTO_GIRADO = "texto girado: tabela deitada e rótulo de lado"
-# "TABLE" sozinho na linha (o número vem na de baixo, no Practical), ou o rótulo com o número
-# seguido de ponto, maiúscula ou fim de linha: "Table 2.1 Pain Axes", "Table 5-7. Components",
-# "• Figure 2.1  International…". A menção que a linha quebrou ("Table 5-7 shows…", "Figure 5-2),
-# Addison…", Hard Parts) e "Table of Contents" não são rótulo.
-_NUMERO_E_LEGENDA = r"\s+\d+(?:[.\-\u2013]\d+)*[A-Z]?(?:\.?\s+[A-Z]|\.?\s*$)"
-_ROTULO_DA_TABELA = re.compile(rf"TABLE\s*$|(?:TABLE|Table){_NUMERO_E_LEGENDA}")
-_ROTULO_DA_FIGURA = re.compile(rf"(?:•\s*)?(?:FIGURE|Figure|Fig\.){_NUMERO_E_LEGENDA}")
-# O rótulo em português e em espanhol, sem olhar a caixa: o versalete do Manica sai "FigurA",
-# "quAdro", "tAbelA", e o do Miller, "TABLA" e "CUADRO". O número é composto, com ponto ou traço
-# ("1.2", "2-1", "2.7.1", "42.1a"): "Figura 3 mostra…" não é rótulo.
-_NUMERO_COMPOSTO = r"\s+\d+(?:[.\-\u2013]\d+)+[A-Za-z]?(?!\w)"
-_TABELA_LOCAL = re.compile(rf"(?:quadro|tabela|tabla|cuadro){_NUMERO_COMPOSTO}", re.IGNORECASE)
-_FIGURA_LOCAL = re.compile(rf"(?:•\s*)?(?:figura|fig\.){_NUMERO_COMPOSTO}", re.IGNORECASE)
-
+_LETRA_DO_PAINEL = r"(?:[A-Z]|[a-h]|[IVX]{1,4})"
+_LETRAS_DO_PAINEL = re.compile(rf"{_LETRA_DO_PAINEL}(?:\s+{_LETRA_DO_PAINEL})*")
 LINHAS_DO_TITULO_DO_ROTULO = 6
 """O título em negrito do quadro, na letra do corpo, tem até 6 linhas (medido no Miller: de 1 a 5
 nos 308 "CUADRO")."""
@@ -119,7 +114,9 @@ def _da_corrida(
 
 def _tabela(paginas: Sequence[Pagina], corrida: list[Posicao]) -> list[Posicao]:
     """Do rótulo em diante. Na página seguinte, a tabela continua só na letra que ela já usou: o
-    crédito do autor em Gotham, no alto da página, não é célula (R2 da code-review)."""
+    crédito do autor em Gotham, no alto da página, não é célula (R2 da code-review). O rótulo de
+    um quadro fecha a tabela: o "• Box 49.4" do Practical vem na letra das células (ADR-0004,
+    "Figura pelo diagrama e quadro depois da tabela")."""
     letras: set[tuple[str, float]] = set()
     pagina_do_rotulo = corrida[0][0]
     saem: list[Posicao] = []
@@ -128,24 +125,55 @@ def _tabela(paginas: Sequence[Pagina], corrida: list[Posicao]) -> list[Posicao]:
         letra = (linha.fonte, round(linha.tamanho, 1))
         if p != pagina_do_rotulo and letra not in letras:
             break
+        if saem and ROTULO_DA_CAIXA.match(linha.texto):
+            break
         letras.add(letra)
         saem.append((p, n))
     return saem
 
 
 def _figura(paginas: Sequence[Pagina], corrida: list[Posicao], legenda: int) -> list[Posicao]:
-    """A legenda e o que vem depois dela na página; antes dela, o diagrama, que vem em letra não
-    maior que a da legenda (Practical: 7 pt contra 8). A caixa de 9 pt logo antes fica (R3 da
-    code-review)."""
+    """A legenda e o que vem depois dela na página; antes dela, o diagrama."""
     p, n = corrida[legenda]
-    tamanho = paginas[p].linhas[n].tamanho
-    saem = [pos for pos in corrida[legenda:] if pos[0] == p]
-    for pos in reversed(corrida[:legenda]):
-        linha = paginas[pos[0]].linhas[pos[1]]
-        if pos[0] != p or linha.tamanho > tamanho + FOLGA_DO_DIAGRAMA:
+    saem: list[Posicao] = []
+    for pos in corrida[legenda:]:
+        # O quadro depois da legenda fica (ADR-0004, "Figura pelo diagrama e quadro depois da
+        # tabela").
+        if saem and ROTULO_DA_CAIXA.match(paginas[pos[0]].linhas[pos[1]].texto):
             break
+        if pos[0] == p:
+            saem.append(pos)
+    antes = [pos for pos in corrida[:legenda] if pos[0] == p]
+    return saem + _diagrama(paginas, antes, paginas[p].linhas[n])
+
+
+def _diagrama(paginas: Sequence[Pagina], antes: list[Posicao], legenda: Linha) -> list[Posicao]:
+    """O que vem antes da legenda, na página dela (`antes`), em letra não maior que a dela
+    (Practical: 7 pt contra 8). A caixa de 9 pt logo antes fica (R3 da code-review). A letra do
+    painel ("A B", 10 pt) é do diagrama em qualquer tamanho, e a letra maior na família de uma
+    linha do diagrama já tirada também (o eixo de 8,3 pt e o título de 10 pt em Helvetica, com
+    os rótulos de 7,6 pt), se não fecha frase. O rótulo do quadro fecha o diagrama (ADR-0004,
+    "Figura pelo diagrama e quadro depois da tabela")."""
+    saem: list[Posicao] = []
+    familias: set[str] = set()
+    for pos in reversed(antes):
+        linha = paginas[pos[0]].linhas[pos[1]]
+        maior = linha.tamanho > legenda.tamanho + FOLGA_DO_DIAGRAMA
+        # O título e o eixo não fecham frase; a caixa de 9 pt na mesma família, sim (code-review).
+        da_familia = linha.fonte in familias and _FECHA_FRASE.search(linha.texto) is None
+        do_diagrama = _painel(linha) or da_familia
+        if ROTULO_DA_CAIXA.match(linha.texto) or (maior and not do_diagrama):
+            break
+        if linha.fonte != legenda.fonte:
+            familias.add(linha.fonte)
         saem.append(pos)
     return saem
+
+
+def _painel(linha: Linha) -> bool:
+    """Só letras de painel soltas, maiúsculas, minúsculas de "a" a "h" ou algarismos romanos: "A B
+    C", "c d c d", "I I II II"."""
+    return _LETRAS_DO_PAINEL.fullmatch(linha.texto.strip()) is not None
 
 
 def letra_do_corpo(paginas: Sequence[Pagina]) -> tuple[str, float] | None:
@@ -212,9 +240,9 @@ def _rotulo(linha: Linha, tamanho_do_corpo: float, anterior: Linha | None = None
     5-11.", na prosa em MyriadPro de 9 pt do Hard Parts)."""
     if anterior is not None and _continua_a_frase(anterior, linha):
         return None
-    if _ROTULO_DA_TABELA.match(linha.texto):
+    if ROTULO_DA_TABELA.match(linha.texto):
         return MOTIVO_DA_TABELA
-    if _ROTULO_DA_FIGURA.match(linha.texto):
+    if ROTULO_DA_FIGURA.match(linha.texto):
         return MOTIVO_DA_FIGURA
     return _rotulo_local(linha, tamanho_do_corpo)
 
@@ -225,9 +253,9 @@ def _rotulo_local(linha: Linha, tamanho_do_corpo: float) -> str | None:
     lugar")."""
     if linha.tamanho >= tamanho_do_corpo * RAZAO_DO_TITULO:
         return None
-    if _TABELA_LOCAL.match(linha.texto):
+    if TABELA_LOCAL.match(linha.texto):
         return MOTIVO_DA_TABELA
-    if _FIGURA_LOCAL.match(linha.texto):
+    if FIGURA_LOCAL.match(linha.texto):
         return MOTIVO_DA_FIGURA
     return None
 

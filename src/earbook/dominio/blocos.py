@@ -181,7 +181,7 @@ class _Montador:
     def _tipo(self, linha: Linha) -> tuple[TipoDeBloco, bool]:
         """O tipo da linha, com o versalete que continua e o quadro, e se ela fecha o quadro."""
         medidas = self._medidas
-        tipo = tipo_da_linha(linha, medidas.corpo, negrito_destaca=medidas.negrito_destaca)
+        tipo = tipo_da_linha(linha, medidas)
         return self._no_quadro_ou_fora(linha, self._continua_o_versalete(linha, tipo))
 
     def _continua_o_versalete(self, linha: Linha, tipo: TipoDeBloco) -> TipoDeBloco:
@@ -202,14 +202,19 @@ class _Montador:
         """O tipo da linha e se ela fecha o quadro (`dominio/quadro.py`). A letra menor do quadro
         é o conteúdo dele, e não nota, que iria para "Notas" (ADR-0005)."""
         rotulo = abre_o_quadro(linha, titulo=tipo is TipoDeBloco.TITULO)
-        segue = rotulo or (self._no_quadro and letra_de_quadro(linha, self._medidas.corpo))
+        medidas = self._medidas
+        de_quadro = letra_de_quadro(linha, medidas.corpo, medidas.familia)
+        segue = rotulo or (self._no_quadro and de_quadro)
         saiu, self._no_quadro = self._no_quadro and not segue, segue
         return (TipoDeBloco.PARAGRAFO if segue and tipo is TipoDeBloco.NOTA else tipo), saiu
 
     def _soltar_o_quadro(self, linha: Linha, tipo: TipoDeBloco) -> None:
         """Os blocos do quadro entram na leitura quando a frase que ele interrompe acaba."""
         titulo, paragrafo = tipo is TipoDeBloco.TITULO, tipo is TipoDeBloco.PARAGRAFO
-        solta = solta_o_quadro(linha, self._medidas.corpo, titulo=titulo, paragrafo=paragrafo)
+        medidas = self._medidas
+        solta = solta_o_quadro(
+            linha, medidas.corpo, titulo=titulo, paragrafo=paragrafo, familia=medidas.familia
+        )
         if solta and not self._no_quadro:
             self._prontos.extend(self._quadro)
             self._quadro.clear()

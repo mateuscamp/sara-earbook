@@ -1159,6 +1159,146 @@ e cada uma virou regra do `decisoes.md`:
 - O roteiro de escuta tem 10 paradas, 3 delas de fórmula:
   `livros/trabalho/roteiro-de-escuta-philosophy-of-physics-quantum.md`.
 
+### *Being You*, de Anil Seth (2026-11-17)
+
+Divulgação científica em primeira pessoa, convertida de PDF. Não há edição brasileira, e não houve
+amostra nem escuta de teste, porque o `tradutor.md` não mudou. O título em português vai para o
+metadado: "Ser você: uma nova ciência da consciência".
+
+**Antes de traduzir:**
+- A seção Notes de cada capítulo saiu no `importar-pdf` (ADR-0004).
+- As 23 legendas "Fig." saíram por script, e 6 parágrafos partidos foram juntados
+  (`livros/trabalho/being-you-retirado.md`).
+- O `preparar` usou `--sem-capitulo` para c001, c003, c020, c021 e c023.
+- O Mateus aprovou o custo e o `decisoes.md` numa mensagem só, com estas escolhas:
+  - "o eu" para *self*;
+  - "animal-máquina" para *beast machine*;
+  - os títulos pelo sentido.
+
+| Tradutor | Lotes | Palavras | Minutos | Saída (por palavra) | Cache lido |
+|---|---|---|---|---|---|
+| c002 e c004 (epígrafe, prólogo) | 3 | 2.432 | 3,1 | 21.601 (8,9) | 436.413 |
+| c005 (Parte 1, cap. 1) | 4 | 6.455 | 6,7 | 52.733 (8,2) | 676.054 |
+| c006 (cap. 2) | 4 | 7.561 | 7,7 | 61.577 (8,1) | 798.406 |
+| c007 (cap. 3) | 3 | 4.249 | 2,8 | 18.617 (4,4) | 608.995 |
+| c008 (Parte 2, cap. 4) | 4 | 5.963 | 4,6 | 33.220 (5,6) | 727.429 |
+| c009 (cap. 5) | 3 | 5.788 | 6,2 | 48.240 (8,3) | 756.430 |
+| c010 (cap. 6) | 4 | 6.503 | 7,6 | 57.769 (8,9) | 929.144 |
+| c011 e c012 (Parte 3, caps. 7 e 8) | 5 | 7.954 | 8,2 | 63.608 (8,0) | 591.005 |
+| c013 (cap. 9) | 4 | 7.305 | 7,8 | 61.464 (8,4) | 891.982 |
+| c014 (cap. 10) | 3 | 4.157 | 4,4 | 34.676 (8,3) | 392.462 |
+| c015 (cap. 11) | 3 | 4.855 | 3,7 | 27.054 (5,6) | 669.151 |
+| c016 (Parte 4, cap. 12) | 3 | 5.764 | 7,0 | 52.005 (9,0) | 1.207.859 |
+| c017 (cap. 13) | 3 | 5.602 | 4,2 | 31.616 (5,6) | 501.448 |
+| c018, c019 e c022 (epílogo, agradecimentos, autor) | 4 | 3.247 | 5,3 | 38.910 (12,0) | 1.071.597 |
+| **Total** | 50 | 77.835 | 8,2 de relógio | 603.090 (7,7) | 10.258.375 |
+
+Cada mensagem foi contada uma vez só, pelo `id` do transcrito. O cache criado foi de 1,3 milhão.
+
+**Real contra a estimativa:**
+- **Saída:** 603 mil tokens, contra ~500 mil previstos. Foram 7,7 por palavra: mais que o *What
+  Is Real?* (6,0) e menos que a *Crônica* (8,2).
+  - O que pesou: as notas no fim de cada capítulo e as remissões à figura reescritas.
+  - O pior foi c018 a c022, com 12,0. Os agradecimentos são uma lista de nomes, e cada lote paga
+    a leitura do glossário.
+- **Tempo:** 8,2 minutos de relógio. Somados em série, os 14 tradutores levariam 79,3 minutos:
+  ~980 palavras por minuto por tradutor.
+- **Medidor:**
+  - o semanal foi de 52% para 54%, como a régua de ~1 ponto a cada 45 mil palavras previa (1,7);
+  - a janela de 5 horas foi de 10% para 31%.
+
+**Glossário: de 164 para 697 entradas.**
+- **Antes de distribuir, 164 entradas:**
+  - as siglas que ficam;
+  - as trocas do `decisoes.md` (AI, VR, TV, OBE);
+  - os lugares com forma portuguesa;
+  - as pessoas e os nomes de obra que ficam.
+- **O que ficou de fora antes de distribuir:**
+  - as palavras funcionais do `nomes.json` ("The", "What", "In"…);
+  - os adjetivos que flexionam (British, Cartesian, Gaussian…);
+  - os homônimos: "London" (University College London), "Science" (a revista e o Sackler Centre),
+    "Mind" e "Brain" (o programa do CIFAR).
+- **Na rodada:**
+  - as 613 declarações tinham 567 originais;
+  - quatro deles tinham duas formas: Good Bayesian, self-fulfilling, objecthood e affordances.
+- **Ficaram de fora 32 que flexionam, mudam de caixa ou de ordem.** Saíram também das declarações:
+  - termos de uso comum: prior, priors, posterior, likelihood, Gaussian, best guess, redness,
+    moods, embodied, embodiment, delusions, wetware, inchoate, Mediterranean;
+  - termos em sintagma, que mudam de número ou de ordem: body ownership, essential variables,
+    drive to stay alive, experiences of volition, control-oriented perception, first-person
+    perspective, physiological arousal, prior expectations, observer-relative,
+    self-consciousness, rhesus macaque, beast machines, Good Bayesian, self-fulfilling;
+  - homônimos: Science, London, Berlin (Heather Berlin) e Engagement Fellow.
+
+**Rodada de correção:** o `conferir` acusou 565 problemas.
+- A maior parte era declaração fora do glossário: com elas no glossário, sobraram 81, e com os 32
+  de fora, 36.
+- A sessão corrigiu por script, sem mensagem a tradutor
+  (`livros/trabalho/being-you-mapa/corrige_segmentos.py`):
+  - "objetualidade" virou "objetidade", em 9 segmentos do c010;
+  - "affordances" virou "possibilidades de ação", em `c013-s0067`;
+  - "mindware" virou "software mental", em `c005-s0038`;
+  - "tronco cerebral" virou "tronco encefálico", em `c006-s0050`.
+- **Ajustes para o ouvido, que o `conferir` não pede:**
+  - a legenda de figura que veio dentro da nota de Libet perdeu o painel, as setas e as letras
+    (`c015-s0055`);
+  - o crédito das figuras perdeu o título do artigo em inglês (`c008-s0090`). O crédito fica,
+    porque a licença Creative Commons pede a atribuição.
+- **Achados do inventário no livro montado:**
+  - "A figura ilustra" (`c006-s0022`);
+  - "Planeta Azul II", que virou "Planeta Azul 2" para a voz não soletrar o romano (`c016-s0063`).
+- **Duas regras novas foram para o `decisoes.md`:**
+  - a pessoa com forma consagrada em português passa a ela: Platão, Aristóteles, Euclides,
+    Heráclito, Copérnico, Dostoiévski, António Damásio. Seis tradutores abriram essa exceção
+    sozinhos, pela voz, e o Mateus a aprovou depois do livro montado;
+  - o segmento que era só perfil e site (`c022-s0004`) ficou "—".
+- **A remoção na tradução esbarra no glossário:** quando a frase cortada tem um termo do
+  glossário (EEG, Christoph Teufel), o `conferir` acusa a falta. A saída foi reescrever a frase
+  sem a figura, mantendo o termo.
+
+**Conferência e montagem:**
+- **`conferir`:** "nada faltando, sobrando ou repetido".
+- **`montar --epub livros/prontos/being-you.pronto.epub`:** 18 capítulos, 869 segmentos (22 notas
+  no fim do capítulo) e 80.823 palavras, 4% a mais que o original. Ficaram fora 5 capítulos sem
+  texto.
+- **Script do título e do sumário** (`livros/trabalho/being-you-mapa/fecha_epub.py`):
+  - o `dc:title`, o nav e o `<title>` dos XHTML vão para o português, e o nav vai para pt-BR;
+  - o rótulo de cada item são os `<h1>` traduzidos do próprio arquivo. O arquivo da parte traz
+    também o capítulo 1 dela ("Parte 1: Nível. Capítulo 1: O problema real");
+  - o livro não tem `toc.ncx`.
+- **epubcheck:** 0 erro, no livro pronto e no EPUB de origem.
+- **Inventário no livro montado:** 0 símbolo de nota, URL, página, φ, hífen com espaço e sigla
+  que o `decisoes.md` troca. O romano e a remissão à figura foram corrigidos.
+  - Sobram só falsos alarmes: "figura" no sentido de pessoa ou de forma vista; "for", que é o
+    verbo; "Journal of Mathematical Psychology"; CRISPR.
+
+**O que os tradutores devolveram como dúvida:**
+- **Erros do original traduzidos pelo sentido:**
+  - palavras coladas pela perda do hífen do PDF: selfrepair, agematched, bestsupported,
+    consciousnessoriented, eightythree, mixedrace, sixlayered;
+  - "there had a been" (`c006-s0077`) e "without a having" (`c016-s0061`);
+  - "actus rea" (`c015-s0055`) e "elán vital" (`c005-s0097`);
+  - "Eurasian elephant", que virou "elefante asiático" (`c016-s0042`);
+  - as epígrafes truncadas: "c, Atonement" (`c015-s0002`) e "'Creep' (1992)" sem Radiohead
+    (`c018-s0002`).
+- **Notas partidas no meio da frase pela edição:** c005-s0113/s0114, c013-s0103/s0104,
+  c014-s0047/s0048, c015-s0055/s0056 e c016-s0093/s0094. Ficou uma metade em cada segmento.
+- **Formas para o ouvido:**
+  - "zap e zip", "livre-veto" (*free won't*), "tudo vem do bit" (*it from bit*);
+  - "Farl Kriston", sem a arroba;
+  - "37 graus Celsius" e "século dezenove", por extenso;
+  - "o quadrado A";
+  - as horas do diário de Clive Wearing por extenso.
+- **Alusões que se perdem:**
+  - o trocadilho de *free won't*;
+  - o *affordances* de Gibson;
+  - o "fy" da pronúncia de Φ;
+  - o "pigment / figment" de Dennett, que virou "pigmento / figmento".
+- **O que ainda pede a figura:** o tabuleiro de Adelson e o vestido. O texto pede para olhar os
+  quadrados, e a legenda já saiu. Vai ao roteiro.
+
+Roteiro: `livros/trabalho/roteiro-de-escuta-being-you.md`, 10 paradas, uma por decisão nova.
+
 ## Consequências
 
 **Ganha:**

@@ -22,6 +22,7 @@ from earbook.dominio.capitulos import dividir_em_capitulos, dividir_pelo_sumario
 from earbook.dominio.fora_da_pagina import tirar_texto_fora_da_pagina
 from earbook.dominio.hifen_da_quebra import mostrar_hifen_invisivel
 from earbook.dominio.metadados import autor_do_livro, titulo_do_livro
+from earbook.dominio.notas_finais import MOTIVO_DAS_NOTAS_FINAIS, tirar_notas_finais
 from earbook.dominio.pagina import Pagina
 from earbook.dominio.paginacao import LinhaRemovida, tirar_cabecalhos_e_rodapes
 from earbook.dominio.paginas_de_lista import (
@@ -163,6 +164,10 @@ def _limpar(paginas: Sequence[Pagina]) -> _PaginasParaOsBlocos:
     # Depois da tabela, que tem a letra da lista no Manica; antes dos blocos, para a ordem de
     # leitura não intercalar a lista com a prosa (ADR-0004, "Bibliografia pela letra").
     sem_bibliografia = tirar_bibliografia(sem_tabelas.paginas)
+    # Depois da bibliografia, que tem a mesma letra e o mesmo recuo pendente; antes dos blocos,
+    # que juntariam a nota final e a nota de rodapé num bloco por página (ADR-0004, "Notas finais
+    # do capítulo").
+    sem_notas_finais = tirar_notas_finais(sem_bibliografia.paginas)
     remocoes = (
         *na_pagina.remocoes,
         *pintadas.remocoes,
@@ -172,8 +177,9 @@ def _limpar(paginas: Sequence[Pagina]) -> _PaginasParaOsBlocos:
         *listas.remocoes,
         *sem_tabelas.remocoes,
         *sem_bibliografia.remocoes,
+        *sem_notas_finais.remocoes,
     )
-    return _PaginasParaOsBlocos(sem_bibliografia.paginas, sem_borda.paginas, remocoes)
+    return _PaginasParaOsBlocos(sem_notas_finais.paginas, sem_borda.paginas, remocoes)
 
 
 def _chamadas(paginas: Sequence[Pagina]) -> tuple[LinhaRemovida, ...]:
@@ -220,15 +226,17 @@ def resumo_da_importacao(importacao: Importacao) -> str:
 
 
 def _linhas_do_que_saiu(remocoes: Sequence[LinhaRemovida]) -> list[str]:
-    """A borda, o conteúdo (tabela, figura e página de lista) e a bibliografia, cada um na sua
-    conta; a da bibliografia e a da lista de leitura logo antes dela só aparecem no livro que as
-    tem (ADR-0004)."""
+    """A borda, o conteúdo (tabela, figura e página de lista), a bibliografia e as notas finais,
+    cada um na sua conta; a da bibliografia, a da lista de leitura logo antes dela e a das notas
+    finais só aparecem no livro que as tem (ADR-0004)."""
     bibliografia = sum(1 for r in remocoes if r.motivo == MOTIVO_DA_BIBLIOGRAFIA_DO_PDF)
     leitura = sum(1 for r in remocoes if r.motivo == MOTIVO_DA_LISTA_DE_LEITURA)
+    notas_finais = sum(1 for r in remocoes if r.motivo == MOTIVO_DAS_NOTAS_FINAIS)
     do_conteudo = [r for r in remocoes if r.motivo in MOTIVOS_DO_CONTEUDO]
     fora_da_borda = MOTIVOS_DO_CONTEUDO | {
         MOTIVO_DA_BIBLIOGRAFIA_DO_PDF,
         MOTIVO_DA_LISTA_DE_LEITURA,
+        MOTIVO_DAS_NOTAS_FINAIS,
     }
     da_borda = [r for r in remocoes if r.motivo not in fora_da_borda]
     linhas = [
@@ -244,6 +252,9 @@ def _linhas_do_que_saiu(remocoes: Sequence[LinhaRemovida]) -> list[str]:
     if leitura:
         motivo = "logo antes das referências, na letra delas"
         linhas.append(f"{leitura} linhas de lista de leitura tiradas: {motivo}.")
+    if notas_finais:
+        motivo = "chave em frase e citação autor-ano"
+        linhas.append(f"{notas_finais} linhas de notas finais do capítulo tiradas: {motivo}.")
     return linhas
 
 

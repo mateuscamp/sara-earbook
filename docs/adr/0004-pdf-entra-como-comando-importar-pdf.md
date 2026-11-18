@@ -2592,6 +2592,141 @@ sessão principal para as quatro regras que entraram depois da primeira:
   dos blocos precisa reescrever as partes, como o hífen invisível; senão, a regra do prefixo deixa
   a linha inteira, em silêncio.
 
+### Romance convertido pelo Calibre (2026-11-17)
+
+**Contexto.** O inventário por script do *Kafka à beira-mar* montado (`livros/trabalho/kafka-mapa/`,
+depois da seção "Prosa em negrito do tamanho do corpo") achou quatro defeitos de código; três nascem no `importar-pdf`. O PDF foi
+gerado pelo Calibre a partir de um EPUB: corpo de 6 pt, sumário interno com um item por capítulo
+("Capítulo 2", "Prólogo - Um Menino Chamado Corvo") e a página de abertura com o nome do capítulo
+no alto, no tamanho e na fonte do corpo, e um vão grande até o texto.
+
+**1. O nome do capítulo saía como cabeçalho, e o capítulo abria no lugar errado.** O resumo dizia
+"sumário sem número de página: 54", mas esse é o sumário de papel de verdade (p. 7 e 8). Os
+rótulos saíam pela regra da repetição (`dominio/paginacao.py`): "Capítulo 2", "Capítulo 3"… no
+mesmo topo (0,058), com a chave "capítulo#", eram um "cabeçalho de página repetido" de 50
+páginas; com eles saíam 4 falas "— Hum?" que abriam página (p. 271, 354, 363 e 383). Sem o rótulo,
+nenhum capítulo era anunciado, e o corte pelo sumário interno caía no primeiro título da página
+(o "RELATÓRIO…" da p. 21) ou no primeiro bloco: o fim de cada capítulo levava o começo do
+seguinte. O prólogo, cujo nome não se repete, colava na ficha catalográfica da página de antes,
+que não fecha frase.
+- **Decisão: o nome que o sumário interno dá ao capítulo, escrito na página que ele abre, é
+  título** (`sumario_interno.marcar_nomes_dos_capitulos`, `Linha.nome_do_capitulo`): a linha
+  inteira, sem contar o traço e o espaço ("Prólogo – Um Menino…" é "Prólogo - Um Menino…"), e a
+  borda (`paginacao`) nunca a tira. Só a primeira linha da página com cada nome: o rodapé da
+  O'Reilly repete o nome da seção na página que ela abre ("Introducing the Sysops Squad Saga", no
+  *Hard Parts*), e, marcado, virava título no meio do parágrafo que passa da página. Com o título,
+  o corte acha o começo do capítulo, e o capítulo de uma página, com o nome em páginas seguidas,
+  também fica.
+- **Rejeitada: o cabeçalho corrente cobre as páginas por onde passa.** A linha repetida sairia
+  só quando aparecesse em um quarto das páginas, da primeira à última em que aparece: no Kafka,
+  os rótulos cobrem 0,12 e a fala "— Hum?", 0,035. Na regressão, o *Practical* (645 linhas) e o
+  *Miller* (556) voltavam a ler cabeçalho de verdade, o do capítulo que só se repete nas páginas
+  dele, espalhado por um livro de mil páginas. A fala fica como limite.
+
+**2. A nota de asterisco era lida no meio do texto.** A chamada vem colada à palavra ou à
+pontuação, no tamanho do corpo ("Report*", "“Owan-y ama”.**", "shamisen,***", "pólo!”****"), e a
+nota fica no pé da última página do capítulo, na mesma letra ("* Incidente Morro da Tigela, 1944:
+Relatório (N. da T.)"). O "**" solto e o colado ao algarismo são a censura do próprio livro ("na
+cidade de **", "5* anos", "194*"), e a p. 21 tem uma linha que começa por ela ("** à época do
+incidente").
+- **Decisão: a chamada prova a nota** (`dominio/notas_com_asterisco.py`). A nota é a linha que
+  começa por 1 a 4 asteriscos e espaço, quando uma chamada com o mesmo número de asteriscos,
+  colada a letra ou a pontuação, veio antes e ainda não tem nota, a até `PAGINAS_ATE_A_NOTA` (15)
+  páginas; vai até o fim da página, até a nota seguinte, até a linha que volta ao alto da
+  página ou até a linha que muda de letra (mais de meio ponto), e cada nota abre o seu bloco
+  (`Linha.nota`, `Linha.abre_nota`). A chamada sai da frase, e o marcador sai da nota: é a decisão
+  3 do Mateus no ADR-0011 ("nota '*' no fim do capítulo, sem o marcador"). A chamada sem nota
+  fica. O resumo conta as chamadas tiradas.
+- **A nota acaba onde a página deixa de ser nota.** Na primeira rodada da regressão, levada até o
+  fim da página, ela engolia texto: no *Dalgalarrondo* (p. 151), a nota no pé da primeira coluna
+  levava a segunda coluna inteira para o fim do capítulo; no *Practical*, a nota da tabela, em
+  letra menor no meio da página, levava os parágrafos do corpo de baixo. A linha que sobe na
+  página é a outra coluna, e a que muda de letra é o corpo.
+
+**3. O espaço falso depois da letra larga** ("Q uando", "Q uartel- General", "PTYX-722-SQ -118",
+"Toy ama", "Ky oto", "Naoy a", "Setagay a", "Abreu's Sy stem", "Ray -ban", "Owan-y ama"). Medido no
+pdfminer: o Q do negrito (`TimesNewRomanPS-BoldMT`) avança 1,33 pt além da largura que a fonte
+declara, e o y do regular (`TimesNewRomanPSMT`), 0,75 pt; o pdfminer põe espaço onde o vão passa de
+uma fração da letra, e o PDF não tem espaço ali. A regra do espaço inventado ("Espaço menor que o
+espaço de verdade") compara com o espaço de verdade da linha e não serve: o vão do Q vai de 0,54 a
+1,33 vez o menor espaço de verdade da linha. O que o separa é ser o mesmo em toda ocorrência.
+- **Decisão: a letra larga se prova no livro inteiro** (`dominio/letra_larga.py`). O adaptador
+  grava, na linha que separa as palavras com o caractere de espaço, cada espaço inventado sozinho
+  entre dois caracteres, com a posição no texto, o caractere antes, a fonte e o vão
+  (`Linha.espacos_inventados`). A letra (nunca o algarismo: a coluna de tabela alinhada também
+  tem vão constante) cujo espaço inventado aparece em 3 linhas ou mais, com 80% delas a menos de
+  0,05 pt da mediana, é larga; saem os espaços na faixa da mediana, e o de fora fica. O resumo
+  diz quantos, letra por letra. A letra solta de verdade ("série B da", "letra G do") tem o
+  caractere de espaço depois dela e não entra.
+- **O vão conta só abaixo de um quarto do tamanho da linha** (`FRACAO_DA_LETRA`, o espaço de
+  palavra do Times). Sem esse teto, a regressão juntava vão constante que é espaço de verdade sem
+  o caractere: o número de página do cabeçalho do *Miller* ("preoperatoria 1087", 11,36 pt em
+  9 pt, 1.062 espaços), o "V /QA" da fórmula, "( B )" e "N ≤ 0,9" do *Manica* (0,32 do tamanho e
+  mais), "to –17.4" da tabela do *Practical* (0,28) e "ER PHN" do *Bonica*. No Kafka, o Q fica em
+  0,22 do tamanho (corpo de 6 pt), e o y, em 0,125; a margem do Q até o teto é pequena, e o vão
+  que passar dele fica no texto.
+
+**Medido** (2026-11-18), `importar-pdf` + `preparar` com o HEAD d82f8d6 e com esta seção, um PDF
+por vez (`livros/trabalho/kafka2-{antes,depois}-<livro>`; o Kafka contra `kafka-a-beira-mar.*.antes2`):
+
+| Livro | Segmentos lidos | O que muda |
+|---|---|---|
+| *Kafka à beira-mar* | 5.201 → 5.250 | títulos 5 → 56 (todo capítulo abre no nome dele); 4 notas no fim do capítulo; 43 espaços da letra larga (Q 17, y 26); 7 parágrafos de créditos a mais saem (ADR-0003); 1 destaque de margem novo (abaixo); no inventário, "símbolo de nota" 48 → 28 (os 28 são a censura), "hífen com espaço" 6 → 1, "parágrafo que não fecha frase" 15 → 10 |
+| *Hard Parts* | 3.262 → 3.262 | idêntico |
+| *Dalgalarrondo* | 4.136 → 4.137 | 2 chamadas tiradas; a nota da p. 151 vai para o fim do capítulo, e "…marido (real) como se ele fosse um sósia" volta a ser uma frase só; a nota do Quadro 8.3 fica no quadro, sem o asterisco; a frase que o PDF desenha duas vezes na p. 151 passa a ser lida duas vezes (abaixo) |
+| *Manica* | 18.654 → 18.654 | idêntico |
+| *Miller* | 26.445 → 26.445 | idêntico |
+| *Bonica* | 14.865 → 14.865 | idêntico |
+| *Practical* | 13.942 → 13.943 | 3 chamadas tiradas; as notas das duas tabelas continuam notas, sem o asterisco, e "* No benefit… ** Probably effective…" vira duas notas; 4 espaços da letra larga no índice ("ca re", "va lue"), que sai inteiro |
+
+As rodadas anteriores da regressão acharam quatro defeitos desta seção, corrigidos antes do
+commit, cada um com o seu teste: a cobertura (rejeitada acima), a letra larga sem teto no vão, o
+rodapé da O'Reilly com o nome da seção, que virava título no *Hard Parts*, e a nota que engolia a
+outra coluna e o corpo depois da tabela.
+
+**O que fica:**
+- a nota de asterisco que passa para a outra coluna perde a continuação, que fica no texto;
+- a nota de asterisco que atravessa a página se parte: a continuação, em minúscula, retoma o
+  parágrafo de antes da nota (code-review); no Kafka as 4 notas cabem na página;
+- a linha que começa por censura e espaço, até 15 páginas depois de uma chamada sem nota com os
+  mesmos asteriscos, viraria nota; no Kafka toda chamada tem nota;
+- o nome do capítulo partido em duas linhas não casa com o do sumário e continua parágrafo;
+- a fala "— Hum?" que abre 4 páginas distantes (p. 271, 354, 363 e 383) sai como cabeçalho
+  repetido, registrada no resumo: a cobertura que a salvava tirava cabeçalho de verdade dos
+  tratados;
+- a nota "****" do Kafka é o original em inglês do verso de *Macbeth* que o texto leu traduzido.
+  Pela decisão 4 do Mateus no ADR-0011, ela sairia; aqui fica como nota, no fim do capítulo, porque
+  a regra não sabe o que a nota diz. Decisão à parte, levada à sessão principal;
+- a frase que o narrador do Kafka repete no parágrafo seguinte ("Quando meu décimo quinto
+  aniversário chegar…", `c003`) sai como destaque de margem (ADR-0008): o "Q uando" a escondia da
+  regra. Decisão à parte, levada à sessão principal;
+- a frase que o *Dalgalarrondo* desenha duas vezes, lado a lado, na p. 151 é lida duas vezes: sem
+  a chamada, as duas cópias ficam iguais, e a regra dos gêmeos (ADR-0008) não tira nenhuma das
+  duas quando nenhuma parte uma frase. Antes, a chamada as diferenciava, e a cópia sem ela saía
+  como destaque;
+- o espaço antes de "?" e "!" ("não ?", "Boa-tarde !") e a palavra partida no meio do parágrafo
+  ("ísicas, mas…", c025) não têm a mesma causa e ficam.
+
+Testes: `tests/test_paginacao.py` (o cabeçalho de páginas alternadas e o de grupos de páginas
+espalhados pelo livro saem; o nome do capítulo em páginas seguidas fica);
+`tests/test_nome_do_capitulo_no_alto.py` (a linha com o nome da abertura é título, com outro traço
+também; em outra página, só começando pelo nome, ou repetida no rodapé da mesma página, não;
+do PDF montado em código, o prólogo
+deixa a ficha e o capítulo abre no rótulo, antes do "RELATÓRIO"); `tests/test_notas_com_asterisco.py`
+(a chamada sai e a nota do pé vira nota; cada nota abre o seu bloco e a continuação vai junto; a
+censura, a linha que começa por ela, a chamada sem nota, a nota com mais asteriscos e a chamada
+longe demais ficam; a nota no pé da coluna acaba onde a outra coluna sobe, e a da tabela, onde
+a letra volta ao tamanho do corpo; do PDF, a nota vai para `aside` e o resumo a conta); `tests/test_letra_larga.py`
+(o espaço da letra larga sai, com 3 ocorrências ou mais e vão constante; o vão que muda, o
+algarismo, a posição fora do texto e o vão constante de um espaço ou mais ficam; um vão fora da
+faixa não derruba a letra; o adaptador grava o espaço só na linha com espaço de verdade; do PDF,
+"Q uando" vira "Quando" e "série B da" fica).
+
+Os dois testes da cobertura (o rótulo e a fala no alto de páginas distantes ficam) saíram com a
+regra rejeitada: o rótulo fica pelo nome do sumário interno, que `test_nome_do_capitulo_no_alto`
+afirma, e a fala não fica mais em modo nenhum. No lugar deles entrou o de grupos espalhados, que
+falhava com a cobertura.
+
 ## Consequências
 
 **Ganha:** um comando a mais na mesma esteira, sem repositório novo. Os defeitos de conversão são atacados onde nascem.
@@ -2625,6 +2760,7 @@ sessão principal para as quatro regras que entraram depois da primeira:
 | Prosa em negrito do tamanho do corpo | testes (`tests/test_blocos_subtitulo.py`): a prosa em negrito da medida da linha comum é parágrafo, e a frase que passa para a letra comum segue num parágrafo só; a manchete em maiúsculas continua título, a fala em maiúsculas que fecha frase e a linha sem letra não; no corpo em negrito, nada é título; o trecho longo em negrito não apaga os subtítulos, pela mediana | portão | o Kafka volta a ter prosa como título, ou um livro técnico perde subtítulo |
 | Tabela, quadro e pontos-chave do tratado em duas colunas | testes (`tests/test_rotulo_fora_da_borda.py`): o rótulo de tabela e de quadro no alto de três páginas fica; o cabeçalho com o rótulo do capítulo sai em duas páginas alternadas, e a abertura em letra grande e a primeira linha da coluna que abre com o rótulo ficam; o número entre os das vizinhas sai, e o fora da ordem fica. (`tests/test_figura_pelo_diagrama.py`): o quadro logo depois da tabela e da legenda fica; a letra do painel, o eixo e o título na família do diagrama e a legenda continuada saem; o quadro e a caixa sem rótulo da mesma família logo acima ficam. (`tests/test_titulo_que_atravessa_as_colunas.py`): o título da esquerda no vão da direita abre faixa; o subtítulo com a direita ao lado, o título depois de frase acabada e o título de duas linhas ficam. (`tests/test_quadro_em_ingles.py`): o "BOX" entra depois da frase que interrompe, com a linha de outra família dentro dele. (`tests/test_caracteres_no_pdf.py`): a chamada mais longa que a palavra sai, a linha de números com a nota sobrescrita fica na letra deles, e o rótulo de eixo com subscrito fica na letra de antes. Cada guarda foi vista falhar com o seu mutante | portão | a tabela, o cabeçalho, o painel ou a chamada voltam a ser lidos, os pontos-chave voltam a se intercalar, o quadro sai com a tabela, ou sai prosa |
 | Letra grega e subtítulo em versalete no começo do parágrafo | testes (`tests/test_letra_grega.py`): cada letra da tabela vira o que a Mathematical Pi One, a Four e a Symbol desenham, em todo estilo visto; a letra que não se viu desenhada, outra família, outra fonte e o nome que não é texto ficam; do PDF montado em código, "20 µg/kg" sai com a troca contada, a letra da linha fora da página não conta, e o resumo diz quantas. (`tests/test_subtitulo_em_versalete.py`): a linha que abre em versalete fechado com ponto e continua no corpo sai título e começo do parágrafo, também a de letra do corpo na maioria e a que continua o título da linha de cima; a abertura sem ponto (o Maudlin) continua a frase; as partes que não são o texto da linha não a partem; o hífen invisível vira hífen também nas partes; o adaptador parte a linha onde a fonte de versalete acaba, e não parte a linha toda em versalete nem a que abre no corpo. As guardas do ponto e do texto foram vistas falhar com o seu mutante | portão | a dose volta a ser lida em mg, a letra grega volta latina, o subtítulo volta a ser nota no fim do capítulo com o começo da frase, ou a abertura de capítulo do Maudlin vira título |
+| Romance convertido pelo Calibre | testes (`tests/test_paginacao.py`, `tests/test_nome_do_capitulo_no_alto.py`, `tests/test_notas_com_asterisco.py`, `tests/test_letra_larga.py`): o cabeçalho de grupos espalhados sai; o nome do capítulo do sumário interno é título e a borda não o tira; a nota de asterisco é provada pela chamada e a censura fica; o espaço da letra larga sai só com vão constante, abaixo de um quarto da letra, em 3 linhas ou mais, nunca depois de algarismo | portão | volta "Capítulo N" como cabeçalho, a chamada de asterisco no texto, "Q uando", ou a censura vira nota |
 | A escuta ★ | rodar `importar-pdf` + `preparar` num PDF real em `livros/` e contar o que o `limpar` ainda precisa tirar | a cada mudança no conversor | a contagem sobe |
 
 Regra derivada no `AGENTS.md`: a biblioteca de PDF só entra em `adaptadores/`.

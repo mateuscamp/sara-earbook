@@ -231,7 +231,10 @@ class _Montador:
         if aberto.tipo is TipoDeBloco.TITULO:
             return self._quebra_o_titulo(aberto, linha, anterior)
         if aberto.tipo is not TipoDeBloco.PARAGRAFO:
-            return anterior is None and aberto.tipo is TipoDeBloco.NOTA
+            # Cada nota de asterisco abre o seu bloco, logo abaixo da outra (ADR-0004, "Romance
+            # convertido pelo Calibre").
+            nova = anterior is None or linha.abre_nota
+            return nova and aberto.tipo is TipoDeBloco.NOTA
         return self._quebra_o_paragrafo(aberto, linha, anterior)
 
     def _quebra_o_paragrafo(self, aberto: _Aberto, linha: Linha, anterior: Linha | None) -> bool:

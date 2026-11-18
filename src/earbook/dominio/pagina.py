@@ -41,6 +41,20 @@ DIFERENCA_DE_TAMANHO = 0.5
 
 
 @dataclass(frozen=True)
+class EspacoInventado:
+    """Um espaço que o pdfminer pôs pelo vão, sem caractere de espaço no PDF."""
+
+    posicao: int
+    """Onde ele está no texto da linha."""
+    letra: str
+    """O caractere antes dele."""
+    fonte: str
+    """A fonte desse caractere, sem o prefixo do subconjunto ("TimesNewRomanPS-BoldMT")."""
+    vao: float
+    """Do fim do caractere antes ao começo do seguinte, em pontos."""
+
+
+@dataclass(frozen=True)
 class Linha:
     texto: str
     x: float
@@ -88,6 +102,18 @@ class Linha:
     letras_gregas: int = 0
     """Quantas letras da fonte de símbolo viraram a letra grega que a fonte desenha ("20 µg/kg"
     no Miller, e não "20 mg/kg"): ADR-0004, "Letra grega da fonte de símbolo"."""
+    nome_do_capitulo: bool = False
+    """A linha é o nome que o sumário interno do PDF dá ao capítulo que abre nesta página: é
+    título, mesmo no tamanho do corpo (ADR-0004, "Romance convertido pelo Calibre")."""
+    nota: bool = False
+    """Linha de nota que a chamada prova, e não a letra menor: a nota de asterisco do Kafka à
+    beira-mar, no tamanho do corpo (ADR-0004, "Romance convertido pelo Calibre")."""
+    abre_nota: bool = False
+    """A primeira linha dessa nota: abre bloco, mesmo logo abaixo de outra nota."""
+    espacos_inventados: tuple[EspacoInventado, ...] = ()
+    """Os espaços que o pdfminer pôs pelo vão entre dois caracteres, sem caractere de espaço no
+    PDF, na linha que separa as palavras com o espaço de verdade (ADR-0004, "Romance convertido
+    pelo Calibre")."""
 
 
 @dataclass(frozen=True)

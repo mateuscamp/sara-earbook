@@ -145,6 +145,10 @@ def _candidatas(
     ao_lado: list[_Ocorrencia] = []
     for pagina in paginas:
         for posicao, linha in enumerate(pagina.linhas):
+            if linha.nome_do_capitulo:
+                # O sumário interno prova que é o título do capítulo (ADR-0004, "Romance
+                # convertido pelo Calibre").
+                continue
             if _na_borda(linha) or _acima_da_mancha(linha, mancha):
                 na_borda.append((pagina.numero, posicao, linha))
             elif _ao_lado_da_mancha(linha, mancha):

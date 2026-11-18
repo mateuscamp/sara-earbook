@@ -21,7 +21,12 @@ from earbook.dominio.camada_do_ocr import tirar_camada_do_ocr
 from earbook.dominio.capitulos import dividir_em_capitulos, dividir_pelo_sumario
 from earbook.dominio.fora_da_pagina import tirar_texto_fora_da_pagina
 from earbook.dominio.hifen_da_quebra import mostrar_hifen_invisivel
+from earbook.dominio.letra_larga import LetraLarga, tirar_espacos_da_letra_larga
 from earbook.dominio.metadados import autor_do_livro, titulo_do_livro
+from earbook.dominio.notas_com_asterisco import (
+    MOTIVO_DA_CHAMADA_DE_ASTERISCO,
+    notas_com_asterisco,
+)
 from earbook.dominio.notas_finais import MOTIVO_DAS_NOTAS_FINAIS, tirar_notas_finais
 from earbook.dominio.pagina import Pagina
 from earbook.dominio.paginacao import LinhaRemovida, tirar_cabecalhos_e_rodapes
@@ -31,7 +36,11 @@ from earbook.dominio.paginas_de_lista import (
     MOTIVO_DOS_COLABORADORES,
     tirar_paginas_de_lista,
 )
-from earbook.dominio.sumario_interno import aberturas_de_capitulo
+from earbook.dominio.sumario_interno import (
+    Abertura,
+    aberturas_de_capitulo,
+    marcar_nomes_dos_capitulos,
+)
 from earbook.dominio.tabelas_e_figuras import (
     MOTIVO_DA_FIGURA,
     MOTIVO_DA_TABELA,
@@ -73,6 +82,9 @@ class Importacao:
     rotulos_acertados: int = 0
     """As palavras de rótulo que voltaram à caixa normal nas menções ("QuAdro 13.1")."""
     letras_gregas: int = 0
+    letras_largas: tuple[LetraLarga, ...] = ()
+    """As letras que o PDF desenha mais largas do que declara (ADR-0004, "Romance convertido pelo
+    Calibre")."""
 
 
 def epub_padrao(pdf: Path) -> Path:
@@ -98,18 +110,21 @@ def importar_pdf(
         mensagem = f"{epub} já existe"
         raise FileExistsError(mensagem)
     paginas = ler_paginas(pdf)
-    limpas = _limpar(paginas)
+    aberturas = aberturas_de_capitulo(ler_sumario(pdf))
+    limpas = _limpar(paginas, aberturas)
     livro, rotulos = _montar_o_livro(pdf, limpas, len(paginas))
-    capitulos = _dividir(pdf, livro)
+    capitulos = _dividir(livro, aberturas)
     metadados = ler_metadados(pdf)
     titulo = titulo or titulo_do_livro(metadados.titulo, pdf.stem)
     autor = autor or autor_do_livro(metadados.autor)
     gravar_epub(epub, titulo, idioma, capitulos, autor=autor)
-    remocoes, chamadas = limpas.remocoes, _chamadas(paginas)
+    remocoes = limpas.remocoes
+    chamadas = (*_chamadas(paginas), *limpas.chamadas_de_asterisco)
     feito = Importacao(epub, len(paginas), remocoes, livro, len(capitulos), titulo, autor, chamadas)
     # Só as que chegam aos blocos: a do texto fora da página e a da bibliografia não se ouvem.
     gregas = sum(linha.letras_gregas for pagina in limpas.paginas for linha in pagina.linhas)
-    return replace(feito, rotulos_acertados=rotulos, letras_gregas=gregas)
+    largas = limpas.letras_largas
+    return replace(feito, rotulos_acertados=rotulos, letras_gregas=gregas, letras_largas=largas)
 
 
 def _montar_o_livro(
@@ -126,11 +141,10 @@ def _montar_o_livro(
     return replace(livro, blocos=blocos), rotulos
 
 
-def _dividir(pdf: Path, livro: LivroMontado) -> tuple[tuple[Bloco, ...], ...]:
+def _dividir(livro: LivroMontado, aberturas: Sequence[Abertura]) -> tuple[tuple[Bloco, ...], ...]:
     """Os capítulos pelo sumário interno do PDF, se ele serve, com o nome que ele dá a cada um;
     senão, pelo tamanho e pelo rótulo dos títulos (ADR-0004, "Capítulos pelo sumário interno do
     PDF")."""
-    aberturas = aberturas_de_capitulo(ler_sumario(pdf))
     if aberturas:
         return dividir_pelo_sumario(livro.blocos, aberturas).com_o_nome_no_primeiro_bloco()
     return dividir_em_capitulos(livro.blocos)
@@ -142,9 +156,33 @@ class _PaginasParaOsBlocos:
     prova_do_hifen: tuple[Pagina, ...]
     """As páginas antes da lista e da tabela: o dicionário do hífen vem delas (ADR-0004)."""
     remocoes: tuple[LinhaRemovida, ...]
+    chamadas_de_asterisco: tuple[LinhaRemovida, ...] = ()
+    """Cada chamada de nota com asterisco tirada da frase (ADR-0004, "Romance convertido pelo
+    Calibre")."""
+    letras_largas: tuple[LetraLarga, ...] = ()
+    """As letras que o PDF desenha mais largas do que declara, e quantos espaços saíram depois de
+    cada uma."""
 
 
-def _limpar(paginas: Sequence[Pagina]) -> _PaginasParaOsBlocos:
+def _limpar(paginas: Sequence[Pagina], aberturas: Sequence[Abertura]) -> _PaginasParaOsBlocos:
+    """O que sai da página antes dos blocos, o registro de cada remoção e as duas marcas que o
+    livro prova fora da letra: o nome do capítulo e a nota de asterisco (ADR-0004, "Romance
+    convertido pelo Calibre")."""
+    # Antes de tudo, onde a posição do espaço inventado ainda vale: a letra larga volta à palavra.
+    largas = tirar_espacos_da_letra_larga(paginas)
+    # O nome do capítulo, na página que o sumário interno diz, é título, e a borda não o tira.
+    tiradas = _tirar(marcar_nomes_dos_capitulos(largas.paginas, aberturas))
+    # Por último, nas linhas que ficam: a nota de asterisco, provada pela chamada colada.
+    com_notas = notas_com_asterisco(tiradas.paginas)
+    return replace(
+        tiradas,
+        paginas=com_notas.paginas,
+        chamadas_de_asterisco=com_notas.chamadas,
+        letras_largas=largas.letras,
+    )
+
+
+def _tirar(paginas: Sequence[Pagina]) -> _PaginasParaOsBlocos:
     """O que sai da página antes dos blocos, na ordem, e o registro de cada remoção."""
     # Antes de tudo: o hífen gravado como U+00AD volta a ser hífen, e o dicionário do hífen e as
     # regras de texto já o veem (ADR-0004, "Hífen invisível").
@@ -210,13 +248,15 @@ def resumo_da_importacao(importacao: Importacao) -> str:
         f"Blocos: {titulos} títulos, {paragrafos} parágrafos, {codigo} de código, {notas} notas."
     )
     linhas += _linhas_do_que_saiu(importacao.remocoes)
-    chamadas = len(importacao.chamadas)
+    chamadas = sum(1 for c in importacao.chamadas if c.motivo == MOTIVO_DA_CHAMADA)
     plural = (
         "número de referência sobrescrito tirado"
         if chamadas == 1
         else ("números de referência sobrescritos tirados")
     )
     linhas.append(f"{chamadas} {plural}.")
+    linhas += _linha_das_chamadas_de_asterisco(importacao.chamadas)
+    linhas += _linha_das_letras_largas(importacao.letras_largas)
     tirados, mantidos = livro.hifens_tirados, livro.hifens_mantidos
     linhas.append(f"Hífen de fim de linha: {tirados} tirados, {mantidos} mantidos.")
     if rotulos := importacao.rotulos_acertados:
@@ -232,6 +272,30 @@ def resumo_da_importacao(importacao: Importacao) -> str:
         linhas.append(f"{gregas} {letras} de fonte de símbolo {lidas} {desenho}.")
     linhas.append(f"Próximo passo: earbook preparar {importacao.epub}")
     return "\n".join(linhas)
+
+
+def _linha_das_letras_largas(letras: Sequence[LetraLarga]) -> list[str]:
+    """Os espaços tirados depois da letra larga, com cada letra e a fonte dela, só no livro que a
+    tem (ADR-0004, "Romance convertido pelo Calibre")."""
+    if not letras:
+        return []
+    total = sum(letra.espacos for letra in letras)
+    quais = "; ".join(f"{larga.letra} em {larga.fonte}, {larga.espacos}" for larga in letras)
+    return [f"{total} espaços falsos tirados depois de letra larga ({quais})."]
+
+
+def _linha_das_chamadas_de_asterisco(chamadas: Sequence[LinhaRemovida]) -> list[str]:
+    """A conta das chamadas de nota com asterisco, só no livro que as tem (ADR-0004, "Romance
+    convertido pelo Calibre")."""
+    n = sum(1 for c in chamadas if c.motivo == MOTIVO_DA_CHAMADA_DE_ASTERISCO)
+    if not n:
+        return []
+    plural = (
+        "chamada de nota com asterisco tirada"
+        if n == 1
+        else "chamadas de nota com asterisco tiradas"
+    )
+    return [f"{n} {plural}; a nota vai para o fim do capítulo."]
 
 
 def _linhas_do_que_saiu(remocoes: Sequence[LinhaRemovida]) -> list[str]:

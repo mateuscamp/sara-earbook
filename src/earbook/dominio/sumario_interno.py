@@ -10,13 +10,16 @@ from __future__ import annotations
 import re
 from collections import defaultdict
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+
+from earbook.dominio.pagina import Linha, Pagina
 
 ROTULOS_MINIMOS = 3
 """O nível do capítulo tem o rótulo em 3 páginas ou mais, como o rótulo no título (`capitulos`)."""
 # "Capítulo 1. …", "Capitulo 1_ …", "capitulo 4_ …" (Miller, sem acento e sem maiúscula), "CHAPTER
 # 1: …": a palavra e o número, sem olhar a caixa. "Capítulos 1 a 3" não é rótulo.
 _ROTULO = re.compile(r"\W*(?:cap[ií]tulo|chapter)\s*\d+(?!\w)", re.IGNORECASE)
+_TRACOS = re.compile("[\u2010-\u2015]")
 
 
 @dataclass(frozen=True)
@@ -71,3 +74,41 @@ def _nivel_do_capitulo(itens: Sequence[ItemDoSumario]) -> int | None:
         if len(paginas) >= ROTULOS_MINIMOS and len(com_rotulo) * 2 > len(do_nivel):
             return nivel
     return None
+
+
+def marcar_nomes_dos_capitulos(
+    paginas: Sequence[Pagina], aberturas: Sequence[Abertura]
+) -> tuple[Pagina, ...]:
+    """As páginas com a linha que repete o nome da abertura, na página dela, marcada como nome do
+    capítulo: o título, mesmo no tamanho do corpo (ADR-0004, "Romance convertido pelo Calibre").
+
+    A linha inteira, e não o começo dela: "Capítulo 2 conta…" é a frase que cita o capítulo. O
+    traço não conta, nem o espaço: a meia-risca do livro é o hífen do sumário ("Prólogo - Um
+    Menino…").
+    """
+    nomes: defaultdict[int, set[str]] = defaultdict(set)
+    for abertura in aberturas:
+        nomes[abertura.pagina].add(_comparavel(abertura.nome))
+    return tuple(_com_o_nome(pagina, nomes[pagina.numero]) for pagina in paginas)
+
+
+def _com_o_nome(pagina: Pagina, nomes: set[str]) -> Pagina:
+    """A página com a primeira linha de cada nome marcada; a página sem abertura volta como veio.
+
+    Só a primeira: o rodapé da O'Reilly repete o nome da seção na página que ela abre (Hard Parts,
+    "Introducing the Sysops Squad Saga"), e é rodapé (revisão da regressão).
+    """
+    if not nomes:
+        return pagina
+    faltam = set(nomes)
+    linhas: list[Linha] = []
+    for linha in pagina.linhas:
+        nome = _comparavel(linha.texto)
+        primeira = nome in faltam
+        faltam.discard(nome)
+        linhas.append(replace(linha, nome_do_capitulo=True) if primeira else linha)
+    return Pagina(pagina.numero, tuple(linhas))
+
+
+def _comparavel(texto: str) -> str:
+    return " ".join(_TRACOS.sub("-", texto).casefold().split())

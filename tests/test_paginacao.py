@@ -8,6 +8,8 @@ no rodapé.
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 import pytest
 
 from earbook.dominio.pagina import Linha, Pagina
@@ -276,3 +278,44 @@ def test_frase_repetida_em_altura_minoritaria_tambem_sai() -> None:
     # O2: com 4 páginas numa altura e 3 noutra, só a maioria saía.
     paginas = [[_linha("Competente", 0.02 if n <= 4 else 0.05), _corpo(n)] for n in range(1, 8)]
     assert [len(p.linhas) for p in _limpar(*paginas).paginas] == [1] * 7
+
+
+def _livro_com_linha_no_alto(texto: str, paginas_com_ela: set[int], total: int) -> PaginasLimpas:
+    """`total` páginas de corpo, com `texto` no alto das `paginas_com_ela` (o número da página no
+    lugar de "#")."""
+    return _limpar(
+        *[
+            [_linha(texto.replace("#", str(n)), ALTO), _corpo(n)]
+            if n in paginas_com_ela
+            else [_corpo(n)]
+            for n in range(1, total + 1)
+        ]
+    )
+
+
+def test_cabecalho_em_paginas_alternadas_sai() -> None:
+    # O título do livro só nas pares, como no Manica: metade das páginas que ele cobre.
+    limpas = _livro_com_linha_no_alto("Anestesiologia", {2, 4, 6, 8}, 8)
+    assert len(limpas.remocoes) == 4
+
+
+def test_nome_do_capitulo_no_alto_de_paginas_seguidas_fica() -> None:
+    # Capítulos de uma página: o nome que o sumário interno dá a cada um, no alto da página que
+    # ele abre, não é cabeçalho, mesmo em páginas seguidas (ADR-0004, "Romance convertido pelo
+    # Calibre").
+    paginas = [
+        [replace(_linha(f"Capítulo {n}", ALTO), nome_do_capitulo=True), _corpo(n)]
+        for n in (1, 2, 3)
+    ]
+    assert _limpar(*paginas).remocoes == ()
+
+
+def test_cabecalho_em_grupos_de_paginas_espalhados_pelo_livro_sai() -> None:
+    # Practical: o cabeçalho do capítulo só nas páginas dele, em grupos espalhados por 1.400
+    # páginas (cobertura 0,09), e "References", 100 em 1.400. A regra da cobertura mínima, que
+    # deixava o rótulo do Kafka, deixava esses também (revisão da regressão). O rótulo do Kafka
+    # fica pelo nome do capítulo do sumário interno. O "TABLE" do exemplo de antes não serve: o
+    # rótulo de tabela no alto nunca é cabeçalho (seção "Tabela, quadro e pontos-chave").
+    paginas_com_ela = {n for inicio in (1, 40, 80, 120) for n in (inicio, inicio + 1)}
+    limpas = _livro_com_linha_no_alto("Practical Management of Pain", paginas_com_ela, 121)
+    assert len(limpas.remocoes) == 8

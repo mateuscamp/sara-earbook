@@ -25,7 +25,7 @@ from enum import Enum
 from itertools import pairwise
 from statistics import median, multimode
 
-from earbook.dominio.pagina import Letra, juntar_letras_espacadas
+from earbook.dominio.pagina import EspacoInventado, Letra, juntar_letras_espacadas
 from earbook.dominio.segmento import normalizar_espacos
 
 RAZAO_DO_SOBRESCRITO = 0.85
@@ -91,6 +91,9 @@ class Caractere:
     virtual: bool = False
     """O espaço que o pdfminer pôs pelo vão, sem caractere no PDF; `x0` e `x1` são o fim da
     letra antes e o começo da letra depois."""
+    fonte: str = ""
+    """O nome da fonte, sem o prefixo do subconjunto: a letra larga se prova por fonte (ADR-0004,
+    "Romance convertido pelo Calibre")."""
 
 
 @dataclass(frozen=True)
@@ -105,6 +108,17 @@ class TextoDaLinha:
     duvidosas: int = 0
     """As chamadas duvidosas que ficaram no texto: só saem na página que tem chamadas certas
     (ADR-0004, "Camada do OCR sobre as figuras e chamada colada")."""
+
+    def espacos_inventados(self, texto: str) -> tuple[EspacoInventado, ...]:
+        """Os espaços inventados sozinhos entre dois caracteres, com a posição em `texto`, que é
+        o desta linha com os espaços juntados (`normalizar_espacos`), na linha que tem espaço de
+        verdade: nela, a palavra não se separa pelo vão, e o espaço inventado só existe pela
+        largura errada da letra (ADR-0004, "Romance convertido pelo Calibre"). Nenhum na linha
+        sem espaço de verdade, nem quando a letra espaçada juntada (`lido`) mudou o texto."""
+        reais = any(not c.virtual and c.texto == " " for c in self.caracteres)
+        if not reais or texto != normalizar_espacos(self.texto):
+            return ()
+        return _espacos_sozinhos(self.caracteres)
 
 
 def espacos_no_lugar(caracteres: Iterable[Caractere]) -> list[Caractere]:
@@ -321,6 +335,27 @@ def _limite_do_espaco(caracteres: Sequence[Caractere]) -> float | None:
     limite = min(vaos) * FRACAO_DO_ESPACO_DE_VERDADE
     inventados = [c.x1 - c.x0 for c in caracteres if c.virtual and c.texto == " "]
     return limite if all(vao <= limite for vao in inventados) else None
+
+
+def _espacos_sozinhos(caracteres: Sequence[Caractere]) -> tuple[EspacoInventado, ...]:
+    """Cada espaço inventado sozinho entre dois caracteres, com a posição no texto com os espaços
+    juntados: cada corrida de brancos vale um espaço, e a das pontas, nenhum."""
+    achados: list[EspacoInventado] = []
+    tamanho = 0
+    anterior: Caractere | None = None
+    brancos: list[Caractere] = []
+    for caractere in caracteres:
+        if not caractere.texto.strip():
+            brancos.append(caractere)
+            continue
+        if anterior is not None and brancos:
+            if len(brancos) == 1 and brancos[0].virtual:
+                vao = caractere.x0 - anterior.x1
+                achados.append(EspacoInventado(tamanho, anterior.texto, anterior.fonte, vao))
+            tamanho += 1
+        tamanho += len(caractere.texto)
+        anterior, brancos = caractere, []
+    return tuple(achados)
 
 
 def _letra(caractere: Caractere) -> bool:

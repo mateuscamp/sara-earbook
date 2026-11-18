@@ -65,6 +65,11 @@ def de_versalete(nome_da_fonte: object) -> bool:
     return _casa(_FONTE_VERSALETE, nome_da_fonte)
 
 
+def sem_subconjunto(nome_da_fonte: object) -> str:
+    """ "Times-BoldMT" para "AAAAAA+Times-BoldMT"; vazio se o nome não é texto (F1)."""
+    return nome_da_fonte.rsplit("+", 1)[-1] if isinstance(nome_da_fonte, str) else ""
+
+
 def familia(nomes_das_fontes: Iterable[object]) -> str:
     """A família da letra da maioria dos nomes; vazia se nenhum nome é texto."""
     familias = Counter(

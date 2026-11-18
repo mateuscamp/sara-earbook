@@ -43,6 +43,9 @@ class LinhaDeTeste:
     sem_tinta: bool = False
     """O texto no modo de pintura 3 (`3 Tr`): a página não o desenha, como a camada que o OCR põe
     sobre a imagem (Manica)."""
+    letra_larga: str = ""
+    """A letra que o PDF desenha mais larga do que a largura que declara: um vão de 0,2 da letra
+    depois dela (o `TJ`), sem caractere de espaço, como o Q do negrito do Kafka à beira-mar."""
 
 
 def _cadeia_pdf(texto: str) -> str:
@@ -63,6 +66,7 @@ def _fonte(linha: LinhaDeTeste) -> str:
 
 
 _APERTO_DO_PAR = 90
+_VAO_DA_LETRA_LARGA = -200
 _RAZAO_DO_SOBRESCRITO = 0.58
 _SUBIDA_DO_SOBRESCRITO = 0.33
 
@@ -96,6 +100,12 @@ def _texto(linha: LinhaDeTeste) -> str:
     if linha.espacamento and "|" in linha.texto:
         pares = f" {_APERTO_DO_PAR} ".join(f"({_cadeia_pdf(p)})" for p in linha.texto.split("|"))
         return f"{espacamento}/{_fonte(linha)} {linha.tamanho} Tf [{pares}] TJ"
+    if linha.letra_larga:
+        larga = linha.letra_larga
+        pedacos = f"{larga}) {_VAO_DA_LETRA_LARGA} (".join(
+            _cadeia_pdf(p) for p in linha.texto.split(larga)
+        )
+        return f"{espacamento}/{_fonte(linha)} {linha.tamanho} Tf [({pedacos})] TJ"
     if not linha.versalete:
         texto = f"/{_fonte(linha)} {linha.tamanho} Tf ({_cadeia_pdf(linha.texto)}) Tj"
         return espacamento + texto

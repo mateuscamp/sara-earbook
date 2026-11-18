@@ -28,7 +28,11 @@ A decisão está no [ADR-0001](docs/adr/0001-reescrever-com-claude-code-orquestr
   alta; o ano fica, e o expoente, a carga do íon e a unidade ao quadrado também. O número só
   depois de letra solta ou de outro número ("6 h¹⁴⁸", "0,62¹¹¹"), que na linha tem a cara de um
   expoente, sai na página que tem 3 chamadas ou mais
-  ([ADR-0004](docs/adr/0004-pdf-entra-como-comando-importar-pdf.md)).
+  ([ADR-0004](docs/adr/0004-pdf-entra-como-comando-importar-pdf.md)). No PDF, a chamada de
+  asterisco colada à palavra ou à pontuação ("Report*", "shamisen,***") também sai, quando o
+  livro tem a nota dela, aberta pelos mesmos asteriscos, até 15 páginas depois; a nota vai para o
+  fim do capítulo, sem o asterisco. O asterisco solto ("na cidade de **") e o colado ao algarismo
+  ("5* anos") ficam.
 - No PDF, o texto que a página não pinta: o que um OCR leu dentro das figuras e gravou por cima
   delas, invisível ("1", "l", "o o o", "~ ~"). Sai na página em que o texto pintado é a maior
   parte; a página escaneada, cujo texto só existe nessa camada, fica
@@ -285,7 +289,10 @@ O `importar-pdf` grava `livro.epub` ao lado do PDF (ou onde `--epub` mandar), co
 autor do metadado do PDF (ou os de `--titulo` e `--autor`). O que ele faz:
 
 - tira o número de página, também o que é maior que o texto, e o cabeçalho repetido, pela
-  posição na página. O cabeçalho que aparece só nas duas páginas de uma abertura também sai. No
+  posição na página. A linha que repete, na página de abertura, o nome que o sumário interno do
+  PDF dá ao capítulo ("Capítulo 2", "Prólogo - Um Menino Chamado Corvo") é o título dele e fica,
+  mesmo no tamanho do texto. O cabeçalho que aparece só nas duas páginas de uma abertura também
+  sai. No
   livro de margem larga, sai também o cabeçalho acima de onde o texto começa e o número de página
   na margem, ao lado da coluna. O cabeçalho em letra maior que a do texto sai pela linha do
   número de página: o que está na altura do número, na letra dele, em 3 páginas ou mais. O
@@ -320,6 +327,12 @@ autor do metadado do PDF (ou os de `--titulo` e `--autor`). O que ele faz:
   que tem 3 chamadas certas ou mais, e nunca depois da base 10 ("10¹²"). O algarismo só ("m²", "T10²"), o isótopo
   ("¹³³Xe") e o expoente no meio da fórmula ficam. A chamada não conta na letra da linha: ela sai
   também na linha curta em que é mais longa que a palavra ("body.¹⁹⁶,¹⁹⁷"). O resumo conta quantos saíram;
+- não põe espaço depois da letra que o PDF desenha mais larga do que declara ("Quando", e não "Q
+  uando"; "Toyama", e não "Toy ama"): a letra que, no livro inteiro, deixa sempre o mesmo vão
+  depois dela, menor que um quarto do tamanho da letra, em 3 linhas ou mais que separam as
+  palavras com o caractere de espaço. Só a letra, nunca o algarismo; o vão constante de um espaço
+  ou mais (o número de página do cabeçalho, a coluna de tabela) fica. O resumo diz quantos
+  espaços saíram, letra por letra;
 - não põe espaço no nome com letra espaçada ("NATALIE MORYL", e não "NATALI E MORY L"): o
   espaço que o pdfminer deduz do vão sai quando o vão é o mesmo que separa as letras, ou menos
   da metade do espaço de verdade da linha ("PART ONE", e não "PA R T O N E"; "CHAPTER 110", e
@@ -377,7 +390,13 @@ autor do metadado do PDF (ou os de `--titulo` e `--autor`). O que ele faz:
   interno que sirva, divide pelo tamanho dos títulos e pelo rótulo "CHAPTER 24" ou "Capítulo 3",
   quando o livro o repete, e o capítulo com rótulo leva no sumário do EPUB o rótulo e o título,
   em caixa normal ("Chapter 1: Pain Mechanisms"). Nos dois casos, a parte fica no capítulo que
-  ela abre.
+  ela abre. A linha que repete o nome que o sumário interno dá ao capítulo, na página que ele
+  abre, é o título do capítulo, mesmo no tamanho do texto ("Capítulo 2", "Prólogo – Um Menino
+  Chamado Corvo"), e a borda não a tira;
+- leva para nota a nota de asterisco do pé da página: a linha que começa pelos asteriscos de uma
+  chamada colada que veio antes ("Report*" e "* Incidente Morro da Tigela…"), até o fim da página,
+  a nota seguinte, a outra coluna ou a linha que muda de letra (o texto depois da nota de uma
+  tabela). O resumo conta as chamadas tiradas.
 
 O EPUB serve para ouvir, não para ler na tela. Sai sem imagem e sem estilo, e cada linha de
 tabela que fica (a da letra do corpo, a sem rótulo) vira um parágrafo. O bloco de código do

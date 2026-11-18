@@ -70,9 +70,13 @@ def tipo_da_linha(linha: Linha, medidas: Medidas) -> TipoDeBloco:
         return TipoDeBloco.CODIGO
     # O versalete é subtítulo, mesmo com a maioria das letras em tamanho de nota (ADR-0004,
     # "O que ficou da Fase 1").
-    if linha.tamanho >= corpo * RAZAO_DO_TITULO or linha.versalete:
+    # O nome que o sumário interno dá ao capítulo, na página que ele abre, é título mesmo no
+    # tamanho do corpo (ADR-0004, "Romance convertido pelo Calibre").
+    if linha.tamanho >= corpo * RAZAO_DO_TITULO or linha.versalete or linha.nome_do_capitulo:
         return TipoDeBloco.TITULO
-    if linha.tamanho < corpo * RAZAO_DA_NOTA:
+    # A nota de asterisco vem no tamanho do corpo: a chamada a prova (ADR-0004, "Romance
+    # convertido pelo Calibre").
+    if linha.tamanho < corpo * RAZAO_DA_NOTA or linha.nota:
         return TipoDeBloco.NOTA
     # O subtítulo em negrito tem o tamanho do corpo ou mais (Competente: 10,5 e 12 pt, com
     # corpo de 10,5). O negrito menor fica parágrafo: é verbete do glossário (Competente: 9,5

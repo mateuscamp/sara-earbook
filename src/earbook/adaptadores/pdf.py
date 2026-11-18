@@ -340,6 +340,7 @@ def _trecho(
         # Inteira além da borda do papel, que o leitor não mostra; a que passa da borda só em parte
         # fica (ADR-0004, "A ordem das colunas no Miller").
         fora_da_pagina=x1 <= pagina.x0 or x0 >= pagina.x1,
+        espacos_inventados=lida.espacos_inventados(texto),
     )
     visiveis = [c for c in caracteres if c.get_text().strip()]
     return _LinhaLida(_com_a_letra(pronta, visiveis, nao_pinta), lida.duvidosas)
@@ -368,15 +369,18 @@ def _com_a_letra(
 def _caracteres(itens: Sequence[LTChar | LTAnno]) -> list[Caractere]:
     """Os caracteres da linha para o domínio. O espaço do pdfminer (`LTAnno`) não tem posição:
     `espacos_no_lugar` a dá."""
-    return espacos_no_lugar(
-        # O pé da caixa, e não a matriz: a subida do `Ts` só entra na caixa (pdfminer).
-        # A letra da fonte de símbolo é a grega que ela desenha (ADR-0004, "Letra grega da fonte
-        # de símbolo").
-        Caractere(_desenhada(item), item.x0, item.x1, item.size, item.y0)
-        if isinstance(item, LTChar)
-        else Caractere(item.get_text(), 0.0, 0.0, 0.0, 0.0, virtual=True)
-        for item in itens
-    )
+    return espacos_no_lugar(_caractere(item) for item in itens)
+
+
+def _caractere(item: LTChar | LTAnno) -> Caractere:
+    if not isinstance(item, LTChar):
+        return Caractere(item.get_text(), 0.0, 0.0, 0.0, 0.0, virtual=True)
+    # O pé da caixa, e não a matriz: a subida do `Ts` só entra na caixa (pdfminer).
+    # A letra da fonte de símbolo é a grega que ela desenha (ADR-0004, "Letra grega da fonte
+    # de símbolo"). A fonte de cada letra serve à letra larga (ADR-0004, "Romance convertido pelo
+    # Calibre").
+    fonte = nome_da_fonte.sem_subconjunto(item.fontname)
+    return Caractere(_desenhada(item), item.x0, item.x1, item.size, item.y0, fonte=fonte)
 
 
 def _desenhada(letra: LTChar) -> str:

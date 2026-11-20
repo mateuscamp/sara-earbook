@@ -73,7 +73,7 @@ def sem_subconjunto(nome_da_fonte: object) -> str:
 def familia(nomes_das_fontes: Iterable[object]) -> str:
     """A família da letra da maioria dos nomes; vazia se nenhum nome é texto."""
     familias = Counter(
-        _ESTILO_DA_FONTE.sub("", nome.rsplit("+", 1)[-1])
+        _ESTILO_DA_FONTE.sub("", sem_subconjunto(nome))
         for nome in nomes_das_fontes
         if isinstance(nome, str)
     )
@@ -112,7 +112,7 @@ def fonte_do_versalete(nomes_das_fontes: Iterable[object]) -> str:
     if not toda_em_versalete(nomes):
         return ""
     fontes = Counter(
-        nome.rsplit("+", 1)[-1] for nome in nomes if isinstance(nome, str) and de_versalete(nome)
+        sem_subconjunto(nome) for nome in nomes if isinstance(nome, str) and de_versalete(nome)
     )
     return fontes.most_common(1)[0][0]
 
@@ -131,8 +131,8 @@ def _desenhos_da_fonte(nome_da_fonte: object) -> Mapping[str, str] | None:
 def _desenhos_pelo_nome(nome_da_fonte: str) -> Mapping[str, str] | None:
     """Pelo nome sem o subconjunto, guardada por nome: o livro tem poucas fontes, e milhões de
     letras (code-review)."""
-    sem_subconjunto = nome_da_fonte.rsplit("+", 1)[-1]
-    return next((d for padrao, d in _FONTES_DE_SIMBOLO if padrao.match(sem_subconjunto)), None)
+    sem_o_prefixo = sem_subconjunto(nome_da_fonte)
+    return next((d for padrao, d in _FONTES_DE_SIMBOLO if padrao.match(sem_o_prefixo)), None)
 
 
 def _casa(padrao: re.Pattern[str], nome_da_fonte: object) -> bool:

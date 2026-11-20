@@ -373,6 +373,7 @@ def _caracteres(itens: Sequence[LTChar | LTAnno]) -> list[Caractere]:
 
 
 def _caractere(item: LTChar | LTAnno) -> Caractere:
+    """A letra com a fonte sem o subconjunto, ou o espaço sem posição, que `espacos_no_lugar` dá."""
     if not isinstance(item, LTChar):
         return Caractere(item.get_text(), 0.0, 0.0, 0.0, 0.0, virtual=True)
     # O pé da caixa, e não a matriz: a subida do `Ts` só entra na caixa (pdfminer).

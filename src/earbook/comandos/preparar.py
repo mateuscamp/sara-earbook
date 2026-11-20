@@ -41,7 +41,9 @@ def preparar(epub: Path, pasta: Path, sem_capitulos: Sequence[str] = ()) -> Prep
     try:
         pacote = extrair_epub(epub, trabalho.pasta_do_epub(pasta))
         livro, segmentados = _segmentar_livro(epub, pasta, pacote)
-        limpeza = limpar_para_o_ouvido(segmentados, pacote.titulo, pacote.autor, sem_capitulos)
+        limpeza = limpar_para_o_ouvido(
+            segmentados, pacote.titulo, pacote.autor, sem_capitulos, idioma=pacote.idioma
+        )
         for capitulo in limpeza.capitulos:
             trabalho.gravar_limpos(pasta, capitulo)
         trabalho.gravar_limpeza(pasta, limpeza)

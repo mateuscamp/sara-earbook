@@ -243,8 +243,9 @@ def test_gemeo_no_meio_da_frase_sai_e_o_outro_fica() -> None:
 
 
 def test_gemeos_fora_do_meio_da_frase_ficam() -> None:
-    # Learning DDD c095: duas notas seguidas citam a mesma obra. No Dalgalarrondo, 8 pares de
-    # destaque igual a um parágrafo inteiro do texto ficam assim, lidos duas vezes (ADR-0008).
+    # Learning DDD c095: duas notas seguidas citam a mesma obra, num livro sem destaque de
+    # margem. No livro diagramado com destaques, a segunda cópia lado a lado sai (decisão B do
+    # Mateus, 2026-11-20; ADR-0008, "Repetição do autor e cópia lado a lado").
     fowler = "Fowler, M. (2002). Patterns of Enterprise Application Architecture. Boston: Wesley."
     livro = _limpar(["Can you spot it?", fowler, fowler, "Visit the site."])
     assert _destaques(livro) == []
@@ -383,3 +384,86 @@ def test_destaque_colado_do_pdf_sai_e_a_frase_volta_inteira(tmp_path: Path) -> N
     assert [(r.motivo, r.texto) for r in limpeza.remocoes] == [
         (MOTIVO, "O corpo é um dos principais palcos de nossas vidas.")
     ]
+
+
+# Decisões do Mateus de 2026-11-20 (ADR-0008, "Repetição do autor e cópia lado a lado").
+ANIVERSARIO = (
+    "Quando meu décimo quinto aniversário chegar, sairei de minha casa e irei para uma cidade "
+    "distante e desconhecida, onde vou viver numa pequena biblioteca."
+)
+KAFKA = [
+    "E, quando a tempestade passar, você já não será o mesmo. Esse é o sentido da tempestade.",
+    ANIVERSARIO,
+    (
+        "Claro que se eu for contar todos os detalhes, sou capaz de falar uma semana inteira. "
+        f"Expondo apenas os pontos principais, é isso que vai acontecer. {ANIVERSARIO}"
+    ),
+    "Talvez soe como um conto de fadas. Mas isto não é um conto de fadas.",
+]
+# Três destaques de margem de verdade, num capítulo à parte: o livro diagramado com destaque.
+DIAGRAMADO = [
+    f"{CONTROVERSIA}.",
+    TEXTO,
+    "O corpo é um dos principais palcos da vida.",
+    "Para Drummond, o corpo é um dos principais palcos da vida. Lugar de dor.",
+    "Os temas religiosos são muito comuns na psicopatologia das psicoses.",
+    "Sabe-se que os temas religiosos são muito comuns na psicopatologia das psicoses.",
+]
+
+
+def test_frase_que_o_autor_repete_inteira_no_paragrafo_seguinte_fica() -> None:
+    # Kafka c003: o narrador diz a frase e a repete, inteira, no fim do parágrafo seguinte. Num
+    # livro sem outro destaque, a cópia exata de uma frase inteira do vizinho, fora do meio da
+    # frase, é do autor (decisão A do Mateus).
+    livro = _limpar(KAFKA)
+    assert _textos(livro) == [KAFKA]
+    assert _destaques(livro) == []
+
+
+def test_frase_repetida_inteira_sai_no_livro_diagramado_com_destaques() -> None:
+    # Dalgalarrondo c019-s0057: a mesma forma do Kafka, num livro com 243 destaques.
+    livro = _limpar(KAFKA, DIAGRAMADO)
+    assert "c001-s0002" in _destaques(livro)
+
+
+def test_destaque_que_corta_a_frase_sai_mesmo_sozinho_no_livro() -> None:
+    # Bonica c003-s0013: o destaque abre a frase em "Just as", e o texto diz "that, just as".
+    texto = (
+        "Chronic pain frequently is the impetus to seek care. It is also possible that, just as "
+        "the brain is modified by experience, the brain may alter the way pain is processed."
+    )
+    destaque = (
+        "Just as the brain is modified by experience, the brain may alter the way pain is "
+        "processed."
+    )
+    livro = _limpar(["Acute pain is sudden in onset.", destaque, texto])
+    assert _destaques(livro) == ["c001-s0002"]
+
+
+IDENTIFICACOES = (
+    "Essas alterações incluem os falsos desconhecimentos produzidos por processos delirantes, "
+    "síndromes delirantes muito peculiares do reconhecimento e de falsas identificações."
+)
+
+
+def test_segunda_de_duas_copias_iguais_lado_a_lado_sai_no_livro_com_destaques() -> None:
+    # Dalgalarrondo p. 151: o PDF desenha a frase duas vezes, lado a lado; sem a chamada de
+    # asterisco, as duas cópias ficam iguais. Sai a segunda (decisão B do Mateus).
+    capitulo = [
+        "Alterações do reconhecimento e identificação de origem delirante",
+        IDENTIFICACOES,
+        IDENTIFICACOES,
+        "No falso desconhecimento, o paciente não reconhece pessoas muito familiares.",
+    ]
+    livro = _limpar(capitulo, DIAGRAMADO)
+    assert _textos(livro)[0] == [capitulo[0], IDENTIFICACOES, capitulo[3]]
+    assert "c001-s0003" in _destaques(livro)
+
+
+def test_gemeos_com_pontuacao_diferente_nao_provam_a_diagramacao() -> None:
+    # Revisão: o gêmeo se acha pela chave, sem pontuação nem caixa. Três pares de falas iguais
+    # que só mudam no ponto final, num romance sem destaque, faziam o livro passar por
+    # diagramado, e as cópias saíam.
+    fala = "Nunca mais voltarei àquela cidade, nunca mais, nunca mais"
+    capitulos = [["Ela disse assim.", f"{fala}!", f"{fala}.", "E foi embora."] for _ in range(3)]
+    assert _destaques(_limpar(*capitulos)) == []

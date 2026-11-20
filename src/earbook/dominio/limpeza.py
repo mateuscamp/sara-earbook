@@ -6,6 +6,7 @@ from __future__ import annotations
 import re
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import replace
+from functools import partial
 
 from earbook.dominio.cabecalho import (
     frase_repetida,
@@ -14,12 +15,12 @@ from earbook.dominio.cabecalho import (
     frases_do_livro,
 )
 from earbook.dominio.capitular import CapitularDevolvida, Vocabulario, devolver_uma, leituras
+from earbook.dominio.destaque_de_margem import destaques
 from earbook.dominio.direitos import nas_pontas, pagina_de_direitos
 from earbook.dominio.fora_do_audio import (
     MOTIVO_DO_PAPEL,
     bibliografia,
     capitulos_pedidos,
-    destaques,
     indice_pelo_conteudo,
     marcas_dagua,
     pelo_papel,
@@ -36,6 +37,7 @@ from earbook.dominio.livro_limpo import (
     Remocao,
     Suspeita,
 )
+from earbook.dominio.nota_em_outra_lingua import notas_em_outra_lingua
 from earbook.dominio.questoes_de_prova import secoes_de_questoes
 from earbook.dominio.segmento import Papel, Segmento, primeira_letra
 
@@ -68,10 +70,12 @@ def limpar_para_o_ouvido(
     titulo: str,
     autor: str,
     fora: Sequence[str] = (),
+    idioma: str = "und",
 ) -> LivroLimpo:
     """A limpeza inteira, na ordem: o capítulo declarado em `fora`, direitos, marca d'água,
-    cabeçalho solto, cabeçalho colado, destaque de margem, parágrafo partido, capitular e, por
-    último, código, índice, bibliografia e o índice sem marcação.
+    cabeçalho solto, cabeçalho colado, destaque de margem, parágrafo partido, capitular, código,
+    índice, bibliografia, o índice sem marcação e, por último, a nota em outra língua que não
+    `idioma`, a do livro.
 
     A ordem importa: o cabeçalho, solto ou colado, fica exatamente onde o parágrafo se
     partiu, e só some do meio depois que as duas metades ficam lado a lado.
@@ -92,6 +96,9 @@ def limpar_para_o_ouvido(
         _devolver_capitulares(_marcar_capitulares_perdidas(juntado)), vocabulario
     )
     juntado = _tirar_por_ultimo(juntado)
+    # A nota em outra língua, que a voz do livro leria na pronúncia errada (ADR-0008, "Repetição
+    # do autor, cópia lado a lado e nota em outra língua").
+    juntado = _tirar_do_livro(juntado, partial(notas_em_outra_lingua, idioma=idioma))
     juntado = replace(juntado, remocoes=(*pedidos, *juntado.remocoes))
     originais = {s.id: s.texto for _, segmentos in capitulos for s in segmentos}
     return _juncoes_saem_com_a_cabeca(juntado, originais)

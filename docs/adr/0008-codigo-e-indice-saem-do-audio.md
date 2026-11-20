@@ -870,6 +870,101 @@ antes), no do Kafka e no do Dalgalarrondo, importado do PDF no HEAD `9663144`:
 | *Dalgalarrondo* | 243 → 243 | `limpos/` idêntico (o "antes" é o mesmo `preparar` com a regra desligada) |
 | *Practical*, *Bonica*, *Manica*, *Miller* | 0, 1, 0, 0 → os mesmos | `limpos/` e `limpeza.json` idênticos |
 
+## Repetição do autor, cópia lado a lado e nota em outra língua (2026-11-20)
+
+### Contexto
+
+Três decisões do Mateus (2026-11-20), levadas pela sessão principal depois da filha que corrigiu
+os quatro defeitos do *Kafka à beira-mar* (ADR-0004, "Romance convertido pelo Calibre"):
+
+- **A. Manter a repetição.** Sem o espaço falso de "Q uando", o destaque de margem passou a
+  tirar `c003-s0046` do Kafka: "Quando meu décimo quinto aniversário chegar, sairei de minha
+  casa…", que o narrador repete, inteira, no fim do parágrafo seguinte ("…é isso que vai
+  acontecer. Quando meu décimo quinto aniversário chegar…"). É do autor, e volta ao áudio.
+- **B. Tirar a cópia.** Na p. 151 do *Dalgalarrondo*, o PDF desenha a frase "Essas alterações
+  incluem os falsos desconhecimentos…" duas vezes, lado a lado. A chamada de asterisco
+  diferenciava as duas cópias, e a cópia sem ela saía como destaque; sem a chamada, ficaram
+  iguais, e a regra dos gêmeos não tirava nenhuma, porque nenhuma parte uma frase. A segunda sai.
+- **C. Tirar a nota.** A nota "****" do Kafka é o verso de *Macbeth* em inglês, que o texto leu
+  na tradução de Manuel Bandeira: "No, this my hand will rather/ The multitudinous seas
+  incarnadine / Making the green one red! (Trad. de Manuel Bandeira.) (N. da T.)". Sai pela
+  decisão 4 do Mateus no ADR-0011, como regra geral e registrada, não pelo nome do livro.
+
+### Medição antes do código
+
+Onde o destaque repete o texto, medido nos 242 do *Dalgalarrondo* (`kafka-mapa/destaques.py`):
+66 partem uma frase e só casam com os vizinhos juntados; os outros repetem um vizinho só, e 219
+caem depois de um parágrafo que não fecha a frase. Um deles tem a forma exata do Kafka:
+`c019-s0057` é uma frase sozinha, repetida inteira no fim do parágrafo seguinte, depois de frase
+fechada. Nada no trecho separa os dois. O único destaque do *Bonica* (`c003-s0013`, "Just as the
+brain is modified…") tem a mesma posição, mas corta a frase do texto ("It is also possible
+that, just as…").
+
+### Decisão
+
+**A.** O destaque que é a cópia exata de uma frase inteira de um vizinho (letra por letra,
+depois do começo dele ou de uma frase fechada) e que não cai no meio da frase só sai no livro
+diagramado com destaques: o que tem 3 destaques ou mais (`DESTAQUES_DO_LIVRO`) que cortam ou
+mudam a frase do texto, ou que caem no meio dela. O destaque é diagramação e se repete pelo
+livro; a frase que o autor repete, num livro sem destaque, é texto. É o critério mais estreito
+que os dados permitem: só o livro inteiro separa o Kafka do `c019-s0057`. A cópia inteira não
+conta para a prova: senão a frase que um romance repete três vezes faria o livro diagramado.
+O destaque que corta ou muda a frase sai mesmo sozinho (o do Bonica), e o que cai no meio da
+frase também ("As ilusões ocor-" | destaque | "rem…").
+
+**B.** Das duas cópias iguais lado a lado (segmentos seguidos), a segunda sai, com o motivo do
+destaque. É cópia exata, e vale o A: no livro sem destaque, as duas ficam, como as duas
+referências iguais e seguidas do Learning DDD.
+
+**C.** No livro em português, a nota (papel `nota`) que, fora dos parênteses, tem 3 palavras
+funcionais do inglês ou do espanhol ou mais (`PALAVRAS_DA_OUTRA_LINGUA`), na proporção que faz
+o trecho parecer o original, sai com o motivo "nota em outra língua que não a do livro"
+(`dominio/nota_em_outra_lingua.py`). A língua do livro é a do EPUB (`dc:language`). As palavras
+e a proporção são as do `conferir` da tradução (`lingua_do_original`, ADR-0013): listas medidas
+do inglês (20%) e do espanhol (10%), sem as palavras que o português também tem. O parêntese
+não conta: a atribuição "(Trad. de Manuel Bandeira.) (N. da T.)" sai com a nota. O verso do
+Macbeth tem 6 palavras funcionais do inglês em 15; o título em inglês dentro da nota em
+português ("Ver o ensaio The Doors of Perception…") tem 2, e fica. O parágrafo em outra língua
+fica: a epígrafe e a citação no original são decisão 11 do ADR-0011.
+
+**Sem precedente, levado à sessão principal:** a decisão 4 tira a nota com o original do poema
+que o texto já leu traduzido. A regra tira toda nota inteira em outra língua, sem saber se o
+texto a leu traduzida: a nota de rodapé em inglês num livro em português que cita um artigo sem
+tradução também sairia. Saber se o texto traduziu a nota pediria comparar duas línguas.
+
+### Medição (2026-11-20, depois do código)
+
+`importar-pdf` + `preparar` nos 7 livros, um PDF por vez, com o main `fc31103` (antes) e com esta
+mudança e as duas seções de 2026-11-17 do ADR-0003 e do ADR-0004 (depois); pastas
+`livros/trabalho/kafka3-{antes,depois}-<livro>`:
+
+| Livro | Destaques antes → depois | Notas em outra língua | O que muda por esta seção |
+|---|---|---|---|
+| *Kafka à beira-mar* | 0 → 0 | 1 (`c019-s0095`, o Macbeth) | a frase do `c003` fica, lida duas vezes como o autor a escreveu; o `c019` perde a seção "Notas" |
+| *Dalgalarrondo* | 241 → 248 | 0 | sai a segunda de 8 pares de cópias lado a lado; na p. 151, sai a segunda cópia (`c016-s0158`) e volta a primeira (`c016-s0157`), que saía antes por ter o asterisco |
+| *Bonica* | 1 → 1 | — (em inglês) | o destaque `c003-s0013`, que corta a frase, continua saindo |
+| *Hard Parts*, *Manica*, *Miller*, *Practical* | 0, 0, 0, 0 → os mesmos | 0 no *Manica* (286 notas, em português) | `limpos/` idêntico nesta seção |
+
+Dos 8 pares do *Dalgalarrondo*, 7 são cópias exatas; o `c019-s0007`/`s0008` casa pela chave,
+que tira o hífen: sai "dividem-se" e fica "divi-dem-se", o composto que a regra do hífen do
+ADR-0004 deixou assim. Antes, as duas eram lidas.
+
+
+### O que fica
+
+- o livro com 1 ou 2 destaques que cortam a frase e uma frase repetida pelo autor ainda perde a
+  repetição;
+- o romance que repete a mesma frase em 3 lugares, cortada em cada um, seria tomado por
+  diagramado;
+- a nota mista (uma frase em inglês e outra em português, fora de parênteses) fica se a parte
+  em inglês não chega à proporção;
+- do par gêmeo que só difere pelo hífen do composto, sai o segundo, mesmo quando é o de grafia
+  certa (`c019-s0008` do *Dalgalarrondo*: fica "divi-dem-se");
+- a nota em português que cita um título em espanhol com 3 palavras funcionais ("Historia de la
+  locura en la época clásica") pode sair inteira: a proporção do espanhol é de 10% (revisão);
+- só o livro em português tira nota: não há lista medida do português, e a nota em português de
+  um livro em inglês ou em espanhol fica; o livro com `dc:language` errado também não tira nada.
+
 ## Consequências
 
 **Ganha:**
@@ -922,6 +1017,7 @@ antes), no do Kafka e no do Dalgalarrondo, importado do PDF no HEAD `9663144`:
 | Título sem letra sai, e só ele | testes (`tests/test_titulo_sem_letra.py`): "•", "• •", "---", "~" saem com o motivo "título sem letra nem algarismo"; "2012", "1.", "A", "l", "V" ficam; "* * *" como parágrafo, nota, citação ou item fica; o parágrafo que o título partia se emenda | portão | o resto de figura fica, ou sai título de verdade |
 | Capítulo declarado sai inteiro, registrado | testes (`tests/test_capitulo_fora_do_audio.py`): cada segmento do capítulo pedido fica em `remocoes` com o motivo "capítulo fora do áudio: pedido no preparar"; sem pedido nada sai; o capítulo que o livro não tem é erro com o valor; o capítulo que sai não prova o hífen da quebra; o `conferir` aceita; a opção se repete na linha de comando, e o erro não deixa pasta | portão | o capítulo fica, sai sem registro, ou o pedido errado passa calado |
 | Nada a mais some | `preparar` no Huxley e no Tides, `importar-pdf` e `preparar` no Competente e no Hard Parts, comparados com o ADR-0003 e o ADR-0004 | a cada mudança na limpeza | `limpos/` diferente sem explicação |
+| Repetição do autor, cópia lado a lado e nota em outra língua | testes (`tests/test_destaque.py`): a frase que o autor repete inteira no parágrafo seguinte fica no livro sem destaques, e sai no diagramado; o destaque que corta a frase sai mesmo sozinho; a segunda de duas cópias iguais lado a lado sai no livro diagramado, e as duas ficam no livro sem destaque. (`tests/test_nota_em_outra_lingua.py`): a nota com o original em inglês e a nota em espanhol saem do livro em português; a nota da língua do livro, a com título estrangeiro, a sem palavra funcional e o parágrafo em outra língua ficam; o livro em inglês e o sem língua não tiram nada; o `preparar` lê a língua do EPUB | portão | o Kafka volta a perder a repetição, a cópia do Dalgalarrondo volta a ser lida, a nota do Macbeth volta, ou sai uma nota na língua do livro |
 | Escuta ★ (manual) | o `montar --original` do DDD, num trecho com código e no fim do livro | depois desta mudança; responsável: Mateus | o ouvinte se perde onde o código saiu |
 
 Regras derivadas no `AGENTS.md`: em "O que atrapalha o ouvido", o índice remissivo e o bloco de

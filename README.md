@@ -84,7 +84,13 @@ A decisão está no [ADR-0001](docs/adr/0001-reescrever-com-claude-code-orquestr
 - O destaque de margem que repete, palavra por palavra, uma frase do texto ao lado dele. A frase
   que ele partia volta inteira ([ADR-0008](docs/adr/0008-codigo-e-indice-saem-do-audio.md)). O
   destaque que resume ou reescreve a frase fica, e a fala de diálogo que repete a anterior
-  ("— Um lugar para onde possam retornar?"), que abre com travessão, também.
+  ("— Um lugar para onde possam retornar?"), que abre com travessão, também. A cópia exata de uma
+  frase inteira só sai no livro que tem 3 destaques ou mais que cortam ou mudam a frase do texto:
+  a frase que o autor repete, num livro sem destaques, fica. No livro com destaques, das duas
+  cópias iguais lado a lado sai a segunda.
+- No livro em português, a nota em inglês ou em espanhol, como o original do verso que o texto
+  leu traduzido: a que tem 3 palavras funcionais da outra língua ou mais, fora dos parênteses
+  ([ADR-0008](docs/adr/0008-codigo-e-indice-saem-do-audio.md)).
 - A bibliografia no padrão ABNT ("ABDO, C. H. N. Diagnóstico… 1996."): 10 referências seguidas
   ou mais, com o título logo antes delas
   ([ADR-0008](docs/adr/0008-codigo-e-indice-saem-do-audio.md)). A bibliografia de outro padrão

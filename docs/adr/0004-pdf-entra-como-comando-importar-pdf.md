@@ -2666,18 +2666,19 @@ espaço de verdade") compara com o espaço de verdade da linha e não serve: o v
   0,22 do tamanho (corpo de 6 pt), e o y, em 0,125; a margem do Q até o teto é pequena, e o vão
   que passar dele fica no texto.
 
-**Medido** (2026-11-18), `importar-pdf` + `preparar` com o HEAD d82f8d6 e com esta seção, um PDF
-por vez (`livros/trabalho/kafka2-{antes,depois}-<livro>`; o Kafka contra `kafka-a-beira-mar.*.antes2`):
+**Medido** (2026-11-20, depois do rebase), `importar-pdf` + `preparar` com o main `fc31103`
+(antes) e com esta seção, a do ADR-0003 ("Créditos entre duas marcas fortes") e a do ADR-0008
+de 2026-11-20 (depois), um PDF por vez (`livros/trabalho/kafka3-{antes,depois}-<livro>`):
 
 | Livro | Segmentos lidos | O que muda |
 |---|---|---|
-| *Kafka à beira-mar* | 5.201 → 5.250 | títulos 5 → 56 (todo capítulo abre no nome dele); 4 notas no fim do capítulo; 43 espaços da letra larga (Q 17, y 26); 7 parágrafos de créditos a mais saem (ADR-0003); 1 destaque de margem novo (abaixo); no inventário, "símbolo de nota" 48 → 28 (os 28 são a censura), "hífen com espaço" 6 → 1, "parágrafo que não fecha frase" 15 → 10 |
+| *Kafka à beira-mar* | 5.201 → 5.250 | títulos 5 → 56 (todo capítulo abre no nome dele); 3 notas no fim do capítulo, e a do Macbeth sai (ADR-0008); 43 espaços da letra larga (Q 17, y 26); 7 parágrafos de créditos a mais saem (ADR-0003); no inventário, contra o de antes, "símbolo de nota" 48 → 28 (os 28 são a censura), "hífen com espaço" 6 → 1, "parágrafo que não fecha frase" 15 → 10 |
 | *Hard Parts* | 3.262 → 3.262 | idêntico |
-| *Dalgalarrondo* | 4.136 → 4.137 | 2 chamadas tiradas; a nota da p. 151 vai para o fim do capítulo, e "…marido (real) como se ele fosse um sósia" volta a ser uma frase só; a nota do Quadro 8.3 fica no quadro, sem o asterisco; a frase que o PDF desenha duas vezes na p. 151 passa a ser lida duas vezes (abaixo) |
-| *Manica* | 18.654 → 18.654 | idêntico |
-| *Miller* | 26.445 → 26.445 | idêntico |
-| *Bonica* | 14.865 → 14.865 | idêntico |
-| *Practical* | 13.942 → 13.943 | 3 chamadas tiradas; as notas das duas tabelas continuam notas, sem o asterisco, e "* No benefit… ** Probably effective…" vira duas notas; 4 espaços da letra larga no índice ("ca re", "va lue"), que sai inteiro |
+| *Dalgalarrondo* | 4.160 → 4.153 | 2 chamadas tiradas; a nota da p. 151 vai para o fim do capítulo, e "…marido (real) como se ele fosse um sósia" volta a ser uma frase só; a nota do Quadro 8.3 fica no quadro, sem o asterisco; e as cópias lado a lado do ADR-0008 |
+| *Manica* | 18.647 → 18.647 | idêntico |
+| *Miller* | 26.806 → 26.806 | idêntico |
+| *Bonica* | 14.833 → 14.833 | idêntico |
+| *Practical* | 11.639 → 11.639 | 2 chamadas tiradas ("Carpal tunnel syndrome*", "Bell's palsy)**"); a nota fica no quadro, que o main mantém no lugar, sem os asteriscos; 4 espaços da letra larga no índice ("ca re", "va lue"), que sai inteiro |
 
 As rodadas anteriores da regressão acharam quatro defeitos desta seção, corrigidos antes do
 commit, cada um com o seu teste: a cobertura (rejeitada acima), a letra larga sem teto no vão, o
@@ -2694,16 +2695,12 @@ outra coluna e o corpo depois da tabela.
 - a fala "— Hum?" que abre 4 páginas distantes (p. 271, 354, 363 e 383) sai como cabeçalho
   repetido, registrada no resumo: a cobertura que a salvava tirava cabeçalho de verdade dos
   tratados;
-- a nota "****" do Kafka é o original em inglês do verso de *Macbeth* que o texto leu traduzido.
-  Pela decisão 4 do Mateus no ADR-0011, ela sairia; aqui fica como nota, no fim do capítulo, porque
-  a regra não sabe o que a nota diz. Decisão à parte, levada à sessão principal;
-- a frase que o narrador do Kafka repete no parágrafo seguinte ("Quando meu décimo quinto
-  aniversário chegar…", `c003`) sai como destaque de margem (ADR-0008): o "Q uando" a escondia da
-  regra. Decisão à parte, levada à sessão principal;
-- a frase que o *Dalgalarrondo* desenha duas vezes, lado a lado, na p. 151 é lida duas vezes: sem
-  a chamada, as duas cópias ficam iguais, e a regra dos gêmeos (ADR-0008) não tira nenhuma das
-  duas quando nenhuma parte uma frase. Antes, a chamada as diferenciava, e a cópia sem ela saía
-  como destaque;
+- três efeitos desta seção eram decisão de gosto, e o Mateus as tomou em 2026-11-20 (ADR-0008,
+  "Repetição do autor, cópia lado a lado e nota em outra língua"): a nota "****" do Kafka, o
+  original em inglês do verso de *Macbeth*, sai pela decisão 4 do ADR-0011; a frase que o
+  narrador repete no parágrafo seguinte (`c003`), que o "Q uando" escondia da regra do
+  destaque, volta; e a frase que o *Dalgalarrondo* desenha duas vezes, lado a lado, na p. 151, e
+  que ficou com as duas cópias iguais sem a chamada, perde a segunda;
 - o espaço antes de "?" e "!" ("não ?", "Boa-tarde !") e a palavra partida no meio do parágrafo
   ("ísicas, mas…", c025) não têm a mesma causa e ficam.
 
